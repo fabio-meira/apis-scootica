@@ -1,0 +1,9 @@
+{
+    "development":{
+        "username": "root",
+        "password": "fmeira77",
+        "database": "Fabester",
+        "host": "localhost",
+        "dialect": "mysql"
+    }
+}
