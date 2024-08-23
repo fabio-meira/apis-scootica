@@ -43,7 +43,7 @@ Usuario.init({
  admin: {
    type: DataTypes.BOOLEAN,
    allowNull: false,
-   defaultValue: true
+   defaultValue: false
 },
  permissoes: {
    type: DataTypes.JSON,
