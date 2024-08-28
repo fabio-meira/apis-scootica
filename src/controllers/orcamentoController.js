@@ -44,10 +44,39 @@ async function postOrcamento(req, res) {
 async function getOrcamentos(req, res) {
     try {
         const { idEmpresa } = req.params; 
+        const { startDate, endDate, status, idVendedor } = req.query; 
+
+        // Construa o objeto de filtro
+        const whereConditions = {
+            idEmpresa: idEmpresa
+        };
+
+        // Adicione filtro por data de início e data de fim, se fornecidos
+        if (startDate) {
+            whereConditions.createdAt = {
+                [Op.gte]: new Date(startDate) 
+            };
+        }
+
+        if (endDate) {
+            if (!whereConditions.createdAt) {
+                whereConditions.createdAt = {};
+            }
+            whereConditions.createdAt[Op.lte] = new Date(endDate); 
+        }
+
+        // Adicione filtro por status, se fornecido
+        if (status) {
+            whereConditions.situacao = status; 
+        }
+
+        // Adicione filtro por idVendedor, se fornecido
+        if (idVendedor) {
+            whereConditions.idVendedor = idVendedor;
+        }
+
         const orcamentos = await Orcamento.findAll({
-            where: { 
-                idEmpresa: idEmpresa 
-            },
+            where: whereConditions,
             include: [
                 {
                     model: Empresa,

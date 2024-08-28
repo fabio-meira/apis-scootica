@@ -37,10 +37,6 @@ idCliente: {
     type: DataTypes.INTEGER,
     allowNull: true
  },
-//  idProduto: {
-//    type: DataTypes.INTEGER,
-//    allowNull: false
-// },
  idLaboratorio: {
     type: DataTypes.INTEGER,
     allowNull: true

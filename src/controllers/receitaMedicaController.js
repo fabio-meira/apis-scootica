@@ -26,12 +26,35 @@ async function postReceita(req, res) {
 // função para consulta por todos os receitas da empresa
 async function listReceitas(req, res) {
     try {
-        const { idEmpresa } = req.params; 
+        const { idEmpresa } = req.params;
+        const { startDate, endDate, status } = req.query; // Recebe parâmetros de data e status via query string
+
+        // Construa o objeto de filtro
+        const whereConditions = {
+            idEmpresa: idEmpresa
+        };
+
+        // Adicione filtro por data de início e data de fim, se fornecidos
+        if (startDate) {
+            whereConditions.dtReceita = {
+                [Op.gte]: new Date(startDate) // Maior ou igual à data de início
+            };
+        }
+
+        if (endDate) {
+            if (!whereConditions.dtReceita) {
+                whereConditions.dtReceita = {};
+            }
+            whereConditions.dtReceita[Op.lte] = new Date(endDate); // Menor ou igual à data de fim
+        }
+
+        // Adicione filtro por status, se fornecido
+        if (status) {
+            whereConditions.ativo = status === 'ativo' ? 1 : 0; // Ajuste conforme sua lógica de status
+        }
 
         const receita = await Receita.findAll({
-            where: { 
-                idEmpresa: idEmpresa 
-            },
+            where: whereConditions,
             include: [
                 { 
                     model: Cliente, 
