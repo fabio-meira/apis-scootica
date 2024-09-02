@@ -11,12 +11,12 @@ PlanoConta.init({
       autoIncrement: true,
    },
    idEmpresa: {
-        type: DataTypes.STRING(50),
-        allowNull: true,
+      type: DataTypes.STRING(50),
+      allowNull: true,
    },
    idCategoria: {
-    type: DataTypes.INTEGER,
-    allowNull: true,
+      type: DataTypes.INTEGER,
+      allowNull: true,
    },
    descricao: {
       type: DataTypes.STRING(500),

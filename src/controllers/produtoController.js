@@ -4,6 +4,7 @@ const MarcaProduto = require('../models/MarcaProduto');
 const Produto = require('../models/Produto');
 const SubGrupoProduto = require('../models/SubGrupoProduto');
 const Fornecedor = require('../models/Fornecedores');
+const { Op } = require('sequelize')
 
 // Função para cadastrar um novo produto
 async function postProduto(req, res) {
@@ -42,15 +43,44 @@ async function postProduto(req, res) {
 async function listProdutos(req, res) {
     try {
         const { idEmpresa } = req.params; 
+        const { startDate, endDate, idMarca, idFornecedor } = req.query; 
+
+        // Construa o objeto de filtro
+        const whereConditions = {
+            idEmpresa: idEmpresa
+        };
+
+        // Adicione filtro por data de início e data de fim, se fornecidos
+        if (startDate) {
+            whereConditions.createdAt = {
+                [Op.gte]: new Date(startDate) 
+            };
+        }
+
+        if (endDate) {
+            if (!whereConditions.createdAt) {
+                whereConditions.createdAt = {};
+            }
+            whereConditions.createdAt[Op.lte] = new Date(endDate); 
+        }
+
+        // Adicione filtro por status, se fornecido
+        if (idMarca) {
+            whereConditions.idMarca = idMarca; 
+        }
+
+        // Adicione filtro por idFornecedor, se fornecido
+        if (idFornecedor) {
+            whereConditions.idFornecedor = idFornecedor;
+        }
+
         const produtos = await Produto.findAll({
-            where: { 
-                idEmpresa: idEmpresa 
-            },
+            where: whereConditions, 
             include: [
                 { 
                     model: Fornecedor, 
                     as: 'fornecedores',
-                    attributes: ['razaoSocial', 'nomeFantasia', 'cnpj', 'celular'] 
+                    attributes: ['id','razaoSocial', 'nomeFantasia', 'cnpj', 'celular'] 
                 },
                 {
                     model: GrupoProduto, 
@@ -65,7 +95,7 @@ async function listProdutos(req, res) {
                 {
                     model: MarcaProduto, 
                     as: 'marcaProdutos',
-                    attributes: ['nome', 'situacao'] 
+                    attributes: ['id','nome', 'situacao'] 
                 },
                 {
                     model: ColecaoProduto,

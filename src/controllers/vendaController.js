@@ -9,6 +9,7 @@ const Pagamento = require('../models/Pagamento');
 const Empresa = require('../models/Empresa');
 const VendaProduto = require('../models/VendaProduto');
 const OrdemServico = require('../models/OrdemServico');
+const { Op } = require('sequelize')
 
 // Função para criar uma nova venda e seus produtos, ordem de serviço, totais e pagamentos relacionados
 async function postVenda(req, res) {
@@ -21,18 +22,6 @@ async function postVenda(req, res) {
 
         // Cria uma venda
         const venda = await Venda.create(vendaData);
-
-        // Verifica se a ordem de serviço existe
-        // const existOrdemServico = await OrdemServico.findOne({
-        //     where: { id: vendaData.idOrdemServico }
-        // });
-
-        // if(existOrdemServico) {
-        //     await OrdemServico.update(
-        //         { idVenda: venda.id},
-        //         { where: { id: vendaData.idOrdemServico } }
-        //     );
-        // }
 
         // Cria os produtos com idVenda
         const produtos = vendaData.produtos.map(produto => ({
@@ -73,6 +62,7 @@ async function postVenda(req, res) {
                 await Pagamento.create(newPayment);
             }
         }
+        
         // Verifica se a ordem de serviço existe
         const existOrdemServico = await OrdemServico.findOne({
             where: { id: vendaData.idOrdemServico || null}
@@ -97,9 +87,69 @@ async function postVenda(req, res) {
 async function getVenda(req, res) {
     try {
         const { idEmpresa } = req.params;
+        const { startDate, endDate, dataEstimada, idVendedor, status, idOrdemServico, idVenda } = req.query; 
+
+        // Construa o objeto de filtro
+        const whereConditions = {
+            idEmpresa: idEmpresa
+        };
+
+        // Adicione filtro por data de início e data de fim, se fornecidos
+        if (startDate) {
+            whereConditions.createdAt = {
+                [Op.gte]: new Date(startDate) 
+            };
+        }
+
+        if (endDate) {
+            if (!whereConditions.createdAt) {
+                whereConditions.createdAt = {};
+            }
+            whereConditions.createdAt[Op.lte] = new Date(endDate); 
+        }
+
+        // Adicione filtro por status, se fornecido
+        if (dataEstimada) {
+            // Cria um objeto Date no horário local
+            const date = new Date(`${dataEstimada}`);
+        
+            // Formata a data e hora no formato local
+            const ano = date.getFullYear();
+            const mes = String(date.getMonth() + 1).padStart(2, '0');
+            const dia = String(date.getDate()).padStart(2, '0');
+            const hora = '21';
+            const minutos = '00';
+            const segundos = '00';
+        
+            // Converte para o formato YYYY-MM-DD HH:MM:SS no horário local
+            const dataEstimadaFormatada = `${ano}-${mes}-${dia} ${hora}:${minutos}:${segundos}`;
+        
+            // Define o filtro para a consulta
+            whereConditions.dtEstimadaEntrega = dataEstimadaFormatada;
+        }
+
+        // Adicione filtro por idFornecedor, se fornecido
+        if (idVendedor) {
+            whereConditions.idVendedor = idVendedor;
+        }
+        
+        // Adicione filtro por status, se fornecido
+        if (status) {
+            whereConditions.situacao = status; 
+        }
+
+        // Adicione filtro por ordem de servico, se fornecido
+        if (idOrdemServico) {
+            whereConditions.idOrdemServico = idOrdemServico; 
+        }
+
+        // Adicione filtro por venda, se fornecido
+        if (idVenda) {
+            whereConditions.id = idVenda; 
+        }
+
         const venda = await Venda.findAll({
-            where: { idEmpresa: idEmpresa
-            },
+            where: whereConditions,
             include: [
                 {
                     model: Empresa,

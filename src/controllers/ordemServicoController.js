@@ -9,6 +9,7 @@ const Medico = require('../models/Medico');
 const Laboratorio = require('../models/Laboratorio');
 const Pagamento = require('../models/Pagamento');
 const Empresa = require('../models/Empresa');
+const { Op } = require('sequelize')
 
 // Função para criar uma nova Ordem de Serviço e seus pagamentos relacionados
 async function postOrdemServico(req, res) {
@@ -44,6 +45,21 @@ async function postOrdemServico(req, res) {
         // Cria os pagamentos em lote
         await Pagamento.bulkCreate(pagamentos);
 
+        // Verifica se a ordem de serviço existe
+        const existOrcamento = await Orcamento.findOne({
+            where: { id: ordemServicoData.idOrcamento || null}
+        });
+
+        // Atualiza a tabela OrdemServico no campo idVenda
+        if(existOrcamento) {
+            await Orcamento.update(
+                { idOrdemServico: ordemServico.id,
+                  situacao: 1  
+                },
+                { where: { id: ordemServicoData.idOrcamento } }
+            );
+        }
+
         res.status(201).json({ message: 'Ordem de serviço criada com sucesso', ordemServico });
     } catch (error) {
         console.error(error);
@@ -56,9 +72,69 @@ async function postOrdemServico(req, res) {
 async function getOrdemServico(req, res) {
     try {
         const { idEmpresa } = req.params;
+        const { startDate, endDate, dataEstimada, idVendedor, status, idOrcamento, os } = req.query; 
+
+        // Construa o objeto de filtro
+        const whereConditions = {
+            idEmpresa: idEmpresa
+        };
+
+        // Adicione filtro por data de início e data de fim, se fornecidos
+        if (startDate) {
+            whereConditions.createdAt = {
+                [Op.gte]: new Date(startDate) 
+            };
+        }
+
+        if (endDate) {
+            if (!whereConditions.createdAt) {
+                whereConditions.createdAt = {};
+            }
+            whereConditions.createdAt[Op.lte] = new Date(endDate); 
+        }
+
+        // Adicione filtro por status, se fornecido
+        if (dataEstimada) {
+            // Cria um objeto Date no horário local
+            const date = new Date(`${dataEstimada}`);
+        
+            // Formata a data e hora no formato local
+            const ano = date.getFullYear();
+            const mes = String(date.getMonth() + 1).padStart(2, '0');
+            const dia = String(date.getDate()).padStart(2, '0');
+            const hora = '21';
+            const minutos = '00';
+            const segundos = '00';
+        
+            // Converte para o formato YYYY-MM-DD HH:MM:SS no horário local
+            const dataEstimadaFormatada = `${ano}-${mes}-${dia} ${hora}:${minutos}:${segundos}`;
+        
+            // Define o filtro para a consulta
+            whereConditions.dtEstimadaEntrega = dataEstimadaFormatada;
+        }
+
+        // Adicione filtro por idFornecedor, se fornecido
+        if (idVendedor) {
+            whereConditions.idVendedor = idVendedor;
+        }
+        
+        // Adicione filtro por status, se fornecido
+        if (status) {
+            whereConditions.situacao = status; 
+        }
+
+        // Adicione filtro por orcamento, se fornecido
+        if (idOrcamento) {
+            whereConditions.idOrcamento = idOrcamento; 
+        }
+
+        // Adicione filtro por ordem de servico, se fornecido
+        if (os) {
+            whereConditions.id = os; 
+        }
+
         const ordemServico = await OrdemServico.findAll({
-            where: { idEmpresa: idEmpresa
-            },
+            where: whereConditions,
             include: [
                 {
                     model: Empresa,

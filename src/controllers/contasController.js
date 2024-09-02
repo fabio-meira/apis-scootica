@@ -1,4 +1,4 @@
-const Categoria = require('../models/Categoria');
+const Caixa = require('../models/Caixa');
 const Cliente = require('../models/Cliente');
 const Conta = require('../models/Conta');
 const Fornecedor = require('../models/Fornecedores');
@@ -6,58 +6,25 @@ const PlanoConta = require('../models/PlanoConta');
 const getPlanoConta = require('../models/getPlanoConta')
 const sequelize = require('../database/connection');
 
-// Função para obter o próximo número de documento
-const getNextAccountNumber = async () => {
-    try {
-        // Executar a consulta para obter o último ID
-        const [rows] = await sequelize.query('SELECT id FROM contas ORDER BY id DESC LIMIT 1', { type: sequelize.QueryTypes.SELECT });
-
-        // Adicionar log para verificar o resultado da consulta
-        console.log('Resultado da consulta:', rows);
-
-        // Verificar se a consulta retornou algum resultado
-        if (rows.length > 1) {
-            const lastId = rows[0].id;
-            console.log('Último ID:', lastId);
-            return lastId;
-        } else {
-            // Caso não haja nenhum registro, retornar 0 ou algum valor padrão
-            return 0;
-        }
-    } catch (error) {
-        console.error('Erro ao obter o próximo número de documento:', error);
-        throw error;
-    }
-};
-
-module.exports = { getNextAccountNumber };
-
 // Função para cadastrar nova conta
 async function postConta(req, res) {
     try {
         const contaData = req.body;
         const { idEmpresa } = req.params; 
-        // const { numeroDocumento } = req.body;
-
-        // Verificar se conta a pagar ou a receber já está cadastrada
-        // const contaExists = await Conta.findOne({ 
-        //     where: { 
-        //         idEmpresa: idEmpresa,
-        //         numeroDocumento: await getNextAccountNumber() 
-        //     } 
-        // });
-
-        // if (contaExists) {
-        //     return res.status(400).json({
-        //         error: "Conta já cadastrado no sistema"
-        //     });
-        // }
 
         // Adiciona o idEmpresa como idEmpresa no objeto contaData
         contaData.idEmpresa = idEmpresa;
 
-        // Gerar número de documento autoincremental
-        contaData.numeroDocumento = await getNextAccountNumber();
+        // Consulta o último registro na tabela caixa
+        const ultimoCaixa = await Caixa.findOne({
+            where: { idEmpresa }, 
+            order: [['createdAt', 'DESC']], 
+        });
+
+        // Verifica se o último caixa encontrado tem a situação igual a 1 (caixa aberto)
+        if (!ultimoCaixa || ultimoCaixa.situacao !== 1) {
+            return res.status(422).json({ message: 'Não é possível cadastrar a conta. O caixa está fechado.' });
+        }
 
         const conta = await Conta.create(contaData);
 
@@ -139,6 +106,16 @@ async function getConta(req, res) {
         if (!conta) {
             return res.status(404).json({ message: 'Conta não encontrada' });
         }
+
+        // Substituir fornecedor com valores padrão se ele for null
+        // if (!conta.fornecedor && conta.idFornecedor === null) {
+        //     conta.fornecedor = {
+        //         razaoSocial: "Sem fornecedor",
+        //         nomeFantasia: "Sem fornecedor",
+        //         cnpj: "99999999999999",
+        //         celular: "(99) 9999-9999"
+        //     };
+        // }
 
         res.status(200).json(conta);
     } catch (error) {
