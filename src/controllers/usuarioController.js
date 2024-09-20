@@ -1,6 +1,7 @@
 const Usuario = require('../models/Usuario');
 const bcrypt = require('bcrypt');
 const Empresa = require('../models/Empresa');
+const Auth = require('../models/Authentication');
 
 async function postUsuario(req, res) {
     try {
@@ -65,10 +66,10 @@ async function listUsuarios(req, res) {
 async function loginUsuario(req, res) {
     try {
         const { id } = req.params;
-        const { idEmpresa } = req.params; 
+        // const { idEmpresa } = req.params; 
         const usuario = await Usuario.findOne({
             where: { 
-                idEmpresa: idEmpresa,
+                // idEmpresa: idEmpresa,
                 login: id 
             },
             include: [
@@ -76,6 +77,11 @@ async function loginUsuario(req, res) {
                     model: Empresa,
                     as: 'empresa',
                     attributes: ['cnpj', 'nome'] 
+                },
+                {
+                    model: Auth,
+                    as: 'token',
+                    attributes: ['user_token'] 
                 },
             ],
             order: [

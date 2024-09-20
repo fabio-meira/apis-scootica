@@ -11,17 +11,21 @@ const { Op, fn, col, literal } = require('sequelize');
 
 async function getVendaSemanal(req, res) {
     try {
+        const { idEmpresa } = req.params; 
         const startOfWeek = new Date();
-        startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay()); // Obtém o início da semana (domingo)
+        // Obtém o início da semana (domingo)
+        startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay()); 
         startOfWeek.setHours(0, 0, 0, 0);
   
         const endOfWeek = new Date(startOfWeek);
-        endOfWeek.setDate(startOfWeek.getDate() + 6); // Obtém o final da semana (sábado)
+        // Obtém o fim da semana (sábado)
+        endOfWeek.setDate(startOfWeek.getDate() + 6); 
         endOfWeek.setHours(23, 59, 59, 999);
   
         // Consulta os orçamentos gerados durante a semana
         const orcamentos = await Orcamento.findAll({
             where: {
+                idEmpresa: idEmpresa,
                 createdAt: {
                     [Op.between]: [startOfWeek, endOfWeek],
                 },
@@ -47,6 +51,7 @@ async function getVendaSemanal(req, res) {
         // Consulta as ordens de serviço geradas durante a semana e calcula o total do valor
         const ordensServico = await OrdemServico.findAll({
             where: {
+                idEmpresa: idEmpresa,
                 createdAt: {
                     [Op.between]: [startOfWeek, endOfWeek],
                 },
@@ -74,6 +79,7 @@ async function getVendaSemanal(req, res) {
         // Consulta as vendas geradas durante a semana e calcula o total do valor
         const vendas = await Venda.findAll({
             where: {
+                idEmpresa: idEmpresa,
                 createdAt: {
                     [Op.between]: [startOfWeek, endOfWeek],
                 },
@@ -83,6 +89,7 @@ async function getVendaSemanal(req, res) {
                 [literal('DAYNAME(`Venda`.`createdAt`)'), 'dayOfWeek'],
                 [fn('SUM', literal('DISTINCT `valorTotal`')), 'totalValorVendas'],
                 [fn('COUNT', literal('DISTINCT CASE WHEN `pagamentos`.`adiantamento` = 1 THEN `Venda`.`id` END')), 'QtdeVenda'],
+                // [fn('COUNT', col('Venda.id')), 'QtdeVenda'],
                 [fn('SUM', literal('CASE WHEN `pagamentos`.`adiantamento` = 0 THEN `pagamentos`.`valor` ELSE 0 END')), 'totalValorPago']
 
             ],

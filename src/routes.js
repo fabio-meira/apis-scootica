@@ -105,7 +105,7 @@ router.delete('/oticas/empresas/:idEmpresa/vendedores/:id', vendedorController.d
 router.post('/oticas/empresas/:idEmpresa/usuarios', usuarioController.postUsuario);
 router.get('/oticas/empresas/:idEmpresa/usuarios', usuarioController.listUsuarios);
 router.get('/oticas/empresas/:idEmpresa/usuarios/:id', usuarioController.getUsuario);
-router.get('/oticas/empresas/:idEmpresa/usuarios/login/:id', usuarioController.loginUsuario);
+router.get('/oticas/sccotica/login/:id', usuarioController.loginUsuario);
 router.put('/oticas/empresas/:idEmpresa/usuarios/:id', usuarioController.putUsuario);
 router.delete('/oticas/empresas/:idEmpresa/usuarios/:id', usuarioController.deletarUsuario);
 

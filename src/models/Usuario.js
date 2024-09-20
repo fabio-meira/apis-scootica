@@ -2,6 +2,7 @@
 const { Model, DataTypes } = require('sequelize');
 const sequelize = require('../database/connection');
 const Empresa = require('../models/Empresa');
+const Auth = require('../models/Authentication');
 
 class Usuario extends Model {}
 
@@ -74,4 +75,9 @@ Usuario.belongsTo(Empresa, {
    as: 'empresa'
  });
 
+Usuario.belongsTo(Auth, {
+   foreignKey: 'idEmpresa',
+   targetKey: 'idEmpresa', 
+   as: 'token'
+ });
 module.exports = Usuario;
