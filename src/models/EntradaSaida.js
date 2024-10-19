@@ -1,6 +1,7 @@
 // models/EntradaSaida.js
 const { Model, DataTypes } = require('sequelize');
 const sequelize = require('../database/connection');
+const Usuario = require('./Usuario');
 
 class EntradaSaida extends Model {}
 
@@ -49,10 +50,10 @@ EntradaSaida.init({
 });
 
 // // Relacionamentos
-// Caixa.belongsTo(Usuario, {
-//   foreignKey: 'idUsuario',
-//   as: 'usuario'
-// });
+EntradaSaida.belongsTo(Usuario, {
+  foreignKey: 'idUsuario',
+  as: 'usuario'
+});
 
 // Caixa.hasMany(Venda, {
 //   foreignKey: 'idCaixa',

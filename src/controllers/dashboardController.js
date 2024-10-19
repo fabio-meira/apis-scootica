@@ -142,6 +142,259 @@ async function getVendaSemanal(req, res) {
     }
 }
 
+const { format, utcToZonedTime } = require('date-fns-tz');
+
+async function getConsolidadoMensal(req, res) {
+    try {
+        const { idEmpresa } = req.params; 
+        const year = new Date().getFullYear();
+        const month = new Date().getMonth(); // Mês atual (0 = janeiro, 1 = fevereiro, etc.)
+        
+        const startOfMonth = new Date(year, month, 1); // Primeiro dia do mês
+        const endOfMonth = new Date(year, month + 1, 0); // Último dia do mês
+
+        // Inicializar o array para consolidar dados diários
+        const consolidado = [];
+
+        // Preencher o array com os dias do mês
+        for (let day = 1; day <= endOfMonth.getDate(); day++) {
+            consolidado.push({
+                date: format(new Date(year, month, day), 'yyyy-MM-dd'), // Apenas a data
+                orcamentos: { total: 0, quantidade: 0 },
+                ordensServico: { total: 0, quantidade: 0 },
+                vendas: { total: 0, quantidade: 0 }
+            });
+        }
+
+        // Coletar os dados diários de orçamentos
+        const orcamentos = await Orcamento.findAll({
+            where: {
+                idEmpresa,
+                createdAt: {
+                    [Op.between]: [startOfMonth, endOfMonth],
+                },
+            },
+            attributes: [
+                [fn('DATE', col('Orcamento.createdAt')), 'date'],
+                [fn('SUM', col('totais.total')), 'totalOrcamento'],
+                [fn('COUNT', col('Orcamento.id')), 'QtdeOrcamentos'],
+            ],
+            include: [
+                {
+                    model: OrdemProdutoTotal,
+                    as: 'totais',
+                    attributes: [],
+                    required: false
+                }
+            ],
+            group: ['date'],
+            raw: true
+        });
+
+        // Coletar os dados diários de ordens de serviço
+        const ordensServico = await OrdemServico.findAll({
+            where: {
+                idEmpresa,
+                createdAt: {
+                    [Op.between]: [startOfMonth, endOfMonth],
+                },
+            },
+            attributes: [
+                [fn('DATE', col('OrdemServico.createdAt')), 'date'],
+                [fn('SUM', literal('DISTINCT valorTotal')), 'totalValorServicos'],
+                [fn('COUNT', col('OrdemServico.id')), 'QtdeOS'],
+            ],
+            include: [
+                {
+                    model: Pagamento,
+                    as: 'pagamentos',
+                    attributes: [],
+                    required: false
+                }
+            ],
+            group: ['date'],
+            raw: true
+        });
+
+        // Coletar os dados diários de vendas
+        const vendas = await Venda.findAll({
+            where: {
+                idEmpresa,
+                createdAt: {
+                    [Op.between]: [startOfMonth, endOfMonth],
+                },
+            },
+            attributes: [
+                [fn('DATE', col('Venda.createdAt')), 'date'],
+                [fn('SUM', literal('DISTINCT valorTotal')), 'totalValorVendas'],
+                [fn('COUNT', col('Venda.id')), 'QtdeVenda'],
+            ],
+            include: [
+                {
+                    model: Pagamento,
+                    as: 'pagamentos',
+                    attributes: [],
+                    required: false
+                }
+            ],
+            group: ['date'],
+            raw: true
+        });
+
+        // Consolidar os dados nos dias correspondentes
+        const mapConsolidado = (data, tipo) => {
+            data.forEach(item => {
+                const dateIndex = consolidado.findIndex(d => d.date === item.date);
+                if (dateIndex !== -1) {
+                    if (tipo === 'orcamento') {
+                        consolidado[dateIndex].orcamentos.total += parseFloat(item.totalOrcamento || 0);
+                        consolidado[dateIndex].orcamentos.quantidade += parseInt(item.QtdeOrcamentos || 0);
+                    } else if (tipo === 'ordemServico') {
+                        consolidado[dateIndex].ordensServico.total += parseFloat(item.totalValorServicos || 0);
+                        consolidado[dateIndex].ordensServico.quantidade += parseInt(item.QtdeOS || 0);
+                    } else if (tipo === 'venda') {
+                        consolidado[dateIndex].vendas.total += parseFloat(item.totalValorVendas || 0);
+                        consolidado[dateIndex].vendas.quantidade += parseInt(item.QtdeVenda || 0);
+                    }
+                }
+            });
+        };
+
+        // Adicionar os dados ao consolidado
+        mapConsolidado(orcamentos, 'orcamento');
+        mapConsolidado(ordensServico, 'ordemServico');
+        mapConsolidado(vendas, 'venda');
+
+        // Montar a resposta com os dados consolidados
+        res.status(200).json(consolidado);
+    } catch (error) {
+        console.error('Erro ao consultar dados diários do mês:', error);
+        res.status(500).json({ error: 'Erro ao consultar dados diários do mês' });
+    }
+}
+
+async function getConsolidadoAnual(req, res) {
+    try {
+        const { idEmpresa } = req.params; 
+        const currentYear = new Date().getFullYear();
+
+        // Intervalo de um ano (de janeiro a dezembro)
+        const startOfYear = new Date(currentYear, 0, 1);
+        const endOfYear = new Date(currentYear + 1, 0, 1); // Início do próximo ano
+
+        // Consulta orçamentos
+        const orcamentos = await Orcamento.findAll({
+            where: {
+                idEmpresa: idEmpresa,
+                createdAt: {
+                    [Op.between]: [startOfYear, endOfYear],
+                },
+            },
+            attributes: [
+                [fn('DATE_FORMAT', col('Orcamento.createdAt'), '%Y-%m'), 'mes'],
+                [fn('COUNT', col('Orcamento.id')), 'QtdeOrcamentos'],
+                [fn('SUM', col('totais.total')), 'totalOrcamento'],
+            ],
+            group: ['mes'],
+            include: [
+                {
+                    model: OrdemProdutoTotal,
+                    as: 'totais',
+                    attributes: [],
+                    required: false
+                }
+            ],
+            raw: true
+        });
+
+        // Consulta ordens de serviço
+        const ordensServico = await OrdemServico.findAll({
+            where: {
+                idEmpresa: idEmpresa,
+                createdAt: {
+                    [Op.between]: [startOfYear, endOfYear],
+                },
+            },
+            attributes: [
+                [fn('DATE_FORMAT', col('OrdemServico.createdAt'), '%Y-%m'), 'mes'],
+                [fn('COUNT', col('OrdemServico.id')), 'QtdeOS'],
+                [fn('SUM', literal('DISTINCT valorTotal')), 'totalValorServicos'],
+            ],
+            group: ['mes'],
+            raw: true
+        });
+
+        // Consulta vendas
+        const vendas = await Venda.findAll({
+            where: {
+                idEmpresa: idEmpresa,
+                createdAt: {
+                    [Op.between]: [startOfYear, endOfYear],
+                },
+            },
+            attributes: [
+                [fn('DATE_FORMAT', col('Venda.createdAt'), '%Y-%m'), 'mes'],
+                [fn('COUNT', col('Venda.id')), 'QtdeVenda'],
+                [fn('SUM', literal('DISTINCT valorTotal')), 'totalValorVendas'],
+            ],
+            group: ['mes'],
+            raw: true
+        });
+
+        // Nomes dos meses
+        const nomesMeses = [
+            'Janeiro', 'Fevereiro', 'Março', 'Abril',
+            'Maio', 'Junho', 'Julho', 'Agosto',
+            'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+        ];
+
+        // Consolidar dados por mês
+        const consolidado = {};
+
+        // Inicializar o consolidado para todos os meses
+        for (let month = 0; month < 12; month++) {
+            const mesStr = `${currentYear}-${(month + 1).toString().padStart(2, '0')}`;
+            consolidado[mesStr] = {
+                totalOrcamento: 0,
+                QtdeOrcamentos: 0,
+                totalValorServicos: 0,
+                QtdeOS: 0,
+                totalValorVendas: 0,
+                QtdeVenda: 0,
+            };
+        }
+
+        // Adicionar orçamentos ao consolidado
+        orcamentos.forEach(item => {
+            consolidado[item.mes].totalOrcamento += parseFloat(item.totalOrcamento) || 0;
+            consolidado[item.mes].QtdeOrcamentos += parseInt(item.QtdeOrcamentos) || 0;
+        });
+
+        // Adicionar ordens de serviço ao consolidado
+        ordensServico.forEach(item => {
+            consolidado[item.mes].totalValorServicos += parseFloat(item.totalValorServicos) || 0;
+            consolidado[item.mes].QtdeOS += parseInt(item.QtdeOS) || 0;
+        });
+
+        // Adicionar vendas ao consolidado
+        vendas.forEach(item => {
+            consolidado[item.mes].totalValorVendas += parseFloat(item.totalValorVendas) || 0;
+            consolidado[item.mes].QtdeVenda += parseInt(item.QtdeVenda) || 0;
+        });
+
+        // Formatar a resposta
+        const resultado = Object.keys(consolidado).map(mes => ({
+            mes: nomesMeses[parseInt(mes.split('-')[1]) - 1], // Converte o mês para o nome correspondente
+            ...consolidado[mes],
+        }));
+
+        res.status(200).json(resultado);
+    } catch (error) {
+        console.error('Erro ao consultar dados mensais:', error);
+        res.status(500).json({ error: 'Erro ao consultar dados mensais' });
+    }
+}
+
 async function listMensagens(req, res) {
     try {
         const { idEmpresa } = req.params;
@@ -309,5 +562,7 @@ async function listMensagens(req, res) {
 
 module.exports = {
     getVendaSemanal,
-    listMensagens
+    listMensagens,
+    getConsolidadoMensal,
+    getConsolidadoAnual
 };

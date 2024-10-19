@@ -155,6 +155,8 @@ router.patch('/oticas/empresas/:idEmpresa/caixas', caixaController.patchCaixa);
 // rotas de dashboard
 router.get('/oticas/empresas/:idEmpresa/dashboard/diario', dashboardController.getVendaSemanal);
 router.get('/oticas/empresas/:idEmpresa/dashboard/mensagens', dashboardController.listMensagens);
+router.get('/oticas/empresas/:idEmpresa/dashboard/mensal', dashboardController.getConsolidadoMensal);
+router.get('/oticas/empresas/:idEmpresa/dashboard/anual', dashboardController.getConsolidadoAnual);
 // router.get('/oticas/empresas/:idEmpresa/vendas/caixa/:id', vendaController.getCaixaIdVenda);
 // router.put('/oticas/empresas/:idEmpresa/vendas/:id', vendaController.putVenda);
 // router.delete('/oticas/empresas/:idEmpresa/vendas/:id', vendaController.deleteVenda);
