@@ -45,12 +45,12 @@ async function postOrdemServico(req, res) {
         // Cria os pagamentos em lote
         await Pagamento.bulkCreate(pagamentos);
 
-        // Verifica se a ordem de serviço existe
+        // Verifica se a ordem de serviço está vinculado a um orçamento
         const existOrcamento = await Orcamento.findOne({
             where: { id: ordemServicoData.idOrcamento || null}
         });
 
-        // Atualiza a tabela OrdemServico no campo idVenda
+        // Atualiza a tabela Orcamento no campo idOrdemServico
         if(existOrcamento) {
             await Orcamento.update(
                 { idOrdemServico: ordemServico.id,
@@ -194,7 +194,10 @@ async function getOrdemServicoSV(req, res) {
         const { idEmpresa } = req.params;
         const ordemServico = await OrdemServico.findAll({
             where: { idEmpresa: idEmpresa,
-                idVenda: null
+                idVenda: null,
+                situacao: {
+                    [Op.ne]: 4  // Situação diferente de 4 (OS cancelada)
+                }
             },
             include: [
                 {

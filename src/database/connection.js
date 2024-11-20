@@ -8,7 +8,8 @@ const dialect = process.env.DIALECT;
 
 const connection = new Sequelize(database, username, password, {
     host, 
-    dialect
+    dialect,
+    timezone: 'America/Sao_Paulo'
 })
 
 module.exports = connection

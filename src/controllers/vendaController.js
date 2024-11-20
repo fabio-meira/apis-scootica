@@ -71,7 +71,9 @@ async function postVenda(req, res) {
         // Atualiza a tabela OrdemServico no campo idVenda
         if(existOrdemServico) {
             await OrdemServico.update(
-                { idVenda: venda.id},
+                { idVenda: venda.id,
+                  situacao: 1
+                },
                 { where: { id: vendaData.idOrdemServico } }
             );
         }
