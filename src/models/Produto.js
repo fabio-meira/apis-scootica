@@ -1,4 +1,4 @@
-// models/Orcamento.js
+// models/Produto.js
 const { Model, DataTypes } = require('sequelize');
 const sequelize = require('../database/connection');
 const MarcaProduto = require('./MarcaProduto');

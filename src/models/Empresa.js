@@ -30,6 +30,14 @@ Empresa.init({
     type: DataTypes.STRING(20),
     allowNull: true,
  },
+ telefone: {
+   type: DataTypes.STRING(15),
+   allowNull: true,
+ },
+ celular: {
+   type: DataTypes.STRING(15),
+   allowNull: true,
+ },
  tipoEndereco: {
     type: DataTypes.STRING(50),
     allowNull: true,

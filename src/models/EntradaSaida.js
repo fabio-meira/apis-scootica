@@ -11,6 +11,10 @@ EntradaSaida.init({
     primaryKey: true,
     autoIncrement: true
   },
+  idEmpresa: {
+    type: DataTypes.STRING(100),
+    allowNull: false
+  },
   idCaixa: {
     type: DataTypes.INTEGER,
     allowNull: true

@@ -1,7 +1,7 @@
-// models/OrdemProduto.js
+// models/Pagemento.js
 const { Model, DataTypes } = require('sequelize');
 const sequelize = require('../database/connection');
-const OrdemServico = require('./OrdemServico');
+// const Venda = require('./Venda');
 
 class Pagamento extends Model {}
 
@@ -10,6 +10,10 @@ Pagamento.init({
     type: DataTypes.INTEGER,
     primaryKey: true,
     autoIncrement: true
+ },
+ idEmpresa: {
+   type: DataTypes.STRING(100),
+   allowNull: false
  },
  idOrdemServico: {
     type: DataTypes.INTEGER,
@@ -92,6 +96,12 @@ adiantamento: {
  modelName: 'Pagamento',
  tableName: 'pagamentos'
 });
+
+
+// Pagamento.belongsTo(Venda, {
+//     foreignKey: 'idVenda',
+//     as: 'Venda'
+//   });
 
 // models/OrdemServico.js
 // Pagamento.belongsTo(OrdemServico, {

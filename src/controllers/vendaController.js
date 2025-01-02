@@ -56,7 +56,8 @@ async function postVenda(req, res) {
                 // Prepara o novo pagamento com idVenda
                 const newPayment = {
                     ...pagamento,
-                    idVenda: venda.id
+                    idVenda: venda.id,
+                    idEmpresa: venda.idEmpresa
                 };
                 // Cria o novo pagamento
                 await Pagamento.create(newPayment);
@@ -220,7 +221,7 @@ async function getIdVenda(req, res) {
                 {
                     model: Empresa,
                     as: 'empresa',
-                    attributes: ['cnpj', 'nome'] 
+                    attributes: ['cnpj', 'nome', 'logradouro', 'numero', 'complemento', 'cep', 'bairro', 'cidade', 'estado', 'telefone', 'celular']
                 },
                 {
                     model: Cliente,

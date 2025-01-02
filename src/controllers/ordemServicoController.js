@@ -40,7 +40,8 @@ async function postOrdemServico(req, res) {
         // Prepara os dados dos pagamentos com idOrdemServico
         const pagamentos = ordemServicoData.pagamentos.map(pagamento => ({
             ...pagamento,
-            idOrdemServico: ordemServico.id
+            idOrdemServico: ordemServico.id,
+            idEmpresa: ordemServico.idEmpresa
         }));
         // Cria os pagamentos em lote
         await Pagamento.bulkCreate(pagamentos);
@@ -265,7 +266,7 @@ async function getIdOrdemServico(req, res) {
                 {
                     model: Empresa,
                     as: 'empresa',
-                    attributes: ['cnpj', 'nome'] 
+                    attributes: ['cnpj', 'nome', 'logradouro', 'numero', 'complemento', 'cep', 'bairro', 'cidade', 'estado', 'telefone', 'celular']
                 },
                 {
                     model: Cliente,

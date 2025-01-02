@@ -1,5 +1,6 @@
 const { Model, DataTypes } = require('sequelize');
 const sequelize = require('../database/connection');
+const Empresa = require('./Empresa');
 const Cliente = require('./Cliente');
 const Medico = require('./Medico');
 
@@ -36,7 +37,7 @@ Receita.init({
     allowNull: true,
  },
  odlEixo: {
-    type: DataTypes.DECIMAL(5,2),
+    type: DataTypes.INTEGER,
     allowNull: true,
  },
  odlDNP: {
@@ -56,7 +57,7 @@ Receita.init({
    allowNull: true,
  },
  oelEixo: {
-   type: DataTypes.DECIMAL(5,2),
+   type: DataTypes.INTEGER,
    allowNull: true,
  },
  oelDNP: {
@@ -76,7 +77,7 @@ Receita.init({
     allowNull: true,
  },
  odpEixo: {
-    type: DataTypes.DECIMAL(5,2),
+    type: DataTypes.INTEGER,
     allowNull: true,
  },
  odpDNP: {
@@ -92,7 +93,7 @@ Receita.init({
    allowNull: true,
  },
  oepEixo: {
-   type: DataTypes.DECIMAL(5,2),
+   type: DataTypes.INTEGER,
    allowNull: true,
  },
  oepDNP: {
@@ -100,7 +101,7 @@ Receita.init({
    allowNull: true,
  },
  adicao: {
-    type: DataTypes.DECIMAL(5,2),
+    type: DataTypes.INTEGER,
     allowNull: true,
  },
  observacoes: {
@@ -136,4 +137,11 @@ Receita.belongsTo(Medico, {
    targetKey: 'id', 
    as: 'paciente' 
 });
+
+Receita.belongsTo(Empresa, {
+   foreignKey: 'idEmpresa',
+   targetKey: 'idEmpresa', 
+   as: 'empresa'
+ });
+
 module.exports = Receita;

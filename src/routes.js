@@ -30,6 +30,7 @@ const contasController = require('./controllers/contasController')
 const vendaController = require('./controllers/vendaController')
 const caixaController = require('./controllers/caixaController')
 const dashboardController = require('./controllers/dashboardController')
+const financeiroController = require('./controllers/financeiroController')
 
 
 // jwt-authorization
@@ -160,6 +161,10 @@ router.get('/oticas/empresas/:idEmpresa/dashboard/anual', dashboardController.ge
 // router.get('/oticas/empresas/:idEmpresa/vendas/caixa/:id', vendaController.getCaixaIdVenda);
 // router.put('/oticas/empresas/:idEmpresa/vendas/:id', vendaController.putVenda);
 // router.delete('/oticas/empresas/:idEmpresa/vendas/:id', vendaController.deleteVenda);
+
+// rotas de reports
+router.get('/oticas/empresas/:idEmpresa/financeiro/diario', financeiroController.getFinanceiro);
+router.get('/oticas/empresas/:idEmpresa/financeiro/mensal', financeiroController.getFinanceiromeses);
 
 // rotas de grupo de produtos
 router.post('/oticas/empresas/:idEmpresa/grupoProduto', grupoProdutoController.postGrupoProduto);

@@ -1,3 +1,4 @@
+const Empresa = require('../models/Empresa');
 const Cliente = require('../models/Cliente');
 const Medico = require('../models/Medico');
 const Receita = require('../models/Receita');
@@ -64,7 +65,7 @@ async function listReceitas(req, res) {
                 {
                     model: Medico,
                     as: 'medico',
-                    attributes: ['nomeCompleto', 'cpf', 'registro', 'celular', 'email'] 
+                    attributes: ['nomeCompleto', 'cpf', 'apelido', 'registro', 'celular', 'email'] 
                 }
             ],
             order: [
@@ -110,7 +111,7 @@ async function listReceitaAniversario(req, res) {
                 {
                     model: Medico,
                     as: 'medico',
-                    attributes: ['nomeCompleto', 'cpf', 'registro', 'celular', 'email'] 
+                    attributes: ['nomeCompleto', 'cpf', 'apelido', 'registro', 'celular', 'email'] 
                 }
             ],
             order: [
@@ -176,7 +177,7 @@ async function listReceitaAniversarioHoje(req, res) {
                 {
                     model: Medico,
                     as: 'medico',
-                    attributes: ['nomeCompleto', 'cpf', 'registro', 'celular', 'email'] 
+                    attributes: ['nomeCompleto', 'cpf', 'apelido', 'registro', 'celular', 'email'] 
                 }
             ],
             order: [
@@ -249,7 +250,7 @@ async function listAniversarioMes(req, res) {
                 {
                     model: Medico,
                     as: 'medico',
-                    attributes: ['nomeCompleto', 'cpf', 'registro', 'celular', 'email'] 
+                    attributes: ['nomeCompleto', 'cpf', 'apelido', 'registro', 'celular', 'email'] 
                 }
             ],
             order: [
@@ -318,7 +319,7 @@ async function listAniversarioAno(req, res) {
                 {
                     model: Medico,
                     as: 'medico',
-                    attributes: ['nomeCompleto', 'cpf', 'registro', 'celular', 'email'] 
+                    attributes: ['nomeCompleto', 'cpf', 'apelido', 'registro', 'celular', 'email'] 
                 }
             ]
         });
@@ -369,6 +370,11 @@ async function getReceita(req, res) {
                 id: id
             },
             include: [
+                {
+                    model: Empresa,
+                    as: 'empresa',
+                    attributes: ['cnpj', 'nome', 'logradouro', 'numero', 'complemento', 'cep', 'bairro', 'cidade', 'estado', 'telefone', 'celular']
+                },
                 { 
                     model: Cliente, 
                     as: 'paciente',
@@ -377,7 +383,7 @@ async function getReceita(req, res) {
                 {
                     model: Medico,
                     as: 'medico',
-                    attributes: ['nomeCompleto', 'cpf', 'registro', 'celular', 'email'] 
+                    attributes: ['nomeCompleto', 'cpf', 'apelido','registro', 'celular', 'email'] 
                 }
             ]
         });
@@ -413,7 +419,7 @@ async function getReceitaPaciente(req, res) {
                 {
                     model: Medico,
                     as: 'medico',
-                    attributes: ['nomeCompleto', 'cpf', 'registro', 'celular', 'email'] 
+                    attributes: ['nomeCompleto', 'cpf', 'apelido', 'registro', 'celular', 'email'] 
                 }
             ],
             order: [
@@ -452,7 +458,7 @@ async function getReceitaMedico(req, res) {
                 {
                     model: Medico,
                     as: 'medico',
-                    attributes: ['nomeCompleto', 'cpf', 'registro', 'celular', 'email'] 
+                    attributes: ['nomeCompleto', 'cpf', 'apelido', 'registro', 'celular', 'email'] 
                 }
             ],
             order: [
