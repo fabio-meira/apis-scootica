@@ -8,6 +8,7 @@ const OrdemServico = require('../models/OrdemServico');
 const Orcamento = require('../models/Orcamento');
 const moment = require('moment');
 const { Op, fn, col, literal } = require('sequelize');
+const { format, utcToZonedTime } = require('date-fns-tz');
 
 async function getVendaSemanal(req, res) {
     try {
@@ -33,10 +34,11 @@ async function getVendaSemanal(req, res) {
             attributes: [
                 [fn('DATE', col('Orcamento.createdAt')), 'date'],
                 [literal('DAYNAME(`Orcamento`.`createdAt`)'), 'dayOfWeek'],
+                [col('Orcamento.origemVenda'), 'origem'],
                 [fn('COUNT', col('Orcamento.id')), 'QtdeOrcamentos'],
                 [fn('SUM', col('totais.total')), 'totalOrcamento'],
             ],
-            group: ['date', 'dayOfWeek'],
+            group: ['date', 'dayOfWeek', 'origem'],
             include: [
                 {
                     model: OrdemProdutoTotal,
@@ -59,12 +61,13 @@ async function getVendaSemanal(req, res) {
             attributes: [
                 [fn('DATE', col('OrdemServico.createdAt')), 'date'],
                 [literal('DAYNAME(`OrdemServico`.`createdAt`)'), 'dayOfWeek'],
+                [col('OrdemServico.origemVenda'), 'origem'],
                 [fn('SUM', literal('DISTINCT `valorTotal`')), 'totalValorServicos'],
                 [fn('COUNT', literal('DISTINCT CASE WHEN `pagamentos`.`adiantamento` = 1 THEN `OrdemServico`.`id` END')), 'QtdeOS'],
                 [fn('SUM', literal('CASE WHEN `pagamentos`.`adiantamento` = 1 THEN `pagamentos`.`valor` ELSE 0 END')), 'totalAdiantamento']
 
             ],
-            group: ['date', 'dayOfWeek'],
+            group: ['date', 'dayOfWeek', 'origem'],
             include: [
                 {
                     model: Pagamento,
@@ -87,13 +90,14 @@ async function getVendaSemanal(req, res) {
             attributes: [
                 [fn('DATE', col('Venda.createdAt')), 'date'],
                 [literal('DAYNAME(`Venda`.`createdAt`)'), 'dayOfWeek'],
+                [col('Venda.origemVenda'), 'origem'],
                 [fn('SUM', literal('DISTINCT `valorTotal`')), 'totalValorVendas'],
-                [fn('COUNT', literal('DISTINCT CASE WHEN `pagamentos`.`adiantamento` = 1 THEN `Venda`.`id` END')), 'QtdeVenda'],
+                [fn('COUNT', literal('DISTINCT CASE WHEN `pagamentos`.`adiantamento` = 0 THEN `Venda`.`id` END')), 'QtdeVenda'],
                 // [fn('COUNT', col('Venda.id')), 'QtdeVenda'],
                 [fn('SUM', literal('CASE WHEN `pagamentos`.`adiantamento` = 0 THEN `pagamentos`.`valor` ELSE 0 END')), 'totalValorPago']
 
             ],
-            group: ['date', 'dayOfWeek'],
+            group: ['date', 'dayOfWeek', 'origem'],
             include: [
                 {
                     model: Pagamento,
@@ -141,8 +145,6 @@ async function getVendaSemanal(req, res) {
         res.status(500).json({ error: 'Erro ao consultar dados da semana' });
     }
 }
-
-const { format, utcToZonedTime } = require('date-fns-tz');
 
 async function getConsolidadoMensal(req, res) {
     try {
@@ -275,19 +277,22 @@ async function getConsolidadoMensal(req, res) {
 
 async function getConsolidadoAnual(req, res) {
     try {
-        const { idEmpresa } = req.params; 
-        const currentYear = new Date().getFullYear();
+        const { idEmpresa } = req.params;
+        const currentDate = new Date();
+        const currentYear = currentDate.getFullYear();
+        const currentMonth = currentDate.getMonth(); // Mês atual (0 = Janeiro, 11 = Dezembro)
 
-        // Intervalo de um ano (de janeiro a dezembro)
-        const startOfYear = new Date(currentYear, 0, 1);
-        const endOfYear = new Date(currentYear + 1, 0, 1); // Início do próximo ano
+        // Definindo o intervalo para os últimos 12 meses
+        const startOfLast12Months = new Date(currentDate);
+        startOfLast12Months.setMonth(currentMonth - 11); // Mês atual - 11 meses atrás
+        const endOfLast12Months = new Date(currentDate); // Mês atual (inclusive)
 
         // Consulta orçamentos
         const orcamentos = await Orcamento.findAll({
             where: {
                 idEmpresa: idEmpresa,
                 createdAt: {
-                    [Op.between]: [startOfYear, endOfYear],
+                    [Op.between]: [startOfLast12Months, endOfLast12Months],
                 },
             },
             attributes: [
@@ -312,7 +317,7 @@ async function getConsolidadoAnual(req, res) {
             where: {
                 idEmpresa: idEmpresa,
                 createdAt: {
-                    [Op.between]: [startOfYear, endOfYear],
+                    [Op.between]: [startOfLast12Months, endOfLast12Months],
                 },
             },
             attributes: [
@@ -329,7 +334,7 @@ async function getConsolidadoAnual(req, res) {
             where: {
                 idEmpresa: idEmpresa,
                 createdAt: {
-                    [Op.between]: [startOfYear, endOfYear],
+                    [Op.between]: [startOfLast12Months, endOfLast12Months],
                 },
             },
             attributes: [
@@ -341,20 +346,25 @@ async function getConsolidadoAnual(req, res) {
             raw: true
         });
 
-        // Nomes dos meses
+        // Nomes dos meses (em ordem crescente)
         const nomesMeses = [
             'Janeiro', 'Fevereiro', 'Março', 'Abril',
             'Maio', 'Junho', 'Julho', 'Agosto',
             'Setembro', 'Outubro', 'Novembro', 'Dezembro'
         ];
 
-        // Consolidar dados por mês
+        // Inicializar o consolidado para os últimos 12 meses
         const consolidado = {};
 
-        // Inicializar o consolidado para todos os meses
-        for (let month = 0; month < 12; month++) {
-            const mesStr = `${currentYear}-${(month + 1).toString().padStart(2, '0')}`;
-            consolidado[mesStr] = {
+        // Inicialize a chave para todos os meses dos últimos 12 meses, começando do mês atual
+        for (let i = 0; i < 12; i++) {
+            const mesIndex = (currentMonth - i + 12) % 12; // Para pegar os meses anteriores de forma cíclica
+
+            // Ajustar o ano: se o mês for anterior ao mês atual, subtrair 1 do ano
+            const anoCorrigido = currentMonth - i < 0 ? currentYear - 1 : currentYear;
+
+            const mesAno = `${anoCorrigido}-${(mesIndex + 1).toString().padStart(2, '0')}`;
+            consolidado[mesAno] = {
                 totalOrcamento: 0,
                 QtdeOrcamentos: 0,
                 totalValorServicos: 0,
@@ -366,28 +376,50 @@ async function getConsolidadoAnual(req, res) {
 
         // Adicionar orçamentos ao consolidado
         orcamentos.forEach(item => {
-            consolidado[item.mes].totalOrcamento += parseFloat(item.totalOrcamento) || 0;
-            consolidado[item.mes].QtdeOrcamentos += parseInt(item.QtdeOrcamentos) || 0;
+            if (consolidado[item.mes]) {
+                consolidado[item.mes].totalOrcamento += parseFloat(item.totalOrcamento) || 0;
+                consolidado[item.mes].QtdeOrcamentos += parseInt(item.QtdeOrcamentos) || 0;
+            }
         });
 
         // Adicionar ordens de serviço ao consolidado
         ordensServico.forEach(item => {
-            consolidado[item.mes].totalValorServicos += parseFloat(item.totalValorServicos) || 0;
-            consolidado[item.mes].QtdeOS += parseInt(item.QtdeOS) || 0;
+            if (consolidado[item.mes]) {
+                consolidado[item.mes].totalValorServicos += parseFloat(item.totalValorServicos) || 0;
+                consolidado[item.mes].QtdeOS += parseInt(item.QtdeOS) || 0;
+            }
         });
 
         // Adicionar vendas ao consolidado
         vendas.forEach(item => {
-            consolidado[item.mes].totalValorVendas += parseFloat(item.totalValorVendas) || 0;
-            consolidado[item.mes].QtdeVenda += parseInt(item.QtdeVenda) || 0;
+            if (consolidado[item.mes]) {
+                consolidado[item.mes].totalValorVendas += parseFloat(item.totalValorVendas) || 0;
+                consolidado[item.mes].QtdeVenda += parseInt(item.QtdeVenda) || 0;
+            }
         });
 
-        // Formatar a resposta
-        const resultado = Object.keys(consolidado).map(mes => ({
-            mes: nomesMeses[parseInt(mes.split('-')[1]) - 1], // Converte o mês para o nome correspondente
-            ...consolidado[mes],
-        }));
+        // Organizar a resposta com os dados para cada mês
+        const resultado = [];
 
+        // Garantir que os meses sejam retornados do mês atual para os anteriores
+        for (let i = 0; i < 12; i++) {
+            const mesIndex = (currentMonth - i + 12) % 12; // Para pegar os meses anteriores de forma cíclica
+
+            // Ajustar o ano
+            const anoCorrigido = currentMonth - i < 0 ? currentYear - 1 : currentYear;
+
+            const mesAno = `${anoCorrigido}-${(mesIndex + 1).toString().padStart(2, '0')}`;
+            const mesNome = nomesMeses[mesIndex];
+
+            // console.log(mesNome, mesIndex, mesAno, currentMonth, currentYear);
+
+            resultado.push({
+                mes: mesNome,
+                ...consolidado[mesAno],
+            });
+        }
+
+        // Retorna os dados organizados corretamente (do mês atual até os anteriores)
         res.status(200).json(resultado);
     } catch (error) {
         console.error('Erro ao consultar dados mensais:', error);

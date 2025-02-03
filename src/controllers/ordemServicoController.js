@@ -9,7 +9,8 @@ const Medico = require('../models/Medico');
 const Laboratorio = require('../models/Laboratorio');
 const Pagamento = require('../models/Pagamento');
 const Empresa = require('../models/Empresa');
-const { Op } = require('sequelize')
+const { Op } = require('sequelize');
+const Produto = require('../models/Produto');
 
 // Função para criar uma nova Ordem de Serviço e seus pagamentos relacionados
 async function postOrdemServico(req, res) {
@@ -23,11 +24,41 @@ async function postOrdemServico(req, res) {
         // Cria a Ordem de Serviço
         const ordemServico = await OrdemServico.create(ordemServicoData);
 
-        // Cria os produtos com idOrdemServico
-        const produtos = ordemServicoData.produtos.map(produto => ({
-            ...produto,
-            idOrdemServico: ordemServico.id
-        }));
+        // // Cria os produtos com idOrdemServico
+        // const produtos = ordemServicoData.produtos.map(produto => ({
+        //     ...produto,
+        //     idOrdemServico: ordemServico.id
+        // }));
+        // await OrdemProduto.bulkCreate(produtos);
+
+        // Processa os produtos
+        const produtos = await Promise.all(
+            ordemServicoData.produtos.map(async (produto) => {
+                const produtoDB = await Produto.findByPk(produto.idProduto);
+                if (!produtoDB) {
+                    throw new Error(`Produto com ID ${produto.id} não encontrado.`);
+                }
+                
+                if (produtoDB.movimentaEstoque) {
+                    // Verifica se a quantidade solicitada está disponível
+                    if (produto.quantidade > produtoDB.estoqueDisponivel) {
+                        throw new Error(`Estoque insuficiente para o produto ${produtoDB.nome}. Disponível: ${produtoDB.estoqueDisponivel}, Solicitado: ${produto.quantidade}`);
+                    }
+                    
+                    // Atualiza o estoque reservado e disponível
+                    await Produto.update(
+                        {
+                            estoqueReservado: produtoDB.estoqueReservado + produto.quantidade,
+                            estoqueDisponivel: produtoDB.estoqueDisponivel - produto.quantidade
+                        },
+                        { where: { id: produto.idProduto } }
+                    );
+                }
+                return { ...produto, idOrdemServico: ordemServico.id };
+            })
+        );
+
+        // Cria os produtos vinculados à Ordem de Serviço
         await OrdemProduto.bulkCreate(produtos);
         
         // Cria os totais com idOrdemServico

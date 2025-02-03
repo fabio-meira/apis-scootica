@@ -54,6 +54,14 @@ idMedico: {
    type: DataTypes.STRING(100),
    allowNull: true,
 },
+recovery_token: {
+   type: DataTypes.STRING(2000),
+   allowNull: true,
+},
+recovery_token_expiration: {
+   type: DataTypes.STRING(20),
+   allowNull: true,
+},
  createdAt: {
     type: DataTypes.DATE,
     allowNull: true,

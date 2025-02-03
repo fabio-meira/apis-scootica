@@ -4,6 +4,7 @@ const Cliente = require('./Cliente');
 const PlanoConta = require('./PlanoConta');
 const getPlanoConta = require('./getPlanoConta');
 const Fornecedor = require('./Fornecedores');
+const Empresa = require('./Empresa');
 
 class Conta extends Model {}
 
@@ -84,6 +85,11 @@ Conta.belongsTo(getPlanoConta, {
 Conta.belongsTo(Fornecedor, {
    foreignKey: 'idFornecedor',
    as: 'fornecedor' 
+});
+
+Conta.belongsTo(Empresa, {
+   foreignKey: 'idEmpresa',
+   as: 'empresa' 
 });
 
 module.exports = Conta;

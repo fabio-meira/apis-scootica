@@ -57,6 +57,14 @@ Produto.init({
      type: DataTypes.INTEGER,
      allowNull: true
    },
+   estoqueDisponivel: {
+    type: DataTypes.INTEGER,
+    allowNull: true
+  },
+  estoqueReservado: {
+    type: DataTypes.INTEGER,
+    allowNull: true
+  },
    localizacao: {
     type: DataTypes.STRING(1000),
     allowNull: true

@@ -31,6 +31,7 @@ const vendaController = require('./controllers/vendaController')
 const caixaController = require('./controllers/caixaController')
 const dashboardController = require('./controllers/dashboardController')
 const financeiroController = require('./controllers/financeiroController')
+const origemController = require('./controllers/origemController')
 
 
 // jwt-authorization
@@ -107,7 +108,9 @@ router.post('/oticas/empresas/:idEmpresa/usuarios', usuarioController.postUsuari
 router.get('/oticas/empresas/:idEmpresa/usuarios', usuarioController.listUsuarios);
 router.get('/oticas/empresas/:idEmpresa/usuarios/:id', usuarioController.getUsuario);
 router.get('/oticas/sccotica/login/:id', usuarioController.loginUsuario);
+router.post('/oticas/sccotica/login/email/:email', usuarioController.loginEmail);
 router.put('/oticas/empresas/:idEmpresa/usuarios/:id', usuarioController.putUsuario);
+router.put('/oticas/sccotica/login/senha/:recoveryToken', usuarioController.putSenha);
 router.delete('/oticas/empresas/:idEmpresa/usuarios/:id', usuarioController.deletarUsuario);
 
 // rotas de produtos
@@ -163,8 +166,9 @@ router.get('/oticas/empresas/:idEmpresa/dashboard/anual', dashboardController.ge
 // router.delete('/oticas/empresas/:idEmpresa/vendas/:id', vendaController.deleteVenda);
 
 // rotas de reports
-router.get('/oticas/empresas/:idEmpresa/financeiro/diario', financeiroController.getFinanceiro);
-router.get('/oticas/empresas/:idEmpresa/financeiro/mensal', financeiroController.getFinanceiromeses);
+router.get('/oticas/empresas/:idEmpresa/financeiro/mensal', financeiroController.getFinanceiro);
+router.get('/oticas/empresas/:idEmpresa/financeiro/anual', financeiroController.getFinanceiroMeses);
+router.get('/oticas/empresas/:idEmpresa/financeiro/anual/:mes/:ano', financeiroController.getFinanceiroMes);
 
 // rotas de grupo de produtos
 router.post('/oticas/empresas/:idEmpresa/grupoProduto', grupoProdutoController.postGrupoProduto);
@@ -200,6 +204,13 @@ router.get('/oticas/empresas/:idEmpresa/categorias', categoriaController.listCat
 router.get('/oticas/empresas/:idEmpresa/categorias/:id', categoriaController.getCategoria);
 router.put('/oticas/empresas/:idEmpresa/categorias/:id', categoriaController.putCategoria);
 router.delete('/oticas/empresas/:idEmpresa/categorias/:id', categoriaController.deleteCategoria);
+
+// rotas de origens
+router.post('/oticas/empresas/:idEmpresa/origens', origemController.postOrigem);
+router.get('/oticas/empresas/:idEmpresa/origens', origemController.listOrigem);
+router.get('/oticas/empresas/:idEmpresa/origens/:id', origemController.getOrigem);
+router.put('/oticas/empresas/:idEmpresa/origens/:id', origemController.putOrigem);
+router.delete('/oticas/empresas/:idEmpresa/origens/:id', origemController.deleteOrigem);
 
 // rotas de plano de conta
 router.post('/oticas/empresas/:idEmpresa/planos', planoContaController.postPlanoConta);
