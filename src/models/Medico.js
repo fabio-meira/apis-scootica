@@ -1,5 +1,6 @@
 const { Model, DataTypes } = require('sequelize');
 const sequelize = require('../database/connection');
+const Empresa = require('./Empresa');
 
 class Medico extends Model {}
 
@@ -71,5 +72,11 @@ Medico.init({
  modelName: 'Medico',
  tableName: 'medicos',
 });
+
+Medico.belongsTo(Empresa, {
+   foreignKey: 'idEmpresa',
+   targetKey: 'idEmpresa', 
+   as: 'empresa'
+ });
 
 module.exports = Medico;

@@ -1,8 +1,8 @@
 const { Model, DataTypes } = require('sequelize');
 const sequelize = require('../database/connection');
 const Empresa = require('./Empresa');
-const Cliente = require('./Cliente');
-const Medico = require('./Medico');
+// const Cliente = require('./Cliente');
+// const Medico = require('./Medico');
 
 class Receita extends Model {}
 
@@ -126,17 +126,17 @@ Receita.init({
  tableName: 'receitas',
 });
 
-Receita.belongsTo(Medico, {
-   foreignKey: 'idMedico',
-   targetKey: 'id', 
-   as: 'medico' 
- });
+// Receita.belongsTo(Medico, {
+//    foreignKey: 'idMedico',
+//    // targetKey: 'id',
+//    as: 'medico',
+// });
 
- Receita.belongsTo(Cliente, {
-   foreignKey: 'idCliente', 
-   targetKey: 'id', 
-   as: 'paciente' 
-});
+//  Receita.belongsTo(Cliente, {
+//    foreignKey: 'idCliente', 
+//    targetKey: 'id', 
+//    as: 'paciente' 
+// });
 
 Receita.belongsTo(Empresa, {
    foreignKey: 'idEmpresa',

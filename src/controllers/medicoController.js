@@ -1,5 +1,5 @@
-const Medico = require('../models/Medico');
-
+const { Medico, Receita, Cliente } = require('../models/Association');
+const Empresa = require('../models/Empresa');
 
 // Função para cadastrar um novo médico
 async function postMedico(req, res) {
@@ -88,6 +88,48 @@ async function getIdMedico(req, res) {
                 idEmpresa: idEmpresa,
                 id: id 
             }
+        });
+
+        if (!medico) {
+            return res.status(404).json({ message: 'Médico não encontrado' });
+        }
+
+        res.status(200).json(medico);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Erro ao buscar médico', error });
+    }
+}
+
+// Consultar receitas associadas a um médico
+async function getIdMedicoReceitas(req, res) {
+    try {
+        const { id, idEmpresa } = req.params; 
+
+        const medico = await Medico.findOne({
+            where: { id, idEmpresa },
+            attributes: ['id', 'nomeCompleto', 'registro', 'email', 'celular'],
+            include: [
+                {
+                    model: Empresa,
+                    as: 'empresa',
+                    attributes: ['cnpj', 'nome', 'logradouro', 'numero', 'complemento', 'cep', 'bairro', 'cidade', 'estado', 'telefone', 'celular']
+                },
+                {
+                    model: Receita,
+                    as: 'receitas',
+                    attributes: ['id', 'dtReceita', 'ativo'],
+                    required: false,
+                    include: [
+                        {
+                            model: Cliente,
+                            as: 'paciente',
+                            attributes: ['id', 'nomeCompleto', 'celular', 'email'],
+                        }
+                    ]
+                }
+            ],
+            order: [[{ model: Receita, as: 'receitas' }, 'dtReceita', 'DESC']]
         });
 
         if (!medico) {
@@ -191,6 +233,7 @@ module.exports = {
     listMedicos,
     getMedico,
     getIdMedico,
+    getIdMedicoReceitas,
     putMedico,
     putIdMedico,
     deleteMedico

@@ -1,7 +1,5 @@
 const Empresa = require('../models/Empresa');
-const Cliente = require('../models/Cliente');
-const Medico = require('../models/Medico');
-const Receita = require('../models/Receita');
+const { Medico, Receita, Cliente } = require('../models/Association');
 const { Op, fn, col, literal } = require('sequelize');
 const moment = require('moment');
 
@@ -28,7 +26,7 @@ async function postReceita(req, res) {
 async function listReceitas(req, res) {
     try {
         const { idEmpresa } = req.params;
-        const { startDate, endDate, status } = req.query; // Recebe parâmetros de data e status via query string
+        const { startDate, endDate, status } = req.query; 
 
         // Construa o objeto de filtro
         const whereConditions = {

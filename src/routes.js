@@ -63,6 +63,7 @@ router.post('/oticas/empresas/:idEmpresa/medicos', IsAuthApiKey, medicoControlle
 router.get('/oticas/empresas/:idEmpresa/medicos', IsAuthApiKey, medicoController.listMedicos);
 router.get('/oticas/empresas/:idEmpresa/medicos/cpf/:cpf', IsAuthApiKey, medicoController.getMedico);
 router.get('/oticas/empresas/:idEmpresa/medicos/:id', IsAuthApiKey, medicoController.getIdMedico);
+router.get('/oticas/empresas/:idEmpresa/medicos/receitas/:id', IsAuthApiKey, medicoController.getIdMedicoReceitas);
 router.put('/oticas/empresas/:idEmpresa/medicos/cpf/:cpf', IsAuthApiKey, medicoController.putMedico);
 router.put('/oticas/empresas/:idEmpresa/medicos/:id', IsAuthApiKey, medicoController.putIdMedico);
 router.delete('/oticas/empresas/:idEmpresa/medicos/:id', IsAuthApiKey, medicoController.deleteMedico);
