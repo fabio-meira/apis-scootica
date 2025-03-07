@@ -19,6 +19,9 @@ sequelize.sync()
     .catch(err => console.error('Erro ao sincronizar o banco de dados:', err));
 
 const routes = require('./routes')
+
+app.use('/oticas', routes); 
+
 app.use(routes)
 
 app.listen(port, () => console.log(`
