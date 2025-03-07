@@ -1,9 +1,10 @@
 {
-  "name": "backend",
+  "name": "optical-backend",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "dev": "nodemon src/index.js"
+    "dev": "nodemon src/index.js",
+    "start": "node server.js"
   },
   "license": "MIT",
   "dependencies": {
