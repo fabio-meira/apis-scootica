@@ -20,7 +20,7 @@ sequelize.sync()
 
 const routes = require('./routes')
 
-app.use('/oticas', routes); 
+// app.use('/oticas', routes); 
 
 app.use(routes)
 
