@@ -7,9 +7,10 @@ const routes = require('./routes');
 
 app.use(express.json());
 
-const protocol = process.env.PROTOCOL 
-const ip = require('ip').address()
-const port = process.env.PORT 
+// const protocol = process.env.PROTOCOL 
+// const ip = require('ip').address()
+// const port = process.env.PORT 
+
 app.use(cors());
 
 // Sincronizando banco de dados
