@@ -9,6 +9,7 @@ const host = process.env.HOST;
 const connection = new Sequelize(database, username, password, {
     host, 
     dialect: "mysql",
+    dialectModule: require('mysql2'),
     timezone: 'America/Sao_Paulo'
 })
 
