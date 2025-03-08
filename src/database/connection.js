@@ -7,7 +7,7 @@ const password = process.env.PASSWORD;
 // const dialect = process.env.DIALECT;
 
 const connection = new Sequelize(database, username, password, {
-    host: "scootica.mysql.dbaas.com.br", 
+    host: "scootica.mysql.dbaas.com.br:3306", 
     dialect: "mysql",
     timezone: 'America/Sao_Paulo'
 })
