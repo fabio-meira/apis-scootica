@@ -2,7 +2,7 @@
     "version": 2,
     "builds": [
       {
-        "src": "serverless.js",
+        "src": "/serverless.js",
         "use": "@vercel/node"
       }
     ],
