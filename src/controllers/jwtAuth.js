@@ -1,7 +1,7 @@
 const express = require('express')
 const { sign } = require('jsonwebtoken')
 require('dotenv').config()
-const connection = require('../database/connection')
+// const connection = require('../database/connection')
 
 module.exports = {
 

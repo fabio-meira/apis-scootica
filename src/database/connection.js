@@ -56,7 +56,8 @@ const connection = new Sequelize(database, username, password, {
     dialect: "mysql",
     dialectModule: mysql2,
     timezone: "-03:00", // Ajustado para UTC-3 (São Paulo)
-    logging: false,  // Desativa logs no Vercel para melhor performance
+    // timezone: 'America/Sao_Paulo',
+    logging: true,  // Desativa logs no Vercel para melhor performance
 
     pool: { // Otimização para ambiente Serverless
         max: 5,

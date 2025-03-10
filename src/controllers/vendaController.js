@@ -10,7 +10,7 @@ const Empresa = require('../models/Empresa');
 const VendaProduto = require('../models/VendaProduto');
 const OrdemServico = require('../models/OrdemServico');
 const { Op } = require('sequelize')
-const { format, utcToZonedTime } = require('date-fns-tz');
+// const { format, utcToZonedTime } = require('date-fns-tz');
 
 // Função para criar uma nova venda e seus produtos, ordem de serviço, totais e pagamentos relacionados
 async function postVenda(req, res) {

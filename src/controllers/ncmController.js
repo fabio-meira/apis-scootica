@@ -27,7 +27,7 @@
 
 const Ncm = require('../models/Ncm');
 const { Op } = require('sequelize');
-const { search } = require('../routes');
+// const { search } = require('../routes');
 
 // Função para consulta por ncm com filtro
 async function getNcm(req, res) {

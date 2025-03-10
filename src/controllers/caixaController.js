@@ -1,4 +1,4 @@
-const OrdemServico = require('../models/OrdemServico');
+// const OrdemServico = require('../models/OrdemServico');
 const Venda = require('../models/Venda');
 const Empresa = require('../models/Empresa');
 const Caixa = require('../models/Caixa');
@@ -6,7 +6,7 @@ const Usuario = require('../models/Usuario');
 const Cliente = require('../models/Cliente');
 const Pagamento = require('../models/Pagamento');
 const EntradaSaida = require('../models/EntradaSaida');
-const OrdemProdutoTotal = require('../models/OrdemProdutoTotal');
+// const OrdemProdutoTotal = require('../models/OrdemProdutoTotal');
 
 // Função para abertura de um caixa
 async function postCaixa(req, res) {

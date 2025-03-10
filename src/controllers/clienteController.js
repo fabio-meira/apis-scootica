@@ -1,6 +1,5 @@
 const Cliente = require('../models/Cliente');
-// const { Op } = require('sequelize');
-const { search } = require('../routes');
+// const { search } = require('../routes');
 const { Op, fn, col, literal } = require('sequelize');
 const moment = require('moment');
 
