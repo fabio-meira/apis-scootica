@@ -41,6 +41,12 @@ const routes = require('./routes');
 app.use(express.json());
 app.use(cors());
 
+
+const protocol = process.env.PROTOCOL 
+const ip = require('ip').address()
+const port = process.env.PORT 
+
+
 // Conectar ao banco sem sincronizar estrutura (evita timeout no Vercel)
 sequelize.authenticate()
     .then(() => console.log('Conexão com o banco de dados bem-sucedida'))
@@ -48,6 +54,11 @@ sequelize.authenticate()
 
 // Usando as rotas
 app.use('/oticas', routes);
+
+app.use(routes);
+
+app.listen(port, () => console.log(`
+    Serviço rodando na porta ${port} ou ${protocol}:${ip}:${port}`));
 
 // Exportar para Vercel
 module.exports = app;

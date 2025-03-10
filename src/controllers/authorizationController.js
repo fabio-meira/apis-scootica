@@ -4,7 +4,7 @@ const bcrypt = require('bcrypt');
 require('dotenv').config();
 const Usuario = require('../models/Usuario');
 const Authentication = require('../models/Authentication');
-const connection = require('../database/connection');
+// const connection = require('../database/connection');
 
 module.exports = {
 
