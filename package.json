@@ -4,7 +4,6 @@
   "main": "src/index.js",
   "scripts": {
     "dev": "nodemon src/index.js",
-    
     "start": "node --trace-warnings src/index.js",
     "build": "echo 'No build required for API'"
   },
@@ -34,6 +33,5 @@
   },
   "engines": {
     "node": "20.x"
-}
- 
+  }
 }
