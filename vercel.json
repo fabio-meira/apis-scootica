@@ -1,16 +1,21 @@
-  {
-    "version": 2,
-    "builds": [
-      {
-        "src": "/serverless.js",
-        "use": "@vercel/node"
-      }
-    ],
-    "routes": [
-      {
-        "src": "/(.*)",
-        "dest": "/serverless.js"
-      }
-    ],
-    "installCommand": "yarn install"
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "/serverless.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/serverless.js"
+    }
+  ],
+  "installCommand": "yarn install",
+  "functions": {
+    "api/**/*.js": {
+      "maxDuration": 60
+    }
   }
+}
