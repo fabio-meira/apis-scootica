@@ -53,7 +53,7 @@ sequelize.authenticate()
 // Usando as rotas
 app.use('/oticas', routes);
 
-// app.use(routes);
+app.use(routes);
 
 app.listen(port, () => console.log(`
     Serviço rodando na porta ${port} ou ${protocol}:${ip}:${port}`));
