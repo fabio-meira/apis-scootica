@@ -51,9 +51,9 @@ sequelize.authenticate()
     .catch(err => console.error('Erro ao conectar ao banco de dados:', err));
 
 // Usando as rotas
-// app.use('/oticas', routes);
+app.use('/oticas', routes);
 
-app.use(routes);
+// app.use(routes);
 
 app.listen(port, () => console.log(`
     Serviço rodando na porta ${port} ou ${protocol}:${ip}:${port}`));
