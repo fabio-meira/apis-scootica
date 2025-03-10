@@ -12,5 +12,5 @@
         "dest": "/serverless.js"
       }
     ],
-    "installCommand": "yarn install --force"
+    "installCommand": "yarn install"
   }
