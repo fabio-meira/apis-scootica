@@ -59,17 +59,17 @@ const connection = new Sequelize(database, username, password, {
     logging: false,  // Desativa logs no Vercel para melhor performance
 
     pool: { // Otimização para ambiente Serverless
-        max: 3,
-        min: 1,
-        idle: 5000,
-        acquire: 10000
+        max: 5,
+        min: 0,
+        idle: 10000,
+        acquire: 30000
     },
     retry: {
         max: 3 // Tenta reconectar até 3 vezes em caso de falha
     },
     define: {
         freezeTableName: true, // Evita Sequelize modificar nomes das tabelas
-        timestamps: false // Se o banco não usa createdAt/updatedAt, desative
+        timestamps: true // Se o banco não usa createdAt/updatedAt, desative
     }
 });
 
