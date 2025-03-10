@@ -29,7 +29,7 @@ const host = process.env.HOST;
 const connection = new Sequelize(database, username, password, {
     host,
     dialect: "mysql",
-    dialectModule: mysql2,
+    dialectModule: require('mysql2'),
     timezone: "-03:00", // Usando UTC-3 para São Paulo
     logging: false,  // Desativa logs do Sequelize para melhorar performance no Vercel
     pool: {           // Otimiza conexões para ambiente Serverless
