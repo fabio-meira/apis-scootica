@@ -13,10 +13,5 @@
       }
     ],
     "installCommand": "yarn install",
-    "functions": {
-      "api/index.js": {
-        "maxDuration": 60
-      }
-    }
   }
   
