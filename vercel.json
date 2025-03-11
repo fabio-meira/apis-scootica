@@ -12,11 +12,6 @@
         "dest": "/serverless.js"
       }
     ],
-    "installCommand": "yarn install",
-    "functions": {
-      "api/**/*.js": {
-        "maxDuration": 60
-      }
-    }
+    "installCommand": "yarn install"
   }
   
