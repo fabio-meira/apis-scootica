@@ -78,5 +78,5 @@ const connection = new Sequelize(database, username, password, {
 connection.authenticate()
     .then(() => console.log("✅ Conexão com o banco de dados bem-sucedida!"))
     .catch(err => console.error("❌ Erro ao conectar no banco de dados:", err));
-
+    
 module.exports = connection;
