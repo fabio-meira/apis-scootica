@@ -2,14 +2,14 @@
   "version": 2,
   "builds": [
     {
-      "src": "/serverless.js",
+      "src": "/api/index.js",
       "use": "@vercel/node"
     }
   ],
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "/serverless.js"
+      "dest": "/api/index.js"
     }
   ],
   "installCommand": "yarn install"

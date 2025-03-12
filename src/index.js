@@ -47,7 +47,7 @@ const port = process.env.PORT
 
 // Conectar ao banco sem sincronizar estrutura (evita timeout no Vercel)
 sequelize.authenticate()
-    .then(() => console.log('Conexão com o banco de dados bem-sucedida do index'))
+    .then(() => console.log('Conexão com o banco de dados bem-sucedida - src/index.js'))
     .catch(err => console.error('Erro ao conectar ao banco de dados:', err));
 
 app.use(routes);
