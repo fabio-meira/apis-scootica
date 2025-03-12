@@ -108,10 +108,10 @@ router.delete('/oticas/empresas/:idEmpresa/vendedores/:id', IsAuthApiKey, vended
 router.post('/oticas/empresas/:idEmpresa/usuarios', IsAuthApiKey, usuarioController.postUsuario);
 router.get('/oticas/empresas/:idEmpresa/usuarios', IsAuthApiKey, usuarioController.listUsuarios);
 router.get('/oticas/empresas/:idEmpresa/usuarios/:id', IsAuthApiKey, usuarioController.getUsuario);
-router.get('/oticas/sccotica/login/:id', IsAuthApiKey, usuarioController.loginUsuario);
-router.post('/oticas/sccotica/login/email/:email', IsAuthApiKey, usuarioController.loginEmail);
+router.get('/oticas/scootica/login/:id', usuarioController.loginUsuario);
+router.post('/oticas/scootica/login/email/:email', usuarioController.loginEmail);
 router.put('/oticas/empresas/:idEmpresa/usuarios/:id', IsAuthApiKey, usuarioController.putUsuario);
-router.put('/oticas/sccotica/login/senha/:recoveryToken', IsAuthApiKey, usuarioController.putSenha);
+router.put('/oticas/scootica/login/senha/:recoveryToken', usuarioController.putSenha);
 router.delete('/oticas/empresas/:idEmpresa/usuarios/:id', IsAuthApiKey, usuarioController.deletarUsuario);
 
 // rotas de produtos
