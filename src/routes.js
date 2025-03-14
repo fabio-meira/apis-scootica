@@ -242,13 +242,13 @@ router.put('/api/oticas/empresas/:idEmpresa/contas/:id', IsAuthApiKey, contasCon
 router.delete('/api/oticas/empresas/:idEmpresa/contas/:id', IsAuthApiKey, contasController.deleteConta);
 
 // Localizar CEPs
-router.get('/api/oticas/cep/:cep', cepController.getCep);
+router.get('/api/oticas/cep/:cep', IsAuthApiKey, cepController.getCep);
 
 // Localizar bancos por código
 router.get('/api/oticas/bancos', IsAuthApiKey, codBancoController.getBanco);
 router.get('/api/oticas/bancos/:id', IsAuthApiKey, codBancoController.getIdBanco);
 
 // Localizar NCMs
-router.get('/api/oticas/ncm', ncmController.getNcm);
+router.get('/api/oticas/ncm', IsAuthApiKey, ncmController.getNcm);
 
 module.exports = router
