@@ -32,6 +32,7 @@ const caixaController = require('./controllers/caixaController')
 const dashboardController = require('./controllers/dashboardController')
 const financeiroController = require('./controllers/financeiroController')
 const origemController = require('./controllers/origemController')
+const filialController = require('./controllers/filialController')
 
 
 // jwt-authorization
@@ -55,6 +56,7 @@ router.get('/api/oticas/empresas/:idEmpresa/clientes/aniversariantes', IsAuthApi
 router.get('/api/oticas/empresas/:idEmpresa/clientes/aniversariantes/mes', IsAuthApiKey, clienteController.listClienteAniversarioMes);
 router.get('/api/oticas/empresas/:idEmpresa/clientes/aniversariantes/ano', IsAuthApiKey, clienteController.listAniversariantesNoAno);
 router.get('/api/oticas/empresas/:idEmpresa/clientes/:id', IsAuthApiKey, clienteController.getCliente);
+router.get('/api/oticas/empresas/:idEmpresa/clientes/:id/vendas', IsAuthApiKey, clienteController.getClienteVendas);
 router.get('/api/oticas/empresas/:idEmpresa/clientes/cpf/:cpf', IsAuthApiKey, clienteController.getClienteCpf);
 router.delete('/api/oticas/empresas/:idEmpresa/clientes/:id', IsAuthApiKey, clienteController.deleteCliente);
 
@@ -97,10 +99,18 @@ router.get('/api/oticas/empresas/:idEmpresa/laboratorios/:id', IsAuthApiKey, lab
 router.put('/api/oticas/empresas/:idEmpresa/laboratorios/:id', IsAuthApiKey, laboratorioController.putLaboratorio);
 router.delete('/api/oticas/empresas/:idEmpresa/laboratorios/:id', IsAuthApiKey, laboratorioController.deleteLaboratorio);
 
+// rotas de filiais
+router.post('/api/oticas/empresas/:idEmpresa/filiais', IsAuthApiKey, filialController.postFilial);
+router.get('/api/oticas/empresas/:idEmpresa/filiais', IsAuthApiKey, filialController.listFilial);
+router.get('/api/oticas/empresas/:idEmpresa/filiais/:id', IsAuthApiKey, filialController.getFilial);
+router.put('/api/oticas/empresas/:idEmpresa/filiais/:id', IsAuthApiKey, filialController.putFilial);
+router.delete('/api/oticas/empresas/:idEmpresa/filiais/:id', IsAuthApiKey, filialController.deleteFilial);
+
 // rotas de vendedores
 router.post('/api/oticas/empresas/:idEmpresa/vendedores', IsAuthApiKey, vendedorController.postVendedor);
 router.get('/api/oticas/empresas/:idEmpresa/vendedores', IsAuthApiKey, vendedorController.listVendedores);
 router.get('/api/oticas/empresas/:idEmpresa/vendedores/:id', IsAuthApiKey, vendedorController.getVendedor);
+router.get('/api/oticas/empresas/:idEmpresa/vendedores/:id/vendas', IsAuthApiKey, vendedorController.getVendasVendedor);
 router.put('/api/oticas/empresas/:idEmpresa/vendedores/:id', IsAuthApiKey, vendedorController.putVendedor);
 router.delete('/api/oticas/empresas/:idEmpresa/vendedores/:id', IsAuthApiKey, vendedorController.deleteVendedor);
 

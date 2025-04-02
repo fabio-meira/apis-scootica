@@ -1,4 +1,9 @@
 const Vendedor = require('../models/Vendedor');
+const Venda = require('../models/Venda');
+const VendaProduto = require('../models/VendaProduto');
+const { Op } = require("sequelize");
+const OrdemProdutoTotal = require('../models/OrdemProdutoTotal');
+const Pagamento = require('../models/Pagamento');
 
 async function postVendedor(req, res) {
     try {
@@ -73,6 +78,98 @@ async function getVendedor(req, res) {
     }
 }
 
+// Função para consultar vendedor e suas vendas por um período específico ou todos os pedidos
+async function getVendasVendedor(req, res) {
+    try {
+        const { id, idEmpresa } = req.params;
+        let { startDate, endDate } = req.query;
+
+        // Verifica se o vendedor existe
+        const vendedor = await Vendedor.findOne({
+            where: { 
+                idEmpresa: idEmpresa,
+                id: id
+            },
+            attributes: ['nomeCompleto', 'cpf', 'comissao'] // Pegamos apenas o campo comissao
+        });
+
+        if (!vendedor) {
+            return res.status(404).json({ message: 'Vendedor não encontrado' });
+        }
+
+        // Define a condição de busca
+        let whereCondition = { idVendedor: id };
+
+        // parametro de consulta por data inicio e final das vendas
+        if (startDate && endDate) {
+            const inicioFormatado = new Date(startDate);
+            inicioFormatado.setUTCHours(0, 0, 0, 0); // Define como 00:00:00 UTC
+
+            const fimFormatado = new Date(endDate);
+            fimFormatado.setUTCHours(23, 59, 59, 999); // Define como 23:59:59 UTC
+
+            whereCondition.createdAt = { 
+                [Op.between]: [inicioFormatado, fimFormatado]
+            };
+        }
+        
+        // Busca as vendas do vendedor
+        const vendas = await Venda.findAll({ 
+            where: whereCondition,
+            attributes: ['id', 'idCliente', 'idReceita', 'origemVenda', 'valorTotal', 'createdAt'],
+            include: [
+                {
+                    model: VendaProduto,
+                    as: 'produtos' ,
+                    attributes: ['idProduto', 'referencia', 'quantidade', 'descricao', 'marca', 'preco', 'valorTotal', 'createdAt']
+                },
+                {
+                    model: Pagamento,
+                    as: 'pagamentos',
+                    attributes: ['tipo', 'adiantamento', 'parcelas', 'valor']
+                },
+                {
+                    model: OrdemProdutoTotal,
+                    as: 'totais',
+                    attributes: ['totalProdutos', 'desconto', 'Percdesconto', 'acrescimo', 'frete', 'total']
+                }
+            ]
+        });
+
+        if (vendas.length === 0) {
+            return res.status(200).json({ message: 'Nenhuma venda encontrada para o vendedor.' });
+        }
+
+        // Calcula a comissão sobre cada venda 
+        const taxaComissao = vendedor.comissao ? vendedor.comissao / 100 : 0;
+        let totalComissao = 0;
+        let totalVendas = 0;
+
+        const vendasComComissao = vendas.map(venda => {
+            const comissao = Number((parseFloat(venda.valorTotal || 0) * taxaComissao).toFixed(2));
+            totalComissao += comissao;
+            totalVendas += parseFloat(venda.valorTotal || 0);
+            return { ...venda.toJSON(), comissao: comissao, valorTotal: venda.valorTotal };
+        });
+
+        // Garantir duas casas decimais
+        totalComissao = parseFloat(totalComissao.toFixed(2));
+        totalVendas = parseFloat(totalVendas.toFixed(2));
+
+        res.status(200).json({ 
+            nomeVendedor: vendedor.nomeCompleto,
+            cpf: vendedor.cpf,
+            totalVendas,
+            totalComissao,
+            vendas: vendasComComissao
+        });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Erro ao buscar vendas do vendedor', error });
+    }
+}
+
 async function putVendedor(req, res) {
     try {
         const { id } = req.params; 
@@ -131,6 +228,7 @@ module.exports = {
     postVendedor,
     listVendedores,
     getVendedor,
+    getVendasVendedor,
     putVendedor,
     deleteVendedor
 };

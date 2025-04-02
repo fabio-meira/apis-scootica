@@ -2,6 +2,10 @@ const Cliente = require('../models/Cliente');
 // const { search } = require('../routes');
 const { Op, fn, col, literal } = require('sequelize');
 const moment = require('moment');
+const Venda = require('../models/Venda');
+const OrdemProdutoTotal = require('../models/OrdemProdutoTotal');
+const Pagamento = require('../models/Pagamento');
+const VendaProduto = require('../models/VendaProduto');
 
 // Função para cadastrar um novo cliente
 async function postCliente(req, res) {
@@ -263,6 +267,77 @@ async function listAniversariantesNoAno(req, res) {
     }
 }
 
+// Função para consulta de cliente por id
+async function getClienteVendas(req, res) {
+    try {
+        const { id } = req.params; 
+        const { idEmpresa } = req.params; 
+
+        const cliente = await Cliente.findOne({
+            where: { 
+                idEmpresa: idEmpresa,
+                id: id 
+            }
+        });
+
+        if (!cliente) {
+            return res.status(404).json({ message: 'Cliente não encontrado' });
+        }
+
+        // Define a condição de busca
+        let whereCondition = { idCliente: id };
+        
+        // Busca as vendas de cliente
+        const vendas = await Venda.findAll({ 
+            where: whereCondition,
+            attributes: ['id', 'idReceita', 'origemVenda', 'valorTotal', 'createdAt'],
+            include: [
+                {
+                    model: VendaProduto,
+                    as: 'produtos' ,
+                    attributes: ['idProduto', 'referencia', 'quantidade', 'descricao', 'marca', 'preco', 'valorTotal', 'createdAt']
+                },
+                {
+                    model: Pagamento,
+                    as: 'pagamentos',
+                    attributes: ['tipo', 'adiantamento', 'parcelas', 'valor']
+                },
+                {
+                    model: OrdemProdutoTotal,
+                    as: 'totais',
+                    attributes: ['totalProdutos', 'desconto', 'Percdesconto', 'acrescimo', 'frete', 'total']
+                }
+            ]
+        });
+
+        if (vendas.length === 0) {
+            return res.status(200).json({ message: 'Nenhuma venda encontrada para o cliente.' });
+        }
+
+        // calcula o valor de vendas do cliente
+        let totalVendas = 0;
+
+        const vendasCliente = vendas.map(venda => {
+            totalVendas += parseFloat(venda.valorTotal || 0);
+            return { ...venda.toJSON(), valorTotal: venda.valorTotal };
+        });
+
+        // Garantir duas casas decimais
+        totalVendas = parseFloat(totalVendas.toFixed(2));
+
+        res.status(200).json({ 
+            nomeCliente: cliente.nomeCompleto,
+            cpf: cliente.cpf,
+            totalVendas,
+            vendas: vendasCliente
+        });
+        // res.status(200).json(cliente);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Erro ao buscar cliente', error });
+    }
+}
+
 // Função para atualizar um cliente
 async function putCliente(req, res) {
     try {
@@ -327,6 +402,7 @@ module.exports = {
     listClienteAniversario,
     listClienteAniversarioMes,
     listAniversariantesNoAno,
+    getClienteVendas,
     putCliente,
     deleteCliente
 };
