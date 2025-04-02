@@ -1,10 +1,9 @@
-// models/Empresa.js
 const { Model, DataTypes } = require('sequelize');
 const sequelize = require('../database/connection');
 
-class Empresa extends Model {}
+class Filial extends Model {}
 
-Empresa.init({
+Filial.init({
  id: {
     type: DataTypes.INTEGER,
     primaryKey: true,
@@ -14,38 +13,42 @@ Empresa.init({
     type: DataTypes.STRING(100),
     allowNull: true,
  },
- filiais: {
-   type: DataTypes.BOOLEAN,
-   allowNull: false,
-   defaultValue: false
-},
- nome: {
-    type: DataTypes.STRING(100),
+ idFilial: {
+    type: DataTypes.STRING(15),
+    allowNull: true,
+ },
+ razaoSocial: {
+    type: DataTypes.STRING(200),
+    allowNull: true,
+ },
+ nomeFantasia: {
+    type: DataTypes.STRING(200),
     allowNull: true,
  },
  cnpj: {
     type: DataTypes.STRING(14),
-    allowNull: true,
+    allowNull: false,
  },
  ie: {
     type: DataTypes.STRING(20),
     allowNull: true,
  },
- im: {
-    type: DataTypes.STRING(20),
+ email: {
+    type: DataTypes.STRING(200),
     allowNull: true,
  },
  telefone: {
-   type: DataTypes.STRING(15),
-   allowNull: true,
+    type: DataTypes.STRING(30),
+    allowNull: true,
  },
  celular: {
-   type: DataTypes.STRING(15),
-   allowNull: true,
- },
- tipoEndereco: {
-    type: DataTypes.STRING(50),
+    type: DataTypes.STRING(30),
     allowNull: true,
+ },
+ ativo: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: true,
  },
  logradouro: {
     type: DataTypes.STRING(200),
@@ -56,11 +59,11 @@ Empresa.init({
     allowNull: true,
  },
  complemento: {
-    type: DataTypes.STRING(200),
+    type: DataTypes.STRING(300),
     allowNull: true,
  },
  bairro: {
-    type: DataTypes.STRING(200),
+    type: DataTypes.STRING(100),
     allowNull: true,
  },
  cep: {
@@ -68,11 +71,11 @@ Empresa.init({
     allowNull: true,
  },
  cidade: {
-    type: DataTypes.STRING(200),
+    type: DataTypes.STRING(100),
     allowNull: true,
  },
  estado: {
-    type: DataTypes.STRING(50),
+    type: DataTypes.STRING(20),
     allowNull: true,
  },
  pais: {
@@ -89,8 +92,8 @@ Empresa.init({
  },
 }, {
  sequelize,
- modelName: 'Empresa',
- tableName: 'empresas',
+ modelName: 'Filiais',
+ tableName: 'filiais',
 });
 
-module.exports = Empresa;
+module.exports = Filial;

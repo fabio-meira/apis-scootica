@@ -501,7 +501,7 @@ async function listMensagens(req, res) {
             },
             attributes: ['nomeCompleto', 'dtNascimento', 'celular', 'email'],
         });
-
+        
         // Consulta de receitas vencidas no dia corrente
         const receitasHoje = await Receita.findAll({
             where: {

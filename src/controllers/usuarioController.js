@@ -5,6 +5,7 @@ const Auth = require('../models/Authentication');
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
+const Filial = require('../models/Filial');
 
 async function postUsuario(req, res) {
     try {
@@ -79,13 +80,18 @@ async function loginUsuario(req, res) {
                 {
                     model: Empresa,
                     as: 'empresa',
-                    attributes: ['cnpj', 'nome'] 
+                    attributes: ['cnpj', 'nome', 'filiais'] 
                 },
                 {
                     model: Auth,
                     as: 'token',
                     attributes: ['user_token'] 
                 },
+                {
+                    model: Filial,
+                    as: 'filial',
+                    attributes: ['idFilial', 'nomeFantasia']
+                }
             ],
             order: [
                 ['id', 'DESC']
@@ -102,44 +108,6 @@ async function loginUsuario(req, res) {
         res.status(500).json({ message: 'Erro ao buscar usuário', error });
     }
 }
-
-// Função para consulta de usuário por login (email)
-// async function loginEmail(req, res) {
-//     try {
-//         const { email } = req.params;
-//         // const { idEmpresa } = req.params; 
-//         const usuario = await Usuario.findOne({
-//             where: { 
-//                 // idEmpresa: idEmpresa,
-//                 email: email 
-//             },
-//             include: [
-//                 {
-//                     model: Empresa,
-//                     as: 'empresa',
-//                     attributes: ['cnpj', 'nome'] 
-//                 },
-//                 {
-//                     model: Auth,
-//                     as: 'token',
-//                     attributes: ['user_token'] 
-//                 },
-//             ],
-//             order: [
-//                 ['id', 'DESC']
-//             ]
-//         });
-
-//         if (!usuario) {
-//             return res.status(404).json({ message: 'E-mail do usuário não encontrado' });
-//         }
-
-//         res.status(200).json(usuario);
-//     } catch (error) {
-//         console.error(error);
-//         res.status(500).json({ message: 'Erro ao buscar e-mail do usuário', error });
-//     }
-// }
 
 async function loginEmail(req, res) {
     try {
@@ -237,6 +205,11 @@ async function getUsuario(req, res) {
                     as: 'empresa',
                     attributes: ['cnpj', 'nome'] 
                 },
+                {
+                    model: Filial,
+                    as: 'filial',
+                    attributes: ['idFilial', 'nomeFantasia']
+                }
             ],
             order: [
                 ['id', 'DESC']

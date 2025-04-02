@@ -3,6 +3,7 @@ const { Model, DataTypes } = require('sequelize');
 const sequelize = require('../database/connection');
 const Empresa = require('../models/Empresa');
 const Auth = require('../models/Authentication');
+const Filial = require('../models/Filial');
 
 class Usuario extends Model {}
 
@@ -16,6 +17,10 @@ Usuario.init({
     type: DataTypes.STRING(100),
     allowNull: false,
  },
+ idFilial: {
+   type: DataTypes.STRING(100),
+   allowNull: true,
+},
  nome: {
     type: DataTypes.STRING(200),
     allowNull: true,
@@ -88,4 +93,11 @@ Usuario.belongsTo(Auth, {
    targetKey: 'idEmpresa', 
    as: 'token'
  });
+
+ Usuario.belongsTo(Filial, {
+   foreignKey: 'idEmpresa',
+   targetKey: 'idEmpresa', 
+   as: 'filial'
+ });
+
 module.exports = Usuario;
