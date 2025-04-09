@@ -217,6 +217,14 @@ async function putProduto(req, res) {
         const { idEmpresa } = req.params; 
         const produtoData = req.body; 
 
+        // Cálculo do estoqueDisponivel
+        if (
+            produtoData.hasOwnProperty('estoque') &&
+            produtoData.hasOwnProperty('estoqueReservado')
+        ) {
+            produtoData.estoqueDisponivel = produtoData.estoque - produtoData.estoqueReservado;
+        }
+
         // Atualiza o produto no banco de dados
         const [updated] = await Produto.update(produtoData, {
             where: { 
