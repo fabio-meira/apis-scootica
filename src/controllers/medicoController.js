@@ -1,5 +1,6 @@
 const { Medico, Receita, Cliente } = require('../models/Association');
 const Empresa = require('../models/Empresa');
+const { Op } = require('sequelize');
 
 // Função para cadastrar um novo médico
 async function postMedico(req, res) {
@@ -105,6 +106,19 @@ async function getIdMedico(req, res) {
 async function getIdMedicoReceitas(req, res) {
     try {
         const { id, idEmpresa } = req.params; 
+        const { startDate, endDate } = req.query;
+
+        // Filtro de data dentro da associação de Receita
+        const receitaWhere = {};
+
+        if (startDate) {
+            receitaWhere.dtReceita = { [Op.gte]: new Date(startDate) };
+        }
+
+        if (endDate) {
+            receitaWhere.dtReceita = receitaWhere.dtReceita || {};
+            receitaWhere.dtReceita[Op.lte] = new Date(endDate);
+        }
 
         const medico = await Medico.findOne({
             where: { id, idEmpresa },
@@ -120,6 +134,7 @@ async function getIdMedicoReceitas(req, res) {
                     as: 'receitas',
                     attributes: ['id', 'dtReceita', 'ativo'],
                     required: false,
+                    where: Object.keys(receitaWhere).length > 0 ? receitaWhere : undefined,
                     include: [
                         {
                             model: Cliente,

@@ -441,12 +441,30 @@ async function getReceitaMedico(req, res) {
     try {
         const { idMedico } = req.params; 
         const { idEmpresa } = req.params; 
+        const { startDate, endDate } = req.query;
+
+        // Construa o objeto de filtro
+        const whereConditions = {
+            idEmpresa: idEmpresa,
+            idMedico: idMedico
+        };
+
+        // Filtro por data da receita
+        if (startDate) {
+            whereConditions.dtReceita = {
+                [Op.gte]: new Date(startDate)
+            };
+        }
+
+        if (endDate) {
+            if (!whereConditions.dtReceita) {
+                whereConditions.dtReceita = {};
+            }
+            whereConditions.dtReceita[Op.lte] = new Date(endDate);
+        }
 
         const receita = await Receita.findAll({
-            where: { 
-                idEmpresa: idEmpresa,
-                idMedico: idMedico
-            },
+            where: whereConditions,
             include: [
                 { 
                     model: Cliente, 

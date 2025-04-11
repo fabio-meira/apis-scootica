@@ -50,10 +50,35 @@ async function postUsuario(req, res) {
 async function listUsuarios(req, res) {
     try {
         const { idEmpresa } = req.params; 
+        const { filiais } = req.query; 
+
+        // Construa o objeto de filtro
+        const whereConditions = {
+            idEmpresa: idEmpresa
+        };
+        
+        // Adicione filtro por status, se fornecido
+        if (filiais) {
+            whereConditions.idFilial = filiais; 
+        }
+
         const usuario = await Usuario.findAll({
-            where: { 
-                idEmpresa: idEmpresa 
-            },
+            // where: { 
+            //     idEmpresa: idEmpresa 
+            // },
+            where: whereConditions,
+            include: [
+                {
+                    model: Empresa,
+                    as: 'empresa',
+                    attributes: ['cnpj', 'nome'] 
+                },
+                {
+                    model: Filial,
+                    as: 'filial',
+                    attributes: ['idFilial', 'nomeFantasia']
+                }
+            ],
             order: [
                 ['id', 'DESC']
             ]
