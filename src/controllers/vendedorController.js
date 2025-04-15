@@ -4,6 +4,7 @@ const VendaProduto = require('../models/VendaProduto');
 const { Op } = require("sequelize");
 const OrdemProdutoTotal = require('../models/OrdemProdutoTotal');
 const Pagamento = require('../models/Pagamento');
+const Empresa = require('../models/Empresa')
 
 async function postVendedor(req, res) {
     try {
@@ -90,7 +91,12 @@ async function getVendasVendedor(req, res) {
                 idEmpresa: idEmpresa,
                 id: id
             },
-            attributes: ['nomeCompleto', 'cpf', 'comissao'] // Pegamos apenas o campo comissao
+            attributes: ['nomeCompleto', 'cpf', 'comissao'] 
+        });
+
+        const empresa = await Empresa.findOne({
+            where: { idEmpresa: idEmpresa },
+            attributes: ['cnpj', 'nome', 'logradouro', 'numero', 'complemento', 'cep', 'bairro', 'cidade', 'estado', 'telefone', 'celular']
         });
 
         if (!vendedor) {
@@ -136,9 +142,19 @@ async function getVendasVendedor(req, res) {
             ]
         });
 
+        // Se não houver nenhum venda, retornar somente os daddos da empresa e do vendedor
         if (vendas.length === 0) {
-            return res.status(200).json({ message: 'Nenhuma venda encontrada para o vendedor.' });
-        }
+            return res.status(200).json({ 
+                nomeVendedor: vendedor.nomeCompleto,
+                cpf: vendedor.cpf,
+                totalVendas: 0,
+                totalComissao: 0,
+                quantidadeVendas: 0,
+                ticketMedio: 0,
+                empresa: empresa,
+                vendas: []
+            });
+        }        
 
         // Calcula a comissão sobre cada venda 
         const taxaComissao = vendedor.comissao ? vendedor.comissao / 100 : 0;
@@ -156,11 +172,18 @@ async function getVendasVendedor(req, res) {
         totalComissao = parseFloat(totalComissao.toFixed(2));
         totalVendas = parseFloat(totalVendas.toFixed(2));
 
+        // Cálculo do ticket médio de vendas do vendedot
+        const quantidadeVendas = vendas.length;
+        const ticketMedio = quantidadeVendas > 0 ? parseFloat((totalVendas / quantidadeVendas).toFixed(2)) : 0;
+
         res.status(200).json({ 
             nomeVendedor: vendedor.nomeCompleto,
             cpf: vendedor.cpf,
             totalVendas,
             totalComissao,
+            quantidadeVendas,
+            ticketMedio,
+            empresa: empresa,
             vendas: vendasComComissao
         });
 
