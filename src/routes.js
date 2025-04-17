@@ -1,3 +1,6 @@
+const multer = require('multer');
+const upload = multer({ dest: 'uploads/' }); // pasta temporária onde salva o XML
+
 const router = require('express').Router()
 const empresaController = require('./controllers/empresaController')
 const clienteController = require('./controllers/clienteController')
@@ -33,6 +36,7 @@ const dashboardController = require('./controllers/dashboardController')
 const financeiroController = require('./controllers/financeiroController')
 const origemController = require('./controllers/origemController')
 const filialController = require('./controllers/filialController')
+const nfeController = require('./controllers/nfeController')
 
 
 // jwt-authorization
@@ -260,5 +264,8 @@ router.get('/api/oticas/bancos/:id', IsAuthApiKey, codBancoController.getIdBanco
 
 // Localizar NCMs
 router.get('/api/oticas/ncm', IsAuthApiKey, ncmController.getNcm);
+
+// Importar Produto por nfe
+router.post('/api/oticas/empresas/:idEmpresa/produtos/nfe', IsAuthApiKey, upload.single('xml'), nfeController.uploadAndImportNFe);
 
 module.exports = router
