@@ -1,5 +1,5 @@
-// const multer = require('multer');
-// const upload = multer({ dest: 'uploads/' }); 
+const multer = require('multer');
+const upload = multer({ dest: 'uploads/' }); 
 const router = require('express').Router()
 const empresaController = require('./controllers/empresaController')
 const clienteController = require('./controllers/clienteController')
@@ -121,10 +121,10 @@ router.delete('/api/oticas/empresas/:idEmpresa/vendedores/:id', IsAuthApiKey, ve
 router.post('/api/oticas/empresas/:idEmpresa/usuarios', IsAuthApiKey, usuarioController.postUsuario);
 router.get('/api/oticas/empresas/:idEmpresa/usuarios', IsAuthApiKey, usuarioController.listUsuarios);
 router.get('/api/oticas/empresas/:idEmpresa/usuarios/:id', IsAuthApiKey, usuarioController.getUsuario);
-router.get('/api/oticas/scootica/login/:id', usuarioController.loginUsuario);
-router.post('/api/oticas/scootica/login/email/:email', usuarioController.loginEmail);
+router.get('/api/oticas/optware/login/:id', usuarioController.loginUsuario);
+router.post('/api/oticas/optware/login/email/:email', usuarioController.loginEmail);
 router.put('/api/oticas/empresas/:idEmpresa/usuarios/:id', IsAuthApiKey, usuarioController.putUsuario);
-router.put('/api/oticas/scootica/login/senha/:recoveryToken', usuarioController.putSenha);
+router.put('/api/oticas/optware/login/senha/:recoveryToken', usuarioController.putSenha);
 router.delete('/api/oticas/empresas/:idEmpresa/usuarios/:id', IsAuthApiKey, usuarioController.deletarUsuario);
 
 // rotas de produtos
@@ -264,7 +264,7 @@ router.get('/api/oticas/bancos/:id', IsAuthApiKey, codBancoController.getIdBanco
 // Localizar NCMs
 router.get('/api/oticas/ncm', IsAuthApiKey, ncmController.getNcm);
 
-// // Importar Produto por nfe
-// router.post('/api/oticas/empresas/:idEmpresa/produtos/nfe', IsAuthApiKey, upload.single('xml'), nfeController.uploadAndImportNFe);
+// Importar Produto por nfe
+router.post('/api/oticas/empresas/:idEmpresa/produtos/nfe', IsAuthApiKey, upload.single('xml'), nfeController.uploadAndImportNFe);
 
 module.exports = router
