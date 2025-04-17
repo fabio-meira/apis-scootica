@@ -1,5 +1,5 @@
-const multer = require('multer');
-const upload = multer({ dest: 'uploads/' }); // pasta temporária onde salva o XML
+// const multer = require('multer');
+// const upload = multer({ dest: 'uploads/' }); // pasta temporária onde salva o XML
 const router = require('express').Router()
 const empresaController = require('./controllers/empresaController')
 const clienteController = require('./controllers/clienteController')
@@ -265,6 +265,6 @@ router.get('/api/oticas/bancos/:id', IsAuthApiKey, codBancoController.getIdBanco
 router.get('/api/oticas/ncm', IsAuthApiKey, ncmController.getNcm);
 
 // Importar Produto por nfe
-router.post('/api/oticas/empresas/:idEmpresa/produtos/nfe', IsAuthApiKey, upload.single('xml'), nfeController.uploadAndImportNFe);
+// router.post('/api/oticas/empresas/:idEmpresa/produtos/nfe', IsAuthApiKey, upload.single('xml'), nfeController.uploadAndImportNFe);
 
 module.exports = router
