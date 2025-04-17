@@ -1,6 +1,5 @@
 const multer = require('multer');
 const upload = multer({ dest: 'uploads/' }); // pasta temporária onde salva o XML
-
 const router = require('express').Router()
 const empresaController = require('./controllers/empresaController')
 const clienteController = require('./controllers/clienteController')
