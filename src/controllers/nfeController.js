@@ -55,7 +55,8 @@ async function uploadAndImportNFe(req, res) {
           unidade: p.uCom,
           ncm: p.NCM,
           ativo: true,
-          observacoes: 'Importado via XML S3',
+          movimentaEstoque: true,
+          observacoes: 'Importado via arquivo XML',
         });
       })
     );
