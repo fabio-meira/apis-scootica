@@ -1,62 +1,75 @@
-// controllers/nfeController.js
-const fs = require('fs');
 const xml2js = require('xml2js');
 const Produto = require('../models/Produto');
-const Fornecedor = require('../models/Fornecedores');
+const { s3, BUCKET, PutObjectCommand } = require('../../config/s3Client');
 
 const parser = new xml2js.Parser({ explicitArray: false });
 
-async function uploadAndImportNFe(req, res) {
-    try {
-      const { idEmpresa } = req.params;
-      const { idFornecedor } = req.body;
-      const xmlPath = req.file.path;
-  
-      const xmlData = fs.readFileSync(xmlPath, 'utf8');
-      const result = await parser.parseStringPromise(xmlData);
-  
-      const nfe = result.nfeProc?.NFe || result.NFe;
-  
-      if (!nfe || !nfe.infNFe || !nfe.infNFe.det) {
-        return res.status(400).json({ error: 'XML inválido ou sem produtos.' });
-      }
-  
-      const produtos = nfe.infNFe.det;
-      const produtosArray = Array.isArray(produtos) ? produtos : [produtos];
-  
-      const produtosCadastrados = await Promise.all(
-        produtosArray.map(async (item) => {
-          const prod = item.prod;
-  
-          return Produto.create({
-            idEmpresa: idEmpresa,
-            idFornecedor: parseInt(idFornecedor), 
-            referencia: prod.cProd,
-            descricao: prod.xProd,
-            codigoBarras: prod.cEAN !== 'SEM GTIN' ? prod.cEAN : null,
-            precoCusto: parseFloat(prod.vUnCom || 0),
-            estoque: parseFloat(prod.qCom || 0),
-            estoqueDisponivel: parseFloat(prod.qCom || 0),
-            idTipoProduto: 1,
-            unidade: prod.uCom,
-            ncm: prod.NCM,
-            ativo: true,
-            observacoes: 'Produto importado por arquivo XML',
-          });
-        })
-      );
-  
-      fs.unlinkSync(xmlPath);
-  
-      return res.status(201).json({ message: 'Produtos importados com sucesso!', produtos: produtosCadastrados });
-  
-    } catch (error) {
-      console.error('Erro ao importar XML:', error);
-      return res.status(500).json({ error: 'Erro ao processar o XML.' });
-    }
-  }
-  
-
-module.exports = {
-    uploadAndImportNFe
+// Helper para enviar buffer ao S3
+async function uploadBufferToS3(buffer, filename) {
+  const key = `xmls/${Date.now()}_${filename}`;
+  const cmd = new PutObjectCommand({
+    Bucket: BUCKET,
+    Key: key,
+    Body: buffer,
+    ContentType: 'text/xml'
+  });
+  await s3.send(cmd);
+  return key;
 }
+
+async function uploadAndImportNFe(req, res) {
+  try {
+    const { idEmpresa } = req.params;
+    const { idFornecedor } = req.body;
+
+    if (!req.file || !req.file.buffer) {
+      return res.status(400).json({ error: 'Arquivo XML não enviado' });
+    }
+
+    // 1. Envia o XML para o S3
+    const s3Key = await uploadBufferToS3(req.file.buffer, req.file.originalname);
+
+    // 2. Parseia o XML diretamente do buffer
+    const xmlData = req.file.buffer.toString('utf-8');
+    const result = await parser.parseStringPromise(xmlData);
+
+    const nfe = result.nfeProc?.NFe || result.NFe;
+    if (!nfe?.infNFe?.det) {
+      return res.status(400).json({ error: 'XML inválido ou sem produtos.' });
+    }
+
+    const dets = Array.isArray(nfe.infNFe.det) ? nfe.infNFe.det : [nfe.infNFe.det];
+    const produtosCadastrados = await Promise.all(
+      dets.map(item => {
+        const p = item.prod;
+        return Produto.create({
+          idEmpresa,
+          idFornecedor: parseInt(idFornecedor, 10),
+          referencia: p.cProd,
+          descricao: p.xProd,
+          codigoBarras: p.cEAN !== 'SEM GTIN' ? p.cEAN : null,
+          precoCusto: parseFloat(p.vUnCom) || 0,
+          estoque: parseFloat(p.qCom) || 0,
+          estoqueDisponivel: parseFloat(p.qCom) || 0,
+          idTipoProduto: 1,
+          unidade: p.uCom,
+          ncm: p.NCM,
+          ativo: true,
+          observacoes: 'Importado via XML S3',
+        });
+      })
+    );
+
+    return res.status(201).json({
+      message: 'Produtos importados com sucesso!',
+      s3Key,
+      produtos: produtosCadastrados
+    });
+
+  } catch (err) {
+    console.error('Erro ao importar XML:', err);
+    return res.status(500).json({ error: 'Erro ao processar o XML.' });
+  }
+}
+
+module.exports = { uploadAndImportNFe };
