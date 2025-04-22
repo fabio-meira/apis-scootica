@@ -6,6 +6,8 @@ const Venda = require('../models/Venda');
 const OrdemProdutoTotal = require('../models/OrdemProdutoTotal');
 const Pagamento = require('../models/Pagamento');
 const VendaProduto = require('../models/VendaProduto');
+const Empresa = require('../models/Empresa');
+const Vendedor = require('../models/Vendedor');
 
 // Função para cadastrar um novo cliente
 async function postCliente(req, res) {
@@ -280,6 +282,11 @@ async function getClienteVendas(req, res) {
             }
         });
 
+        const empresa = await Empresa.findOne({
+            where: { idEmpresa: idEmpresa },
+            attributes: ['cnpj', 'nome', 'logradouro', 'numero', 'complemento', 'cep', 'bairro', 'cidade', 'estado', 'telefone', 'celular']
+        });
+        
         if (!cliente) {
             return res.status(404).json({ message: 'Cliente não encontrado' });
         }
@@ -290,7 +297,7 @@ async function getClienteVendas(req, res) {
         // Busca as vendas de cliente
         const vendas = await Venda.findAll({ 
             where: whereCondition,
-            attributes: ['id', 'idReceita', 'origemVenda', 'valorTotal', 'createdAt'],
+            attributes: ['id', 'idReceita', 'origemVenda', 'idVendedor', 'valorTotal', 'createdAt'],
             include: [
                 {
                     model: VendaProduto,
@@ -306,13 +313,25 @@ async function getClienteVendas(req, res) {
                     model: OrdemProdutoTotal,
                     as: 'totais',
                     attributes: ['totalProdutos', 'desconto', 'Percdesconto', 'acrescimo', 'frete', 'total']
+                },
+                {
+                    model: Vendedor,
+                    as: 'vendedor' ,
+                    attributes: ['id', 'nomeCompleto']
                 }
             ]
         });
 
+        // Se não houver nenhum venda, retornar somente os daddos da empresa e do cliente
         if (vendas.length === 0) {
-            return res.status(200).json({ message: 'Nenhuma venda encontrada para o cliente.' });
-        }
+            return res.status(200).json({ 
+                nomeCliente: cliente.nomeCompleto,
+                telefone: cliente.celular,
+                totalVendas: null,
+                empresa: empresa,
+                vendas: []
+            });
+        }    
 
         // calcula o valor de vendas do cliente
         let totalVendas = 0;
@@ -327,9 +346,11 @@ async function getClienteVendas(req, res) {
 
         res.status(200).json({ 
             nomeCliente: cliente.nomeCompleto,
-            cpf: cliente.cpf,
+            // cpf: cliente.cpf,ç
+            telefone: cliente.celular,
             totalVendas,
-            vendas: vendasCliente
+            vendas: vendasCliente,
+            empresa: empresa
         });
         // res.status(200).json(cliente);
     } catch (error) {

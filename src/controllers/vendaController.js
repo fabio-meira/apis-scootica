@@ -258,6 +258,11 @@ async function getIdVenda(req, res) {
                     model: OrdemProdutoTotal,
                     as: 'totais'
                 },
+                {
+                    model: OrdemServico,
+                    as: 'ordemServico',
+                    attributes: ['createdAt']
+                },
             ],
             order: [
                 ['id', 'DESC']
@@ -267,8 +272,27 @@ async function getIdVenda(req, res) {
         if (!venda) {
             return res.status(404).json({ message: 'Venda não encontrada' });
         }
+
+        // Garante que haja um array de pagamentos
+        const pagamentos = venda.pagamentos || [];
+
+        // Soma os pagamentos adiantados
+        const valorAdiantamento = pagamentos
+        .filter(p => p.adiantamento === true)
+        .reduce((sum, p) => sum + parseFloat(p.valor || 0), 0);
+
+        // Soma os pagamentos não adiantados
+        const valorPagoVenda = pagamentos
+        .filter(p => p.adiantamento === false)
+        .reduce((sum, p) => sum + parseFloat(p.valor || 0), 0);
         
-        res.status(200).json(venda);
+        const output = {
+            ...venda.toJSON(),
+            valorAdiantamento,
+            valorPagoVenda
+        };
+      
+        return res.status(200).json(output);
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Erro ao buscar uma venda', error });

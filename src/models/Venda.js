@@ -9,6 +9,7 @@ const Laboratorio = require('../models/Laboratorio')
 const Vendedor = require('./Vendedor');
 const Receituario = require('./Receita');
 const Empresa = require('../models/Empresa');
+const OrdemServico = require('./OrdemServico');
 
 class Venda extends Model {}
 
@@ -147,6 +148,12 @@ Venda.belongsTo(Receituario, {
   foreignKey: 'idReceita',
   as: 'receita' 
 });  
+
+Venda.belongsTo(OrdemServico, {
+  foreignKey: 'idOrdemServico',
+  targetKey: 'id', 
+  as: 'ordemServico'
+});
 
 module.exports = Venda;
 
