@@ -49,6 +49,8 @@ async function uploadAndImportNFe(req, res) {
           descricao: p.xProd,
           codigoBarras: p.cEAN !== 'SEM GTIN' ? p.cEAN : null,
           precoCusto: parseFloat(p.vUnCom) || 0,
+          preco: parseFloat(p.vUnCom) || 0,
+          precoLucro: 0,
           estoque: parseFloat(p.qCom) || 0,
           estoqueDisponivel: parseFloat(p.qCom) || 0,
           idTipoProduto: 1,
