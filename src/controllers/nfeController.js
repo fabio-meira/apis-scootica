@@ -42,8 +42,6 @@ async function uploadAndImportNFe(req, res) {
     const produtosCadastrados = await Promise.all(
       dets.map(item => {
         const p = item.prod;
-        console.log('valor da unidade no xml: ', p.uCom);
-        // console.log('valor da unidade convertida: ', unidade);
         return Produto.create({
           idEmpresa,
           idFornecedor: parseInt(idFornecedor, 10),
@@ -56,7 +54,7 @@ async function uploadAndImportNFe(req, res) {
           estoque: parseFloat(p.qCom) || 0,
           estoqueDisponivel: parseFloat(p.qCom) || 0,
           tipoProduto: 'Produto',
-          unidade: p.uCom === 'UN' ? 'Unidade' : '',
+          unidadeMedida: p.uCom === 'UN' ? 'Unidade' : '',
           ncm: p.NCM,
           ativo: true,
           movimentaEstoque: true,
