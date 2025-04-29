@@ -21,6 +21,10 @@ Orcamento.init({
    type: DataTypes.STRING(100),
    allowNull: false
 },
+numeroOR: {
+   type: DataTypes.INTEGER,
+   allowNull: false
+},
 idCliente: {
    type: DataTypes.INTEGER,
    allowNull: false

@@ -9,32 +9,43 @@ const Laboratorio = require('../models/Laboratorio');
 const Empresa = require('../models/Empresa');
 const OrdemServico = require('../models/OrdemServico');
 const { Op } = require('sequelize')
+const sequelize = require('../database/connection');
 
 // Função para criar um novo orçamentos e seus relacionamentos
 async function postOrcamento(req, res) {
+    const transaction = await sequelize.transaction();
     try {
         const orcamentoData = req.body;
         const { idEmpresa } = req.params; 
 
         orcamentoData.idEmpresa = idEmpresa;
 
-        const orcamento = await Orcamento.create(orcamentoData);
+        // Obter o próximo número de orçamento por idEmpresa
+        const maxNumero = await Orcamento.max('numeroOR', {
+            where: { idEmpresa },
+            transaction
+          });
+        orcamentoData.numeroOR = (maxNumero || 0) + 1;
+
+        const orcamento = await Orcamento.create(orcamentoData, { transaction });
 
         // Criar registros nas tabelas relacionadas
         const produtos = orcamentoData.produtos.map(produto => ({
             ...produto,
             idOrcamento: orcamento.id
         }));
-        await OrcamentoProduto.bulkCreate(produtos);
+        await OrcamentoProduto.bulkCreate(produtos, { transaction });
 
         const totais = {
             ...orcamentoData.totais,
             idOrcamento: orcamento.id
         };
-        await OrdemProdutoTotal.create(totais);
+        await OrdemProdutoTotal.create(totais, { transaction });
 
+        await transaction.commit();
         res.status(201).json({ message: 'Orçamento criado com sucesso', orcamento });
     } catch (error) {
+        await transaction.rollback();
         console.error(error);
         res.status(500).json({ message: 'Erro ao criar orçamento', error });
     }

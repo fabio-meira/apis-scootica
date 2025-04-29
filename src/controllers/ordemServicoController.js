@@ -11,100 +11,122 @@ const Pagamento = require('../models/Pagamento');
 const Empresa = require('../models/Empresa');
 const { Op } = require('sequelize');
 const Produto = require('../models/Produto');
+const Reserva = require('../models/Reserva');
+const sequelize = require('../database/connection');
 
 // Função para criar uma nova Ordem de Serviço e seus pagamentos relacionados
 async function postOrdemServico(req, res) {
-    try {
-        const ordemServicoData = req.body;
-        const { idEmpresa } = req.params;
+  const transaction = await sequelize.transaction(); 
+  try {
+    const ordemServicoData = req.body;
+    const { idEmpresa } = req.params;
 
-        // Adiciona idEmpresa aos dados da Ordem de Serviço
-        ordemServicoData.idEmpresa = idEmpresa;
+    // Adiciona idEmpresa aos dados da Ordem de Serviço
+    ordemServicoData.idEmpresa = idEmpresa;
 
-        // Cria a Ordem de Serviço
-        const ordemServico = await OrdemServico.create(ordemServicoData);
-
-        // // Cria os produtos com idOrdemServico
-        // const produtos = ordemServicoData.produtos.map(produto => ({
-        //     ...produto,
-        //     idOrdemServico: ordemServico.id
-        // }));
-        // await OrdemProduto.bulkCreate(produtos);
-
-        // Processa os produtos
-        const produtos = await Promise.all(
-            ordemServicoData.produtos.map(async (produto) => {
-                const produtoDB = await Produto.findByPk(produto.idProduto);
-                if (!produtoDB) {
-                    throw new Error(`Produto com ID ${produto.id} não encontrado.`);
-                }
-                
-                if (produtoDB.movimentaEstoque) {
-                    // Verifica se a quantidade solicitada está disponível
-                    if (produto.quantidade > produtoDB.estoqueDisponivel) {
-                        throw new Error(`Estoque insuficiente para o produto ${produtoDB.nome}. Disponível: ${produtoDB.estoqueDisponivel}, Solicitado: ${produto.quantidade}`);
-                    }
-                    
-                    // Atualiza o estoque reservado e disponível
-                    await Produto.update(
-                        {
-                            estoqueReservado: produtoDB.estoqueReservado + produto.quantidade,
-                            estoqueDisponivel: produtoDB.estoqueDisponivel - produto.quantidade
-                        },
-                        { where: { id: produto.idProduto } }
-                    );
-                }
-                return { ...produto, idOrdemServico: ordemServico.id };
-            })
-        );
-
-        // Cria os produtos vinculados à Ordem de Serviço
-        await OrdemProduto.bulkCreate(produtos);
-        
-        // Cria os totais com idOrdemServico
-        const totais = {
-            ...ordemServicoData.totais,
-            idOrdemServico: ordemServico.id
-        };
-        await OrdemProdutoTotal.create(totais);
-
-        // Prepara os dados dos pagamentos com idOrdemServico
-        const pagamentos = ordemServicoData.pagamentos.map(pagamento => ({
-            ...pagamento,
-            idOrdemServico: ordemServico.id,
-            idEmpresa: ordemServico.idEmpresa
-        }));
-        // Cria os pagamentos em lote
-        await Pagamento.bulkCreate(pagamentos);
-
-        // Verifica se a ordem de serviço está vinculado a um orçamento
-        const existOrcamento = await Orcamento.findOne({
-            where: { id: ordemServicoData.idOrcamento || null}
+    // Obter o próximo número de orçamento por idEmpresa
+    const maxNumero = await OrdemServico.max('numeroOS', {
+        where: { idEmpresa },
+        transaction
         });
+    ordemServicoData.numeroOS = (maxNumero || 0) + 1;
 
-        // Atualiza a tabela Orcamento no campo idOrdemServico
-        if(existOrcamento) {
-            await Orcamento.update(
-                { idOrdemServico: ordemServico.id,
-                  situacao: 1  
-                },
-                { where: { id: ordemServicoData.idOrcamento } }
-            );
+    // Cria a Ordem de Serviço
+    const ordemServico = await OrdemServico.create(ordemServicoData, { transaction });
+
+    // Processa os produtos, criar a reserva do produto da OS
+    const produtos = await Promise.all(
+      ordemServicoData.produtos.map(async (produto) => {
+        const produtoDB = await Produto.findByPk(produto.idProduto, { transaction });
+        if (!produtoDB) {
+          throw new Error(`Produto com ID ${produto.idProduto} não encontrado.`);
         }
 
-        res.status(201).json({ message: 'Ordem de serviço criada com sucesso', ordemServico });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Erro ao criar ordem de serviço', error });
-    }
-}
+        if (produtoDB.movimentaEstoque) {
+            if (produtoDB.movimentaEstoque && produto.quantidade > produtoDB.estoqueDisponivel) {
+                const error = new Error(`Estoque insuficiente para o produto ${produtoDB.descricao}. Disponível: ${produtoDB.estoqueDisponivel}, Solicitado: ${produto.quantidade}`);
+                error.status = 422;
+                throw error;
+            }
 
+            // Atualiza o estoque reservado e disponível
+            await Produto.update(
+                {
+                    estoqueReservado: produtoDB.estoqueReservado + produto.quantidade,
+                    estoqueDisponivel: produtoDB.estoqueDisponivel - produto.quantidade
+                },
+                { where: { id: produto.idProduto }, transaction }
+            );
+
+            // Criação da reserva no banco
+            await Reserva.create({
+                idEmpresa: ordemServicoData.idEmpresa,
+                idOrdemServico: ordemServico.id,
+                idProduto: produto.idProduto,
+                quantidade: produto.quantidade,
+                situacao: 1,
+                createdAt: new Date(),
+                updatedAt: new Date()
+                }, { transaction });
+        }
+
+            return { ...produto, idOrdemServico: ordemServico.id };
+        })
+    );
+
+    // Cria os produtos vinculados à Ordem de Serviço
+    await OrdemProduto.bulkCreate(produtos, { transaction });
+
+    // Cria os totais com idOrdemServico
+    const totais = {
+      ...ordemServicoData.totais,
+      idOrdemServico: ordemServico.id
+    };
+    await OrdemProdutoTotal.create(totais, { transaction });
+
+    // Prepara os dados dos pagamentos com idOrdemServico
+    const pagamentos = ordemServicoData.pagamentos.map(pagamento => ({
+      ...pagamento,
+      idOrdemServico: ordemServico.id,
+      idEmpresa: ordemServico.idEmpresa
+    }));
+    // Cria os pagamentos em lote
+    await Pagamento.bulkCreate(pagamentos, { transaction });
+
+    // Verifica se a ordem de serviço está vinculado a um orçamento
+    const existOrcamento = await Orcamento.findOne({
+      where: { id: ordemServicoData.idOrcamento || null },
+      transaction
+    });
+
+    // Atualiza a tabela Orcamento no campo idOrdemServico
+    if (existOrcamento) {
+      await Orcamento.update(
+        {
+          idOrdemServico: ordemServico.id,
+          situacao: 1
+        },
+        { where: { id: ordemServicoData.idOrcamento }, transaction }
+      );
+    }
+
+    await transaction.commit(); 
+
+    res.status(201).json({ message: 'Ordem de serviço criada com sucesso', ordemServico });
+
+  }catch (error) {
+    await transaction.rollback();
+    console.error(error);
+    const statusCode = error.status || 500;
+    res.status(statusCode).json({ message: error.message });
+  }
+}
 
 // Função para consultar todas as ordens de serviço e seus relacionamentos
 async function getOrdemServico(req, res) {
     try {
         const { idEmpresa } = req.params;
-        const { startDate, endDate, dataEstimada, idVendedor, status, idOrcamento, os } = req.query; 
+        const { startDate, endDate, dataEstimada, idVendedor, status, idOrcamento, numeroOS, numeroOR, os } = req.query; 
 
         // Construa o objeto de filtro
         const whereConditions = {
@@ -160,6 +182,11 @@ async function getOrdemServico(req, res) {
             whereConditions.idOrcamento = idOrcamento; 
         }
 
+        // Adicione filtro por número da OS, se fornecido
+        if (numeroOS) {
+            whereConditions.numeroOS = numeroOS; 
+        }
+
         // Adicione filtro por ordem de servico, se fornecido
         if (os) {
             whereConditions.id = os; 
@@ -168,6 +195,16 @@ async function getOrdemServico(req, res) {
         const ordemServico = await OrdemServico.findAll({
             where: whereConditions,
             include: [
+                {
+                    model: Orcamento,
+                    as: 'orcamento',
+                    attributes: ['id', 'numeroOR'], 
+                    // somente aplica o JOIN se usuário informou filtro numeroOR
+                    ...(numeroOR ? {
+                        where: { numeroOR },
+                        required: true
+                        } : {})
+                },
                 {
                     model: Empresa,
                     as: 'empresa',
@@ -233,6 +270,11 @@ async function getOrdemServicoSV(req, res) {
             },
             include: [
                 {
+                    model: Orcamento,
+                    as: 'orcamento',
+                    attributes: ['id', 'numeroOR'] 
+                },
+                {
                     model: Empresa,
                     as: 'empresa',
                     attributes: ['cnpj', 'nome'] 
@@ -294,6 +336,11 @@ async function getIdOrdemServico(req, res) {
                 id: id
             },
             include: [
+                {
+                    model: Orcamento,
+                    as: 'orcamento',
+                    attributes: ['id', 'numeroOR'] 
+                },
                 {
                     model: Empresa,
                     as: 'empresa',

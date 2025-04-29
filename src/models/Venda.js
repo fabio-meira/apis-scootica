@@ -27,6 +27,10 @@ Venda.init({
     type: DataTypes.STRING(100),
     allowNull: false
   },
+  numeroVenda: {
+    type: DataTypes.INTEGER,
+    allowNull: false
+ },
   idOrdemServico: {
     type: DataTypes.INTEGER,
     allowNull: true

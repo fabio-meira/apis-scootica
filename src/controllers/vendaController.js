@@ -10,10 +10,11 @@ const Empresa = require('../models/Empresa');
 const VendaProduto = require('../models/VendaProduto');
 const OrdemServico = require('../models/OrdemServico');
 const { Op } = require('sequelize')
-// const { format, utcToZonedTime } = require('date-fns-tz');
+const sequelize = require('../database/connection');
 
 // Função para criar uma nova venda e seus produtos, ordem de serviço, totais e pagamentos relacionados
 async function postVenda(req, res) {
+    const transaction = await sequelize.transaction();
     try {
         const vendaData = req.body;
         const { idEmpresa } = req.params;
@@ -21,22 +22,30 @@ async function postVenda(req, res) {
         // Adiciona idEmpresa aos dados de venda
         vendaData.idEmpresa = idEmpresa;
 
+        // Obter o próximo número de orçamento por idEmpresa
+        const maxNumero = await Venda.max('numeroVenda', {
+            where: { idEmpresa },
+            transaction
+            });
+        vendaData.numeroVenda = (maxNumero || 0) + 1;
+
         // Cria uma venda
-        const venda = await Venda.create(vendaData);
+        const venda = await Venda.create(vendaData, { transaction });
 
         // Cria os produtos com idVenda
         const produtos = vendaData.produtos.map(produto => ({
             ...produto,
             idVenda: venda.id
         }));
-        await VendaProduto.bulkCreate(produtos);
+
+        await VendaProduto.bulkCreate(produtos, { transaction });
         
         // Cria os totais com idVenda
         const totais = {
             ...vendaData.totais,
             idVenda: venda.id
         };
-        await OrdemProdutoTotal.create(totais);
+        await OrdemProdutoTotal.create(totais, { transaction });
 
         // Prepara os dados dos pagamentos
         for (const pagamento of vendaData.pagamentos) {
@@ -61,7 +70,7 @@ async function postVenda(req, res) {
                     idEmpresa: venda.idEmpresa
                 };
                 // Cria o novo pagamento
-                await Pagamento.create(newPayment);
+                await Pagamento.create(newPayment, { transaction });
             }
         }
         
@@ -76,12 +85,14 @@ async function postVenda(req, res) {
                 { idVenda: venda.id,
                   situacao: 1
                 },
-                { where: { id: vendaData.idOrdemServico } }
+                { where: { id: vendaData.idOrdemServico }, transaction }
             );
         }
 
+        await transaction.commit();
         res.status(201).json({ message: 'Venda criada com sucesso', vendaData });
     } catch (error) {
+        await transaction.rollback();
         console.error(error);
         res.status(500).json({ message: 'Erro ao criar venda', error });
     }
@@ -91,7 +102,7 @@ async function postVenda(req, res) {
 async function getVenda(req, res) {
     try {
         const { idEmpresa } = req.params;
-        const { startDate, endDate, dataEstimada, idVendedor, status, idOrdemServico, idVenda } = req.query; 
+        const { startDate, endDate, dataEstimada, idVendedor, status, idOrdemServico, numeroOS, idVenda, numeroVenda } = req.query; 
 
         // Construa o objeto de filtro
         const whereConditions = {
@@ -142,19 +153,34 @@ async function getVenda(req, res) {
             whereConditions.situacao = status; 
         }
 
-        // Adicione filtro por ordem de servico, se fornecido
+        // Adicione filtro por id ordem de servico, se fornecido
         if (idOrdemServico) {
             whereConditions.idOrdemServico = idOrdemServico; 
         }
 
-        // Adicione filtro por venda, se fornecido
+        // Adicione filtro por id venda, se fornecido
         if (idVenda) {
             whereConditions.id = idVenda; 
+        }
+
+        // Adicione filtro por número venda, se fornecido
+        if (numeroVenda) {
+            whereConditions.numeroVenda = numeroVenda; 
         }
 
         const venda = await Venda.findAll({
             where: whereConditions,
             include: [
+                {
+                    model: OrdemServico,
+                    as: 'ordemServico',
+                    attributes: ['id', 'numeroOS'],
+                    // somente aplica o JOIN se usuário informou filtro numeroOS
+                    ...(numeroOS ? {
+                      where: { numeroOS },
+                      required: true
+                    } : {})
+                },
                 {
                     model: Empresa,
                     as: 'empresa',
@@ -219,6 +245,11 @@ async function getIdVenda(req, res) {
                 id: id
             },
             include: [
+                {
+                    model: OrdemServico,
+                    as: 'ordemServico',
+                    attributes: ['id', 'numeroOS'] 
+                },
                 {
                     model: Empresa,
                     as: 'empresa',

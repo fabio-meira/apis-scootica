@@ -23,6 +23,10 @@ OrdemServico.init({
     type: DataTypes.STRING(100),
     allowNull: false
   },
+  numeroOS: {
+    type: DataTypes.INTEGER,
+    allowNull: false
+ },
   idCaixa: {
     type: DataTypes.INTEGER,
     allowNull: true
