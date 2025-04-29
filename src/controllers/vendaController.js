@@ -11,6 +11,8 @@ const VendaProduto = require('../models/VendaProduto');
 const OrdemServico = require('../models/OrdemServico');
 const { Op } = require('sequelize')
 const sequelize = require('../database/connection');
+const Reserva = require('../models/Reserva');
+const Produto = require('../models/Produto');
 
 // Função para criar uma nova venda e seus produtos, ordem de serviço, totais e pagamentos relacionados
 async function postVenda(req, res) {
@@ -80,14 +82,76 @@ async function postVenda(req, res) {
         });
 
         // Atualiza a tabela OrdemServico no campo idVenda
-        if(existOrdemServico) {
+        if (existOrdemServico) {
+            console.log('vou atualizar OS e reservas');
             await OrdemServico.update(
-                { idVenda: venda.id,
-                  situacao: 1
-                },
-                { where: { id: vendaData.idOrdemServico }, transaction }
+              { idVenda: venda.id, situacao: 1 },
+              { where: { id: vendaData.idOrdemServico }, transaction }
             );
-        }
+            // Baixa a reserva de estoque da OS
+            await Reserva.update(
+              {
+                idVenda: venda.id,
+                situacao: 2,
+                updatedAt: new Date()
+              },
+              {
+                where: {
+                  idOrdemServico: vendaData.idOrdemServico,
+                  idEmpresa
+                },
+                transaction
+              }
+            );
+            for (const item of vendaData.produtos) {
+                // Busca o produto na venda
+                const produtoDB = await Produto.findByPk(item.idProduto, { transaction });
+                if (!produtoDB) {
+                  throw new Error(`Produto com ID ${item.idProduto} não encontrado.`);
+                }
+                // Só mexe no estoque se ele movimenta estoque
+                if (produtoDB.movimentaEstoque) {
+                  await Produto.update(
+                    {
+                        estoqueReservado: produtoDB.estoqueReservado - item.quantidade,
+                        estoque: produtoDB.estoque - item.quantidade,
+                        estoqueDisponivel: produtoDB.estoque - produtoDB.estoqueReservado
+                    },
+                    { where: { id: item.idProduto }, transaction }
+                  );
+                }
+              };
+          }else {
+            // Processa os produtos, e atualiza tabela de produtos com a venda
+            const produtosVenda = await Promise.all(
+                vendaData.produtos.map(async (produto) => {
+                const produtoDB = await Produto.findByPk(produto.idProduto, { transaction });
+                if (!produtoDB) {
+                    throw new Error(`Produto com ID ${produto.idProduto} não encontrado.`);
+                }
+                
+                if (produtoDB.movimentaEstoque) {
+                    if (produtoDB.movimentaEstoque && produto.quantidade > produtoDB.estoqueDisponivel) {
+                        const error = new Error(`Estoque insuficiente para o produto ${produtoDB.descricao}. Disponível: ${produtoDB.estoqueDisponivel}, Solicitado: ${produto.quantidade}`);
+                        error.status = 422;
+                        throw error;
+                    }
+                    console.log('valor do estoque: ', produtoDB.estoque - produto.quantidade);
+                    console.log('valor do disponível: ', (produtoDB.estoque - produto.quantidade) - produtoDB.estoqueReservado)
+                    // Atualiza o estoque e disponível
+                    await Produto.update(
+                        {
+                            estoque: produtoDB.estoque - produto.quantidade,
+                            estoqueDisponivel: (produtoDB.estoque - produto.quantidade) - produtoDB.estoqueReservado
+                        },
+                        { where: { id: produto.idProduto }, transaction }
+                    );
+                }
+        
+                    return { ...produto, idVenda: venda.id };
+                })
+            );
+        };
 
         await transaction.commit();
         res.status(201).json({ message: 'Venda criada com sucesso', vendaData });
