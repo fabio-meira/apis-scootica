@@ -35,6 +35,7 @@ const financeiroController = require('./controllers/financeiroController')
 const origemController = require('./controllers/origemController')
 const filialController = require('./controllers/filialController')
 const nfeController = require('./controllers/nfeController')
+const mensagemController = require('./controllers/mensagemController')
 
 
 // jwt-authorization
@@ -252,6 +253,13 @@ router.get('/api/oticas/empresas/:idEmpresa/contas', IsAuthApiKey, contasControl
 router.get('/api/oticas/empresas/:idEmpresa/contas/:id', IsAuthApiKey, contasController.getConta);
 router.put('/api/oticas/empresas/:idEmpresa/contas/:id', IsAuthApiKey, contasController.putConta);
 router.delete('/api/oticas/empresas/:idEmpresa/contas/:id', IsAuthApiKey, contasController.deleteConta);
+
+// rotas de mensagens
+router.post('/api/oticas/empresas/:idEmpresa/mensagens', IsAuthApiKey, mensagemController.postMensagem);
+router.get('/api/oticas/empresas/:idEmpresa/mensagens', IsAuthApiKey, mensagemController.listMensagem);
+router.get('/api/oticas/empresas/:idEmpresa/mensagens/:id', IsAuthApiKey, mensagemController.getMensagem);
+router.put('/api/oticas/empresas/:idEmpresa/mensagens/:id', IsAuthApiKey, mensagemController.putMensagem);
+router.delete('/api/oticas/empresas/:idEmpresa/mensagens/:id', IsAuthApiKey, mensagemController.deleteMensagem);
 
 // Localizar CEPs
 router.get('/api/oticas/cep/:cep', IsAuthApiKey, cepController.getCep);

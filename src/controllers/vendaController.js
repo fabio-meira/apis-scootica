@@ -83,7 +83,6 @@ async function postVenda(req, res) {
 
         // Atualiza a tabela OrdemServico no campo idVenda
         if (existOrdemServico) {
-            console.log('vou atualizar OS e reservas');
             await OrdemServico.update(
               { idVenda: venda.id, situacao: 1 },
               { where: { id: vendaData.idOrdemServico }, transaction }
@@ -129,15 +128,14 @@ async function postVenda(req, res) {
                 if (!produtoDB) {
                     throw new Error(`Produto com ID ${produto.idProduto} não encontrado.`);
                 }
-                
+
                 if (produtoDB.movimentaEstoque) {
                     if (produtoDB.movimentaEstoque && produto.quantidade > produtoDB.estoqueDisponivel) {
                         const error = new Error(`Estoque insuficiente para o produto ${produtoDB.descricao}. Disponível: ${produtoDB.estoqueDisponivel}, Solicitado: ${produto.quantidade}`);
                         error.status = 422;
                         throw error;
                     }
-                    console.log('valor do estoque: ', produtoDB.estoque - produto.quantidade);
-                    console.log('valor do disponível: ', (produtoDB.estoque - produto.quantidade) - produtoDB.estoqueReservado)
+
                     // Atualiza o estoque e disponível
                     await Produto.update(
                         {

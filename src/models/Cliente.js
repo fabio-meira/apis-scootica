@@ -122,6 +122,11 @@ Cliente.init({
     type: DataTypes.STRING(100),
     allowNull: true,
  },
+ ativo: {
+   type: DataTypes.BOOLEAN,
+   allowNull: true,
+   defaultValue: true
+ },
  createdAt: {
     type: DataTypes.DATE,
     allowNull: true,
