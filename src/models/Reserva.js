@@ -19,6 +19,10 @@ Reserva.init({
     type: DataTypes.INTEGER,
     allowNull: true
  },
+ idVenda: {
+   type: DataTypes.INTEGER,
+   allowNull: true
+},
  idProduto: {
     type: DataTypes.INTEGER,
     allowNull: true

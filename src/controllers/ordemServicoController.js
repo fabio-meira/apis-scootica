@@ -13,6 +13,7 @@ const { Op } = require('sequelize');
 const Produto = require('../models/Produto');
 const Reserva = require('../models/Reserva');
 const sequelize = require('../database/connection');
+const Mensagem = require('../models/Mensagem');
 
 // Função para criar uma nova Ordem de Serviço e seus pagamentos relacionados
 async function postOrdemServico(req, res) {
@@ -53,10 +54,23 @@ async function postOrdemServico(req, res) {
             await Produto.update(
                 {
                     estoqueReservado: produtoDB.estoqueReservado + produto.quantidade,
-                    estoqueDisponivel: produtoDB.estoqueDisponivel - produto.quantidade
+                    // estoqueDisponivel: produtoDB.estoqueDisponivel - produto.quantidade
+                    estoqueDisponivel: produtoDB.estoque - (produtoDB.estoqueReservado + produto.quantidade)
                 },
                 { where: { id: produto.idProduto }, transaction }
             );
+
+            // Enviar uma mensagem quando o estoque disponível = 0
+            const disponivel =  produtoDB.estoque - (produtoDB.estoqueReservado + produto.quantidade)
+            if (disponivel === 0) {
+                await Mensagem.create({
+                    idEmpresa: idEmpresa, 
+                    chave: `Produto`,
+                    mensagem: `O produto ${produtoDB.descricao} está sem estoque disponível.`,
+                    lida: false,
+                    observacoes: `Verificar necessidade de reposição para o produto ${produtoDB.descricao}.`
+                }, { transaction });
+            };
 
             // Criação da reserva no banco
             await Reserva.create({

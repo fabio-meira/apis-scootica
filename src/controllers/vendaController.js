@@ -13,6 +13,7 @@ const { Op } = require('sequelize')
 const sequelize = require('../database/connection');
 const Reserva = require('../models/Reserva');
 const Produto = require('../models/Produto');
+const Mensagem = require('../models/Mensagem');
 
 // Função para criar uma nova venda e seus produtos, ordem de serviço, totais e pagamentos relacionados
 async function postVenda(req, res) {
@@ -118,7 +119,18 @@ async function postVenda(req, res) {
                     },
                     { where: { id: item.idProduto }, transaction }
                   );
-                }
+                };
+                // Criar registro na tabela de mensagem, se estoque disponível = 0
+                // const disponivel =  (produtoDB.estoque - produto.quantidade) - produtoDB.estoqueReservado
+                // if (disponivel === 0) {
+                //     await Mensagem.create({
+                //       idEmpresa: idEmpresa, 
+                //       chave: `Produto`,
+                //       mensagem: `O produto ${produtoDB.descricao} está sem estoque disponível.`,
+                //       lida: false,
+                //       observacoes: `Verificar necessidade de reposição para o produto ${produtoDB.descricao}.`
+                //     }, { transaction });
+                // };
               };
           }else {
             // Processa os produtos, e atualiza tabela de produtos com a venda
@@ -144,6 +156,19 @@ async function postVenda(req, res) {
                         },
                         { where: { id: produto.idProduto }, transaction }
                     );
+                    
+                    // Criar registro na tabela de mensagem, se estoque disponível = 0
+                    console.log('passou aqui')
+                    const disponivelVenda =  (produtoDB.estoque - produto.quantidade) - produtoDB.estoqueReservado
+                    if (disponivelVenda === 0) {
+                        await Mensagem.create({
+                          idEmpresa: idEmpresa, 
+                          chave: `Produto`,
+                          mensagem: `O produto ${produtoDB.descricao} está sem estoque disponível.`,
+                          lida: false,
+                          observacoes: `Verificar necessidade de reposição para o produto ${produtoDB.descricao}.`
+                        }, { transaction });
+                    };
                 }
         
                     return { ...produto, idVenda: venda.id };
