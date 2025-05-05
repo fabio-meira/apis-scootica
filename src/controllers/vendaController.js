@@ -129,13 +129,25 @@ async function postVenda(req, res) {
                     );
                     } else {
                     // Produto foi adicionado diretamente na venda
-                    await Produto.update(
-                        {
-                        estoque: produtoDB.estoque - item.quantidade,
-                        estoqueDisponivel: produtoDB.estoqueDisponivel - item.quantidade
-                        },
-                        { where: { id: item.idProduto }, transaction }
-                    );
+                        await Produto.update(
+                            {
+                            estoque: produtoDB.estoque - item.quantidade,
+                            estoqueDisponivel: produtoDB.estoqueDisponivel - item.quantidade
+                            },
+                            { where: { id: item.idProduto }, transaction }
+                        );
+
+                        // verifica se o produto ficou sem estoque e notifica em mensagens
+                        const disponivelVenda =  (produtoDB.estoque - item.quantidade) - produtoDB.estoqueReservado
+                        if (disponivelVenda === 0) {
+                            await Mensagem.create({
+                              idEmpresa: idEmpresa, 
+                              chave: `Produto`,
+                              mensagem: `O produto ${produtoDB.descricao} está sem estoque disponível.`,
+                              lida: false,
+                              observacoes: `Verificar necessidade de reposição para o produto ${produtoDB.descricao}.`
+                            }, { transaction });
+                        };
                     }
                 }
             };
