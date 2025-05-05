@@ -85,54 +85,61 @@ async function postVenda(req, res) {
         // Atualiza a tabela OrdemServico no campo idVenda
         if (existOrdemServico) {
             await OrdemServico.update(
-              { idVenda: venda.id, situacao: 1 },
-              { where: { id: vendaData.idOrdemServico }, transaction }
+                { idVenda: venda.id, situacao: 1 },
+                { where: { id: vendaData.idOrdemServico }, transaction }
             );
-            // Baixa a reserva de estoque da OS
+
+            // Baixa a reserva de estoque da OS e insere o idVenda
             await Reserva.update(
-              {
-                idVenda: venda.id,
-                situacao: 2,
-                updatedAt: new Date()
-              },
-              {
+                { idVenda: venda.id, situacao: 2, updatedAt: new Date()
+                },
+                { where: { idOrdemServico: vendaData.idOrdemServico, idEmpresa}, transaction}
+            );
+            
+            // Inicia o processo para identificar os produtos da O.S.
+            const itensDaOS = await Reserva.findAll({
                 where: {
-                  idOrdemServico: vendaData.idOrdemServico,
-                  idEmpresa
+                    idOrdemServico: vendaData.idOrdemServico,
+                    idEmpresa,
                 },
                 transaction
-              }
-            );
+            });
+            
+            const idsProdutosOS = itensDaOS.map(item => item.idProduto);
+              
+            // Iterar sobre os itens da venda
             for (const item of vendaData.produtos) {
-                // Busca o produto na venda
                 const produtoDB = await Produto.findByPk(item.idProduto, { transaction });
                 if (!produtoDB) {
-                  throw new Error(`Produto com ID ${item.idProduto} não encontrado.`);
+                    throw new Error(`Produto com ID ${item.idProduto} não encontrado.`);
                 }
-                // Só mexe no estoque se ele movimenta estoque
+                
                 if (produtoDB.movimentaEstoque) {
-                  await Produto.update(
-                    {
+                    const veioDaOS = idsProdutosOS.includes(item.idProduto);
+                
+                    if (veioDaOS) {
+                    // Produto já estava reservado pela OS
+                    await Produto.update(
+                        {
                         estoqueReservado: produtoDB.estoqueReservado - item.quantidade,
                         estoque: produtoDB.estoque - item.quantidade,
                         estoqueDisponivel: produtoDB.estoque - produtoDB.estoqueReservado
-                    },
-                    { where: { id: item.idProduto }, transaction }
-                  );
-                };
-                // Criar registro na tabela de mensagem, se estoque disponível = 0
-                // const disponivel =  (produtoDB.estoque - produto.quantidade) - produtoDB.estoqueReservado
-                // if (disponivel === 0) {
-                //     await Mensagem.create({
-                //       idEmpresa: idEmpresa, 
-                //       chave: `Produto`,
-                //       mensagem: `O produto ${produtoDB.descricao} está sem estoque disponível.`,
-                //       lida: false,
-                //       observacoes: `Verificar necessidade de reposição para o produto ${produtoDB.descricao}.`
-                //     }, { transaction });
-                // };
-              };
-          }else {
+                        },
+                        { where: { id: item.idProduto }, transaction }
+                    );
+                    } else {
+                    // Produto foi adicionado diretamente na venda
+                    await Produto.update(
+                        {
+                        estoque: produtoDB.estoque - item.quantidade,
+                        estoqueDisponivel: produtoDB.estoqueDisponivel - item.quantidade
+                        },
+                        { where: { id: item.idProduto }, transaction }
+                    );
+                    }
+                }
+            };
+        }else {
             // Processa os produtos, e atualiza tabela de produtos com a venda
             const produtosVenda = await Promise.all(
                 vendaData.produtos.map(async (produto) => {
@@ -158,7 +165,6 @@ async function postVenda(req, res) {
                     );
                     
                     // Criar registro na tabela de mensagem, se estoque disponível = 0
-                    console.log('passou aqui')
                     const disponivelVenda =  (produtoDB.estoque - produto.quantidade) - produtoDB.estoqueReservado
                     if (disponivelVenda === 0) {
                         await Mensagem.create({
