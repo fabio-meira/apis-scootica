@@ -172,6 +172,7 @@ router.patch('/api/oticas/empresas/:idEmpresa/caixas', IsAuthApiKey, caixaContro
 
 // rotas de dashboard
 router.get('/api/oticas/empresas/:idEmpresa/dashboard/diario', IsAuthApiKey, dashboardController.getVendaSemanal);
+router.get('/api/oticas/empresas/:idEmpresa/dashboard/dashdiario', IsAuthApiKey, dashboardController.getVendaSemanal);
 router.get('/api/oticas/empresas/:idEmpresa/dashboard/mensagens', IsAuthApiKey, dashboardController.listMensagens);
 router.get('/api/oticas/empresas/:idEmpresa/dashboard/mensal', IsAuthApiKey, dashboardController.getConsolidadoMensal);
 router.get('/api/oticas/empresas/:idEmpresa/dashboard/anual', IsAuthApiKey, dashboardController.getConsolidadoAnual);
