@@ -64,16 +64,20 @@ async function getOrcamentos(req, res) {
 
         // Adicione filtro por data de início e data de fim, se fornecidos
         if (startDate) {
+            const [year, month, day] = startDate.split('-');
+            const start = new Date(Number(year), Number(month) - 1, Number(day), 0, 0, 0); 
             whereConditions.createdAt = {
-                [Op.gte]: new Date(startDate) 
+                [Op.gte]: start
             };
         }
-
+        
         if (endDate) {
+            const [year, month, day] = endDate.split('-');
+            const end = new Date(Number(year), Number(month) - 1, Number(day), 23, 59, 59, 999); 
             if (!whereConditions.createdAt) {
                 whereConditions.createdAt = {};
             }
-            whereConditions.createdAt[Op.lte] = new Date(endDate); 
+            whereConditions.createdAt[Op.lte] = end;
         }
 
         // Adicione filtro por status, se fornecido

@@ -107,16 +107,21 @@ async function getVendasVendedor(req, res) {
         let whereCondition = { idVendedor: id };
 
         // parametro de consulta por data inicio e final das vendas
-        if (startDate && endDate) {
-            const inicioFormatado = new Date(startDate);
-            inicioFormatado.setUTCHours(0, 0, 0, 0); // Define como 00:00:00 UTC
-
-            const fimFormatado = new Date(endDate);
-            fimFormatado.setUTCHours(23, 59, 59, 999); // Define como 23:59:59 UTC
-
-            whereCondition.createdAt = { 
-                [Op.between]: [inicioFormatado, fimFormatado]
+        if (startDate) {
+            const [year, month, day] = startDate.split('-');
+            const start = new Date(Number(year), Number(month) - 1, Number(day), 0, 0, 0); 
+            whereCondition.createdAt = {
+                [Op.gte]: start
             };
+        }
+        
+        if (endDate) {
+            const [year, month, day] = endDate.split('-');
+            const end = new Date(Number(year), Number(month) - 1, Number(day), 23, 59, 59, 999); 
+            if (!whereCondition.createdAt) {
+                whereCondition.createdAt = {};
+            }
+            whereCondition.createdAt[Op.lte] = end;
         }
         
         // Busca as vendas do vendedor

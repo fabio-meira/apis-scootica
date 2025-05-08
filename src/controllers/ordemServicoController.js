@@ -149,39 +149,39 @@ async function getOrdemServico(req, res) {
 
         // Adicione filtro por data de início e data de fim, se fornecidos
         if (startDate) {
+            const [year, month, day] = startDate.split('-');
+            const start = new Date(Number(year), Number(month) - 1, Number(day), 0, 0, 0); 
             whereConditions.createdAt = {
-                [Op.gte]: new Date(startDate) 
+                [Op.gte]: start
             };
         }
-
+        
         if (endDate) {
+            const [year, month, day] = endDate.split('-');
+            const end = new Date(Number(year), Number(month) - 1, Number(day), 23, 59, 59, 999); 
             if (!whereConditions.createdAt) {
                 whereConditions.createdAt = {};
             }
-            whereConditions.createdAt[Op.lte] = new Date(endDate); 
+            whereConditions.createdAt[Op.lte] = end;
         }
 
-        // Adicione filtro por status, se fornecido
+        // Adicione filtro por data estimada, se fornecido
         if (dataEstimada) {
-            // Cria um objeto Date no horário local
-            const date = new Date(`${dataEstimada}`);
+            const [year, month, day] = dataEstimada.split('-');
         
-            // Formata a data e hora no formato local
-            const ano = date.getFullYear();
-            const mes = String(date.getMonth() + 1).padStart(2, '0');
-            const dia = String(date.getDate()).padStart(2, '0');
-            const hora = '21';
-            const minutos = '00';
-            const segundos = '00';
+            // Cria o início e fim do dia no horário local (GMT-3) e converte para UTC
+            const start = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), 0, 0, 0));
+            start.setUTCHours(start.getUTCHours() - 3); // GMT-3
         
-            // Converte para o formato YYYY-MM-DD HH:MM:SS no horário local
-            const dataEstimadaFormatada = `${ano}-${mes}-${dia} ${hora}:${minutos}:${segundos}`;
+            const end = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), 23, 59, 59, 999));
+            end.setUTCHours(end.getUTCHours() - 3); // GMT-3
         
-            // Define o filtro para a consulta
-            whereConditions.dtEstimadaEntrega = dataEstimadaFormatada;
+            whereConditions.dtEstimadaEntrega = {
+                [Op.between]: [start, end]
+            };
         }
 
-        // Adicione filtro por idFornecedor, se fornecido
+        // Adicione filtro por idVendedor, se fornecido
         if (idVendedor) {
             whereConditions.idVendedor = idVendedor;
         }
