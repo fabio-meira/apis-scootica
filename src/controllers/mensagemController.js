@@ -1,6 +1,4 @@
 const Mensagem = require('../models/Mensagem');
-const Mesangem = require('../models/Mensagem');
-
 
 // Função para cadastrar um nova mensagem
 async function postMensagem(req, res) {
@@ -8,7 +6,7 @@ async function postMensagem(req, res) {
         const mensagemData = req.body;
         const { idEmpresa } = req.params; 
 
-        // Adiciona o idEmpresa como idEmpresa no objeto origemData
+        // Adiciona o idEmpresa como idEmpresa no objeto mensagemData
         mensagemData.idEmpresa = idEmpresa;
 
         const mensagem = await Mensagem.create(mensagemData);

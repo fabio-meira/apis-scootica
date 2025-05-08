@@ -36,6 +36,7 @@ const origemController = require('./controllers/origemController')
 const filialController = require('./controllers/filialController')
 const nfeController = require('./controllers/nfeController')
 const mensagemController = require('./controllers/mensagemController')
+const contratoController = require('./controllers/contratoController')
 
 
 // jwt-authorization
@@ -261,6 +262,14 @@ router.get('/api/oticas/empresas/:idEmpresa/mensagens', IsAuthApiKey, mensagemCo
 router.get('/api/oticas/empresas/:idEmpresa/mensagens/:id', IsAuthApiKey, mensagemController.getMensagem);
 router.put('/api/oticas/empresas/:idEmpresa/mensagens/:id', IsAuthApiKey, mensagemController.putMensagem);
 router.delete('/api/oticas/empresas/:idEmpresa/mensagens/:id', IsAuthApiKey, mensagemController.deleteMensagem);
+
+// rotas de contratos
+router.post('/api/oticas/empresas/:idEmpresa/contratos', IsAuthApiKey, contratoController.postContrato);
+router.get('/api/oticas/empresas/:idEmpresa/contratos', IsAuthApiKey, contratoController.listContrato);
+router.get('/api/oticas/empresas/:idEmpresa/contratos/:id', IsAuthApiKey, contratoController.getContrato);
+router.put('/api/oticas/empresas/:idEmpresa/contratos/:id', IsAuthApiKey, contratoController.putContrato);
+router.delete('/api/oticas/empresas/:idEmpresa/contratos/:id', IsAuthApiKey, contratoController.deleteContrato);
+router.get('/api/oticas/empresas/:idEmpresa/contratos/dataReferencia/:date', IsAuthApiKey, contratoController.validarContratos);
 
 // Localizar CEPs
 router.get('/api/oticas/cep/:cep', IsAuthApiKey, cepController.getCep);
