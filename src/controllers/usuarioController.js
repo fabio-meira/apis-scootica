@@ -183,7 +183,7 @@ async function loginEmail(req, res) {
             html: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px; text-align: center;">
                     <img src="/img/optware_preto.png" alt="Optware" style="max-width: 150px; margin-bottom: 20px;">
-                    <h1 style="color: #7F5539; font-size: 24px;">OptWare - Software de Ótica</h1>
+                    <h1 style="color: #7F5539; font-size: 24px;">Optware - Software de Ótica</h1>
                     <h2 style="color: #333; font-size: 20px;">Recuperação de Senha</h2>
                     <p style="font-size: 16px; color: #555;">Olá <strong>${usuario.nome}</strong>,</p>
                     <p style="font-size: 16px; color: #555;">Para redefinir sua senha, clique no botão abaixo:</p>

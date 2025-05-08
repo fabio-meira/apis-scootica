@@ -4,11 +4,12 @@ const Mensagem = require('../models/Mensagem');
 const nodemailer = require('nodemailer');
 const qrcode = require('qrcode');
 const crc = require('crc');
-const { pixPayload } = require('pix-payload');
+const sequelize = require('../database/connection');
 
 
 // Função para cadastrar um novo contrato
 async function postContrato(req, res) {
+    const transaction = await sequelize.transaction(); 
     try {
         const contratoData = req.body;
         const { idEmpresa } = req.params; 
@@ -16,10 +17,13 @@ async function postContrato(req, res) {
         // Adiciona o idEmpresa como idEmpresa no objeto contratoData
         contratoData.idEmpresa = idEmpresa;
 
-        const contrato = await Contrato.create(contratoData);
+        const contrato = await Contrato.create(contratoData, { transaction });
+
+        await transaction.commit(); 
 
         res.status(201).json({ message: 'Contrato cadastrado com sucesso', contrato });
     } catch (error) {
+        await transaction.rollback();
         console.error(error);
         res.status(500).json({ message: 'Erro ao cadastrar contrato', error });
     }
@@ -139,9 +143,10 @@ function normalizarParaInicioDoDiaLocal(data) {
     // Define a hora para 00:00:00 no horário local
     dataLocal.setHours(0, 0, 0, 0); 
     return dataLocal;
-  }
+}
   
-  async function validarContratos(req, res) {
+async function validarContratos(req, res) {
+    const transaction = await sequelize.transaction(); 
     try {
       const { idEmpresa, date } = req.params;
   
@@ -186,7 +191,7 @@ function normalizarParaInicioDoDiaLocal(data) {
             mensagem: msg,
             lida: false,
             observacoes: `Contrato com vencimento em ${vencimento.toLocaleDateString('pt-BR')}.`
-          });
+          }, { transaction } );
   
           mensagensCriadas.push(novaMensagem);
         }
@@ -202,7 +207,7 @@ function normalizarParaInicioDoDiaLocal(data) {
             mensagem: msg,
             lida: false,
             observacoes: `Avaliação com vencimento em ${fimAvaliacao.toLocaleDateString('pt-BR')}.`
-        });
+        }, { transaction } );
 
         mensagensCriadas.push(novaMensagem);
         }
@@ -218,11 +223,13 @@ function normalizarParaInicioDoDiaLocal(data) {
                 mensagem: `PIX enviado para ${contrato.email}, valor R$ ${contrato.valorPlano}`,
                 lida: false,
                 observacoes: `PIX gerado com vencimento em ${new Date(contrato.dtPagamento).toLocaleDateString('pt-BR')}.`
-              });
+              }, { transaction } );
 
               mensagensCriadas.push(novaMensagem);
         }
       }
+
+      await transaction.commit(); 
   
       res.status(200).json({
         message: 'Validação concluída',
@@ -230,49 +237,53 @@ function normalizarParaInicioDoDiaLocal(data) {
       });
   
     } catch (error) {
+      await transaction.rollback();
       console.error('Erro ao validar contratos:', error);
       res.status(500).json({ message: 'Erro ao validar contratos', error });
     }
   }
 
- // Função auxiliar que gera o código EMVCo (payload do QR Code)
- function gerarPayloadPix({ chave, nome, cidade, valor, txid }) {
+// Função auxiliar que gera o código EMVCo (payload do QR Code)
+function gerarPayloadPix({ chave, nome, cidade, valor, txid }) {
     if (!chave || !nome || !cidade || !valor) {
       throw new Error("Todos os parâmetros devem ser fornecidos: chave, nome, cidade, valor.");
     }
   
+    nome = nome.substring(0, 25);
+    cidade = cidade.substring(0, 15);
+  
     function format(id, value) {
-      if (!value) {
-        throw new Error(`Valor não pode ser nulo ou indefinido para o id: ${id}`);
-      }
       const size = value.length.toString().padStart(2, '0');
       return `${id}${size}${value}`;
     }
   
-    const merchantAccountInfo = format('00', 'BR.GOV.BCB.PIX') +
-                                format('01', chave);
+    const merchantAccountInfo =
+      format('00', 'BR.GOV.BCB.PIX') +
+      format('01', chave);
   
-    const additionalDataField = format('05', txid || '***');
+    const additionalDataField =
+      format('05', txid || '***');
   
-    const payloadSemCRC = format('00', '01') +
-                          format('26', merchantAccountInfo) +
-                          format('52', '0000') +
-                          format('53', '986') + // moeda BRL
-                          format('54', valor.toFixed(2)) +
-                          format('58', 'BR') +
-                          format('59', nome) +
-                          format('60', cidade) +
-                          format('62', additionalDataField);
+    const payloadSemCRC =
+      format('00', '01') +
+      format('26', merchantAccountInfo) +
+      format('52', '0000') +
+      format('53', '986') +
+      format('54', valor.toFixed(2).replace(',', '.')) +
+      format('58', 'BR') +
+      format('59', nome) +
+      format('60', cidade) +
+      format('62', additionalDataField);
   
     const crc16 = crc.crc16ccitt(Buffer.from(payloadSemCRC + '6304', 'utf8'))
-                     .toString(16)
-                     .toUpperCase()
-                     .padStart(4, '0');
+      .toString(16)
+      .toUpperCase()
+      .padStart(4, '0');
   
     return payloadSemCRC + '6304' + crc16;
   }
-
-  async function gerarEEnviarPix(contrato) {
+async function gerarEEnviarPix(contrato) {
+    // const transaction = await sequelize.transaction(); 
     try {
 
       if (!contrato || !contrato.valorPlano || !contrato.email || !contrato.id || !contrato.nome) {
@@ -281,7 +292,10 @@ function normalizarParaInicioDoDiaLocal(data) {
       // 1. Gerar payload PIX
       const payload = gerarPayloadPix({
         chave: 'fabio.meira@fabester.com.br',
- 
+        nome: 'F.F.Meira Desenvolvimento de Software Ltda',
+        cidade: 'OSASCO',
+        valor: parseFloat(contrato.valorPlano),
+        txid: `OPT${contrato.id}`
       });
   
     //   const codigoPix = payload.payload;
@@ -307,7 +321,7 @@ function normalizarParaInicioDoDiaLocal(data) {
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px; text-align: center;">
           <img src="/img/optware_preto.png" alt="Optware" style="max-width: 150px; margin-bottom: 20px;" />  
-          <h1 style="color: #7F5539; font-size: 24px;">OptWare - Software de Óticas</h1>
+          <h1 style="color: #7F5539; font-size: 24px;">Optware - Software de Óticas</h1>
             <h2 style="color: #333; font-size: 20px;">Pagamento via PIX</h2>
             <p style="font-size: 16px; color: #555;">Olá <strong>${contrato.nome}</strong>,</p>
             <p style="font-size: 16px; color: #555;">Valor do plano: <strong>R$ ${parseFloat(contrato.valorPlano).toFixed(2)}</strong></p>
@@ -328,15 +342,7 @@ function normalizarParaInicioDoDiaLocal(data) {
       contrato.boletoEnviado = true;
       await contrato.save();
   
-      await Mensagem.create({
-        idEmpresa: contrato.idEmpresa,
-        chave: 'PIX',
-        mensagem: `PIX enviado com sucesso para ${contrato.email}. Valor: R$ ${parseFloat(contrato.valorPlano).toFixed(2)}.`,
-        lida: false,
-        observacoes: `Contrato com vencimento em ${new Date(contrato.dtPagamento).toLocaleDateString('pt-BR')}.`,
-      });
-  
-      console.log(`✅ PIX enviado com sucesso para ${contrato.email}`);
+    //   console.log(`✅ PIX enviado com sucesso para ${contrato.email}`);
     } catch (error) {
       console.error('❌ Erro ao gerar ou enviar PIX:', error);
     }
