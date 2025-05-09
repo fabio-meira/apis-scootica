@@ -238,8 +238,8 @@ async function validarContratos(req, res) {
             // Cria registro de mensagem
             const novaMensagem = await Mensagem.create({
                 idEmpresa: contrato.idEmpresa,
-                chave: `PIX`,
-                mensagem: `PIX enviado para ${contrato.email}, valor de ${valorFaturado}`,
+                chave: `Contrato`,
+                mensagem: `${contrato.nome}, faturamento enviado por PIX para o e-mail ${contrato.email}, no valor de ${valorFaturado}`,
                 lida: false,
                 observacoes: `PIX gerado com vencimento em ${new Date(contrato.dtPagamento).toLocaleDateString('pt-BR')}.`
               }, { transaction } );
