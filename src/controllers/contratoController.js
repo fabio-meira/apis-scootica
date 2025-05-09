@@ -144,6 +144,19 @@ function normalizarParaInicioDoDiaLocal(data) {
     dataLocal.setHours(0, 0, 0, 0); 
     return dataLocal;
 }
+
+function obterNomeMesCorrente(data) {
+    const meses = [
+      'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+      'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+    ];
+  
+    const dataLocal = new Date(data);
+    return meses[dataLocal.getMonth()];
+}
+
+const dataHoje = new Date();
+console.log(obterNomeMesCorrente(dataHoje)); // Ex: "Maio"
   
 async function validarContratos(req, res) {
     const transaction = await sequelize.transaction(); 
@@ -156,12 +169,12 @@ async function validarContratos(req, res) {
   
       // Converte a data de referência para o horário local (GMT-3)
       const dataBase = normalizarParaInicioDoDiaLocal(`${date} 00:00:00-03:00`);
-      console.log('dataBase: ', dataBase);
   
       const contratos = await Contrato.findAll({
         where: {
           ativo: true,
           pagamentoConfirmado: false,
+          idEmpresa: idEmpresa,
           dtPagamento: {
             [Op.not]: null
           }
@@ -169,13 +182,19 @@ async function validarContratos(req, res) {
       });
   
       const mensagensCriadas = [];
-      console.log('date: ', date);
   
       for (const contrato of contratos) {
         // Normaliza a data de pagamento para o início do dia no horário local (GMT-3)
         const vencimento = normalizarParaInicioDoDiaLocal(new Date(contrato.dtPagamento));
         const fimAvaliacao = normalizarParaInicioDoDiaLocal(new Date(contrato.fimAvaliacao));
-        const valor = Number(contrato.valorPlano || 0).toFixed(2);
+        // const valorFaturado = Number(contrato.valorFaturado || 0).toFixed(2);
+
+        // Função para formatar a moeda em BRL
+        function formatCurrency(value) {
+            return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+        };
+
+        const valorFaturado = formatCurrency(contrato.valorFaturado || 0);
   
         const diffDias = Math.ceil((vencimento - dataBase) / (1000 * 60 * 60 * 24));
         const diffDiasFree = Math.ceil((fimAvaliacao - dataBase) / (1000 * 60 * 60 * 24));
@@ -183,7 +202,7 @@ async function validarContratos(req, res) {
         // Validar dias de vencimento 5 e 10 e criar uma mensagem
         if (diffDias === 10 || diffDias === 5 || diffDias === 5) {
           const diasTexto = diffDias === 10 ? '10 dias' : '5 dias';
-          const msg = `${contrato.nome}, sua mensalidade vence em ${diasTexto}, com o valor de R$ ${contrato.valorPlano}`;
+          const msg = `${contrato.nome}, sua mensalidade vence em ${diasTexto}, com o valor de ${valorFaturado}`;
   
           const novaMensagem = await Mensagem.create({
             idEmpresa: contrato.idEmpresa,
@@ -220,7 +239,7 @@ async function validarContratos(req, res) {
             const novaMensagem = await Mensagem.create({
                 idEmpresa: contrato.idEmpresa,
                 chave: `PIX`,
-                mensagem: `PIX enviado para ${contrato.email}, valor R$ ${contrato.valorPlano}`,
+                mensagem: `PIX enviado para ${contrato.email}, valor de ${valorFaturado}`,
                 lida: false,
                 observacoes: `PIX gerado com vencimento em ${new Date(contrato.dtPagamento).toLocaleDateString('pt-BR')}.`
               }, { transaction } );
@@ -313,22 +332,59 @@ async function gerarEEnviarPix(contrato) {
           pass: 'Ester@21032014',
         },
       });
+
+
+      // Função para formatar a moeda em BRL
+      function formatCurrency(value) {
+        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+      };
+
+      const valorFaturado = formatCurrency(contrato.valorFaturado || 0);
   
       await transporter.sendMail({
         from: '"Optware" <contato@fabester.com.br>',
         to: contrato.email,
         subject: 'PIX para pagamento do contrato',
         html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px; text-align: center;">
-          <img src="/img/optware_preto.png" alt="Optware" style="max-width: 150px; margin-bottom: 20px;" />  
-          <h1 style="color: #7F5539; font-size: 24px;">Optware - Software de Óticas</h1>
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px; text-align: center;">
+            <img src="/img/optware_preto.png" alt="Optware" style="max-width: 150px; margin-bottom: 20px;" />  
+            <h1 style="color: #7F5539; font-size: 24px;">Optware - Software de Óticas</h1>
             <h2 style="color: #333; font-size: 20px;">Pagamento via PIX</h2>
+            
             <p style="font-size: 16px; color: #555;">Olá <strong>${contrato.nome}</strong>,</p>
-            <p style="font-size: 16px; color: #555;">Valor do plano: <strong>R$ ${parseFloat(contrato.valorPlano).toFixed(2)}</strong></p>
+            
+            <p style="font-size: 16px; color: #555;">
+            Estamos enviando o faturamento da mensalidade do seu plano,<br/> referente ao mês de ${obterNomeMesCorrente(dataHoje)}.
+            </p>
+
+            <p style="font-size: 16px; color: #555;">💳 <strong>Valor:</strong> ${valorFaturado}</p>
+            <p style="font-size: 16px; color: #555;">📅 <strong>Vencimento:</strong> ${contrato.dtPagamento.toLocaleDateString('pt-BR')}</p>
+            <p style="font-size: 16px; color: #555;">💼 <strong>Plano Contratado:</strong> ${contrato.descricaoPlano}</p>
+
             <img src="cid:qrcode" alt="PIX QR Code" style="max-width: 250px; margin: 20px 0;" />
+
             <p style="font-size: 14px; color: #777;">Ou copie e cole o código abaixo no seu aplicativo bancário:</p>
-            <div style="background-color: #f4f4f4; padding: 10px; border-radius: 5px; font-size: 14px;">${payload}</div>
-          </div>
+            <div style="background-color: #f4f4f4; padding: 10px; border-radius: 5px; font-size: 14px;">
+            ${payload}
+            </div>
+
+            <p style="font-size: 14px; color: #555; margin-top: 20px;">
+            Manter o pagamento em dia garante a continuidade dos serviços contratados e o acesso completo aos recursos do seu plano.
+            </p>
+
+            <p style="font-size: 14px; color: #777;">
+            Caso já tenha efetuado o pagamento, favor desconsiderar esta mensagem.
+            </p>
+
+            <p style="font-size: 14px; color: #777;">
+            Qualquer dúvida, estamos à disposição!
+            </p>
+
+            <p style="font-size: 14px; color: #333; margin-top: 20px;">
+            Atenciosamente, <br/>
+            <strong>Financeiro Optware</strong>
+            </p>
+        </div>
         `,
         attachments: [
           {

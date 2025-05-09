@@ -70,11 +70,15 @@ Contrato.init({
     type: DataTypes.INTEGER,
     allowNull: true,
   },
+  descricaoPlano: {
+    type: DataTypes.STRING(200),
+    allowNull: true,
+  },
   valorPlano: {
     type: DataTypes.DECIMAL(7, 2),
     allowNull: true,
   },
-  ValorFaturado: {
+  valorFaturado: {
     type: DataTypes.DECIMAL(7, 2),
     allowNull: true,
   },
