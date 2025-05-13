@@ -187,6 +187,17 @@ async function postVenda(req, res) {
                           observacoes: `Verificar necessidade de reposição para o produto ${produtoDB.descricao}.`
                         }, { transaction });
                     };
+
+                    // Enviar uma mensagem quando o estoque disponível = estoque mínimo
+                    if (disponivelVenda === produtoDB.estoqueMinimo) {
+                        await Mensagem.create({
+                            idEmpresa: idEmpresa, 
+                            chave: `Produto`,
+                            mensagem: `O produto ${produtoDB.descricao} atingiu seu estoque mínimo (${produtoDB.estoqueMinimo}).`,
+                            lida: false,
+                            observacoes: `Verificar necessidade de reposição para o produto ${produtoDB.descricao}.`
+                        }, { transaction });
+                    };
                 }
         
                     return { ...produto, idVenda: venda.id };

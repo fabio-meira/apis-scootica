@@ -72,6 +72,17 @@ async function postOrdemServico(req, res) {
                 }, { transaction });
             };
 
+            // Enviar uma mensagem quando o estoque disponível = estoque mínimo
+            if (disponivel === produtoDB.estoqueMinimo) {
+                await Mensagem.create({
+                    idEmpresa: idEmpresa, 
+                    chave: `Produto`,
+                    mensagem: `O produto ${produtoDB.descricao} atingiu seu estoque mínimo (${produtoDB.estoqueMinimo}).`,
+                    lida: false,
+                    observacoes: `Verificar necessidade de reposição para o produto ${produtoDB.descricao}.`
+                }, { transaction });
+            };
+
             // Criação da reserva no banco
             await Reserva.create({
                 idEmpresa: ordemServicoData.idEmpresa,

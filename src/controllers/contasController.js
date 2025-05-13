@@ -3,8 +3,6 @@ const Cliente = require('../models/Cliente');
 const Conta = require('../models/Conta');
 const Fornecedor = require('../models/Fornecedores');
 const PlanoConta = require('../models/PlanoConta');
-// const getPlanoConta = require('../models/getPlanoConta')
-// const sequelize = require('../database/connection');
 
 // Função para cadastrar nova conta
 async function postConta(req, res) {

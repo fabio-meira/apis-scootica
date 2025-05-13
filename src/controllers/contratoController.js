@@ -14,8 +14,9 @@ async function postContrato(req, res) {
         const contratoData = req.body;
         const { idEmpresa } = req.params; 
 
-        // Adiciona o idEmpresa como idEmpresa no objeto contratoData
+        // Adiciona o idEmpresa como idEmpresa no objeto contratoData e avaliação como 1
         contratoData.idEmpresa = idEmpresa;
+        contratoData.avaliacao = true;
 
         const contrato = await Contrato.create(contratoData, { transaction });
 
@@ -33,16 +34,11 @@ async function postContrato(req, res) {
 async function listContrato(req, res) {
     try {
         const { idEmpresa } = req.params; 
-        const { lida } = req.query;
 
         // Construa o objeto de filtro
         const whereConditions = {
             idEmpresa: idEmpresa
         };
-  
-        if (lida !== undefined) {
-            whereConditions.lida = lida === 'true'; // converte string para boolean
-        }
 
         const contrato = await Contrato.findAll({
             where: whereConditions,
@@ -156,7 +152,7 @@ function obterNomeMesCorrente(data) {
 }
 
 const dataHoje = new Date();
-console.log(obterNomeMesCorrente(dataHoje)); // Ex: "Maio"
+// console.log(obterNomeMesCorrente(dataHoje)); 
   
 async function validarContratos(req, res) {
     const transaction = await sequelize.transaction(); 
@@ -173,6 +169,7 @@ async function validarContratos(req, res) {
       const contratos = await Contrato.findAll({
         where: {
           ativo: true,
+          avaliacao: false,
           pagamentoConfirmado: false,
           idEmpresa: idEmpresa,
           dtPagamento: {
@@ -186,8 +183,6 @@ async function validarContratos(req, res) {
       for (const contrato of contratos) {
         // Normaliza a data de pagamento para o início do dia no horário local (GMT-3)
         const vencimento = normalizarParaInicioDoDiaLocal(new Date(contrato.dtPagamento));
-        const fimAvaliacao = normalizarParaInicioDoDiaLocal(new Date(contrato.fimAvaliacao));
-        // const valorFaturado = Number(contrato.valorFaturado || 0).toFixed(2);
 
         // Função para formatar a moeda em BRL
         function formatCurrency(value) {
@@ -197,38 +192,51 @@ async function validarContratos(req, res) {
         const valorFaturado = formatCurrency(contrato.valorFaturado || 0);
   
         const diffDias = Math.ceil((vencimento - dataBase) / (1000 * 60 * 60 * 24));
-        const diffDiasFree = Math.ceil((fimAvaliacao - dataBase) / (1000 * 60 * 60 * 24));
   
-        // Validar dias de vencimento 5 e 10 e criar uma mensagem
-        if (diffDias === 10 || diffDias === 5 || diffDias === 5) {
+        // Validar dias de vencimento 5 ou 10 e criar uma mensagem
+        if (diffDias === 10 || diffDias === 5 ) {
           const diasTexto = diffDias === 10 ? '10 dias' : '5 dias';
-          const msg = `${contrato.nome}, sua mensalidade vence em ${diasTexto}, com o valor de ${valorFaturado}`;
+          const msg = `${contrato.nome}, sua mensalidade no valor de ${valorFaturado}, vence em ${diasTexto} dias`;
   
           const novaMensagem = await Mensagem.create({
             idEmpresa: contrato.idEmpresa,
-            chave: `Contrato`,
+            chave: `Fatura`,
             mensagem: msg,
             lida: false,
-            observacoes: `Contrato com vencimento em ${vencimento.toLocaleDateString('pt-BR')}.`
+            observacoes: `Fatura com vencimento em ${vencimento.toLocaleDateString('pt-BR')}.`
           }, { transaction } );
   
           mensagensCriadas.push(novaMensagem);
         }
 
-        // Validar dias de avaliação
-        if (diffDiasFree === 10 || diffDias === 5) {
-        const diasTexto = diffDiasFree === 10 ? '10 dias' : '5 dias';
-        const msg = `${contrato.nome}, sua avaliação termina em ${diasTexto}. Após essa data, será cobrado, mensalmente, o valor de R$ ${contrato.valorPlano}`;
-
-        const novaMensagem = await Mensagem.create({
+        // Validar dias de vencimento 3 ou 1 e criar uma mensagem
+        if (diffDias === 3 || diffDias === 1 ) {
+          const diasTexto = diffDias === 3 ? '3 dias' : '1 dia';
+          const msg = `${contrato.nome}, sua mensalidade no valor de ${valorFaturado}, vence em ${diasTexto} dias`;
+  
+          const novaMensagem = await Mensagem.create({
             idEmpresa: contrato.idEmpresa,
-            chave: `Avaliação`,
+            chave: `Fatura`,
             mensagem: msg,
             lida: false,
-            observacoes: `Avaliação com vencimento em ${fimAvaliacao.toLocaleDateString('pt-BR')}.`
-        }, { transaction } );
+            observacoes: `Fatura com vencimento em ${vencimento.toLocaleDateString('pt-BR')}.`
+          }, { transaction } );
+  
+          mensagensCriadas.push(novaMensagem);
+        }
 
-        mensagensCriadas.push(novaMensagem);
+        // Validar se mensalidade vence hoje
+        if (diffDias === 0) {
+          const msg = `${contrato.nome}, sua mensalidade no valor de ${valorFaturado}, vence hoje.`;
+          const novaMensagem = await Mensagem.create({
+            idEmpresa: contrato.idEmpresa,
+            chave: `Fatura`,
+            mensagem: msg,
+            lida: false,
+            observacoes: `Fatura com vencimento em ${vencimento.toLocaleDateString('pt-BR')}.`
+          }, { transaction } );
+  
+          mensagensCriadas.push(novaMensagem);
         }
 
         // Validar dias para gear boleto de pagamento
@@ -238,13 +246,110 @@ async function validarContratos(req, res) {
             // Cria registro de mensagem
             const novaMensagem = await Mensagem.create({
                 idEmpresa: contrato.idEmpresa,
-                chave: `Contrato`,
+                chave: `Fatura`,
                 mensagem: `${contrato.nome}, faturamento enviado por PIX para o e-mail ${contrato.email}, no valor de ${valorFaturado}`,
                 lida: false,
                 observacoes: `PIX gerado com vencimento em ${new Date(contrato.dtPagamento).toLocaleDateString('pt-BR')}.`
               }, { transaction } );
 
               mensagensCriadas.push(novaMensagem);
+        }
+      }
+
+      // Validar o período de avaliação do produto e início do contrato
+      const avaliacoes = await Contrato.findAll({
+        where: {
+          ativo: false,
+          avaliacao: true,
+          pagamentoConfirmado: false,
+          idEmpresa: idEmpresa,
+          dtPagamento: {
+            [Op.not]: null
+          }
+        }
+      });
+   
+      const mensagensCriadasAvaliacao = [];
+  
+      for (const avaliacao of avaliacoes) {
+        // Normaliza a data de pagamento para o início do dia no horário local (GMT-3)
+        const fimAvaliacao = normalizarParaInicioDoDiaLocal(new Date(avaliacao.fimAvaliacao));
+
+        // Função para formatar a moeda em BRL
+        function formatCurrency(value) {
+            return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+        };
+
+        const valorFaturado = formatCurrency(avaliacao.valorFaturado || 0);
+        const diffDiasFree = Math.ceil((fimAvaliacao - dataBase) / (1000 * 60 * 60 * 24));
+  console.log('diff dias', diffDiasFree);
+        // Validar dias de avaliação, 5 ou 10 dias
+        if (diffDiasFree === 10 || diffDiasFree === 5) {
+          const diasTexto = diffDiasFree === 10 ? '10 dias' : '5 dias';
+          const msg = `${avaliacao.nome}, seu período de avaliação termina em ${diasTexto}. Após essa data, o seu plano ${avaliacao.descricaoPlano}, no valor de ${valorFaturado}, será ativado.`;
+          const mensagensCriadasAvaliacao = await Mensagem.create({
+              idEmpresa: avaliacao.idEmpresa,
+              chave: `Avaliação`,
+              mensagem: msg,
+              lida: false,
+              observacoes: `Avaliação com vencimento em ${fimAvaliacao.toLocaleDateString('pt-BR')}.`
+          }, { transaction } );
+
+          mensagensCriadas.push(mensagensCriadasAvaliacao);
+        }
+
+        // Validar 3 dias ou 1 dia para o fim da avaliação 
+        if (diffDiasFree === 3 || diffDiasFree === 1) {
+          const diasTexto = diffDiasFree === 3 ? '3 dias' : '1 dia';
+          const msg = `${avaliacao.nome}, seu período de avaliação termina em ${diasTexto}. Após essa data, o seu plano ${avaliacao.descricaoPlano}, no valor de ${valorFaturado}, será ativado.`;
+
+          const mensagensCriadasAvaliacao = await Mensagem.create({
+              idEmpresa: avaliacao.idEmpresa,
+              chave: `Avaliação`,
+              mensagem: msg,
+              lida: false,
+              observacoes: `Avaliação com vencimento em ${fimAvaliacao.toLocaleDateString('pt-BR')}.`
+          }, { transaction } );
+
+          mensagensCriadas.push(mensagensCriadasAvaliacao);
+        }
+
+        // Validar o último dia da avaliação 
+        if (diffDiasFree === 0) {
+          const msg = `${avaliacao.nome}, seu período de avaliação termina hoje. A partir de amanhã, o seu plano ${avaliacao.descricaoPlano}, no valor de ${valorFaturado}, será ativado.`;
+          const mensagensCriadasAvaliacao = await Mensagem.create({
+              idEmpresa: avaliacao.idEmpresa,
+              chave: `Avaliação`,
+              mensagem: msg,
+              lida: false,
+              observacoes: `Avaliação com vencimento em ${fimAvaliacao.toLocaleDateString('pt-BR')}.`
+          }, { transaction } );
+
+          mensagensCriadas.push(mensagensCriadasAvaliacao);
+        }
+         
+        // Avaliação finalizada, contrato em vigor
+        if (diffDiasFree < 0 && avaliacao.avaliacao === true) {
+          const msg = `${avaliacao.nome}, seu período de avaliação terminou. Seu contrato com o plano ${avaliacao.descricaoPlano}, está ativo.`;
+          const mensagensCriadasAvaliacao = await Mensagem.create({
+              idEmpresa: avaliacao.idEmpresa,
+              chave: `Contrato Ativado`,
+              mensagem: msg,
+              lida: false,
+              observacoes: `Avaliação com vencimento em ${fimAvaliacao.toLocaleDateString('pt-BR')}.`
+          }, { transaction } );
+
+          mensagensCriadas.push(mensagensCriadasAvaliacao);
+          
+          // Atualiza o fim da avaliação do produto
+          await Contrato.update(
+            {
+                avaliacao: false,
+                ativo: true,
+                updatedAt: new Date()
+            },
+            { where: { idEmpresa: idEmpresa }, transaction }
+          );
         }
       }
 

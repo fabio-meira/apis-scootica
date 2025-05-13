@@ -1,6 +1,8 @@
 const xml2js = require('xml2js');
 const Produto = require('../models/Produto');
 const { s3, BUCKET, PutObjectCommand } = require('../../config/s3Client');
+const { Op } = require('sequelize');
+const sequelize = require('../database/connection');
 
 const parser = new xml2js.Parser({ explicitArray: false });
 
@@ -18,6 +20,7 @@ async function uploadBufferToS3(buffer, filename) {
 }
 
 async function uploadAndImportNFe(req, res) {
+  const transaction = await sequelize.transaction();
   try {
     const { idEmpresa } = req.params;
     const { idFornecedor } = req.body;
@@ -39,30 +42,56 @@ async function uploadAndImportNFe(req, res) {
     }
 
     const dets = Array.isArray(nfe.infNFe.det) ? nfe.infNFe.det : [nfe.infNFe.det];
+
     const produtosCadastrados = await Promise.all(
-      dets.map(item => {
+      dets.map(async item => {
         const p = item.prod;
-        return Produto.create({
-          idEmpresa,
-          idFornecedor: parseInt(idFornecedor, 10),
-          referencia: p.cProd,
-          descricao: p.xProd,
-          codigoBarras: p.cEAN !== 'SEM GTIN' ? p.cEAN : null,
-          precoCusto: parseFloat(p.vUnCom) || 0,
-          preco: parseFloat(p.vUnCom) || 0,
-          precoLucro: 0,
-          estoque: parseFloat(p.qCom) || 0,
-          estoqueDisponivel: parseFloat(p.qCom) || 0,
-          tipoProduto: 'Produto',
-          unidadeMedida: p.uCom === 'UN' ? 'Unidade' : '',
-          ncm: p.NCM,
-          ativo: true,
-          movimentaEstoque: true,
-          observacoes: 'Importado via arquivo XML',
+        const referencia = p.cProd;
+        const codigoBarras = p.cEAN !== 'SEM GTIN' ? p.cEAN : null;
+        const quantidade = parseFloat(p.qCom) || 0;
+
+        // Verifica se o produto já existe
+        const produtoExistente = await Produto.findOne({
+          where: {
+            idEmpresa,
+            [Op.or]: [
+              { referencia },
+              { codigoBarras: codigoBarras || '' } // Se não houver código de barras, procura por referência
+            ]
+          }
         });
+
+        if (produtoExistente) {
+          // Atualiza apenas o estoque
+          produtoExistente.estoque += quantidade;
+          produtoExistente.estoqueDisponivel += quantidade;
+          await produtoExistente.save();
+          return produtoExistente;
+        } else {
+          // Cria novo produto
+          return Produto.create({
+            idEmpresa,
+            idFornecedor: parseInt(idFornecedor, 10),
+            referencia,
+            descricao: p.xProd,
+            codigoBarras,
+            precoCusto: parseFloat(p.vUnCom) || 0,
+            preco: parseFloat(p.vUnCom) || 0,
+            precoLucro: 0,
+            estoque: quantidade,
+            estoqueDisponivel: quantidade,
+            tipoProduto: 'Produto',
+            unidadeMedida: p.uCom === 'UN' ? 'Unidade' : '',
+            ncm: p.NCM,
+            ativo: true,
+            movimentaEstoque: true,
+            observacoes: 'Importado via arquivo XML',
+          });
+        }
       })
     );
-
+    
+    await transaction.commit(); 
     return res.status(201).json({
       message: 'Produtos importados com sucesso!',
       s3Key,
@@ -70,6 +99,7 @@ async function uploadAndImportNFe(req, res) {
     });
 
   } catch (err) {
+    await transaction.rollback(); 
     console.error('Erro ao importar XML:', err);
     return res.status(500).json({ error: 'Erro ao processar o XML.' });
   }
