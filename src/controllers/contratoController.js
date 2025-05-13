@@ -196,7 +196,7 @@ async function validarContratos(req, res) {
         // Validar dias de vencimento 5 ou 10 e criar uma mensagem
         if (diffDias === 10 || diffDias === 5 ) {
           const diasTexto = diffDias === 10 ? '10 dias' : '5 dias';
-          const msg = `${contrato.nome}, sua mensalidade no valor de ${valorFaturado}, vence em ${diasTexto} dias`;
+          const msg = `${contrato.nome}, sua mensalidade no valor de ${valorFaturado}, vence em ${diasTexto} dias.`;
   
           const novaMensagem = await Mensagem.create({
             idEmpresa: contrato.idEmpresa,
@@ -212,7 +212,7 @@ async function validarContratos(req, res) {
         // Validar dias de vencimento 3 ou 1 e criar uma mensagem
         if (diffDias === 3 || diffDias === 1 ) {
           const diasTexto = diffDias === 3 ? '3 dias' : '1 dia';
-          const msg = `${contrato.nome}, sua mensalidade no valor de ${valorFaturado}, vence em ${diasTexto} dias`;
+          const msg = `${contrato.nome}, sua mensalidade no valor de ${valorFaturado}, vence em ${diasTexto} dias.`;
   
           const novaMensagem = await Mensagem.create({
             idEmpresa: contrato.idEmpresa,
@@ -247,7 +247,7 @@ async function validarContratos(req, res) {
             const novaMensagem = await Mensagem.create({
                 idEmpresa: contrato.idEmpresa,
                 chave: `Fatura`,
-                mensagem: `${contrato.nome}, faturamento enviado por PIX para o e-mail ${contrato.email}, no valor de ${valorFaturado}`,
+                mensagem: `${contrato.nome}, faturamento enviado por PIX para o e-mail ${contrato.email}, no valor de ${valorFaturado}.`,
                 lida: false,
                 observacoes: `PIX gerado com vencimento em ${new Date(contrato.dtPagamento).toLocaleDateString('pt-BR')}.`
               }, { transaction } );
