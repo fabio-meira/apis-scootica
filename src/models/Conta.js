@@ -47,7 +47,7 @@ Conta.init({
       allowNull: true,
    },
    statusRecebimento: {
-      type: DataTypes.ENUM('Pendente', 'Recebido', 'Atrasado'),
+      type: DataTypes.ENUM('Pendente', 'Recebido', 'Atrasado', 'Pago'),
       allowNull: false
    },
    idFornecedor: {
