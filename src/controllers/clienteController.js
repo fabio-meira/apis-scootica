@@ -297,7 +297,7 @@ async function getClienteVendas(req, res) {
         // Busca as vendas de cliente
         const vendas = await Venda.findAll({ 
             where: whereCondition,
-            attributes: ['id', 'idReceita', 'origemVenda', 'idVendedor', 'valorTotal', 'createdAt'],
+            attributes: ['id', 'numeroVenda', 'idReceita', 'origemVenda', 'idVendedor', 'valorTotal', 'createdAt'],
             include: [
                 {
                     model: VendaProduto,
