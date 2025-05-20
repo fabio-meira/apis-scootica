@@ -4,7 +4,9 @@ const VendaProduto = require('../models/VendaProduto');
 const { Op } = require("sequelize");
 const OrdemProdutoTotal = require('../models/OrdemProdutoTotal');
 const Pagamento = require('../models/Pagamento');
-const Empresa = require('../models/Empresa')
+const Empresa = require('../models/Empresa');
+const OrdemServico = require('../models/OrdemServico');
+const Orcamento = require('../models/Orcamento');
 
 async function postVendedor(req, res) {
     try {
@@ -198,6 +200,96 @@ async function getVendasVendedor(req, res) {
     }
 }
 
+async function getRankingVendedores(req, res) {
+  try {
+    const { idEmpresa } = req.params;
+    let { startDate, endDate } = req.query;
+
+    // Converter datas para o formato Date com horários corretos
+    const whereDate = {};
+    if (startDate) {
+      const [y, m, d] = startDate.split('-');
+      whereDate[Op.gte] = new Date(Number(y), Number(m) - 1, Number(d), 0, 0, 0);
+    }
+    if (endDate) {
+      const [y, m, d] = endDate.split('-');
+      whereDate[Op.lte] = new Date(Number(y), Number(m) - 1, Number(d), 23, 59, 59, 999);
+    }
+
+    // Buscar todos os vendedores da empresa
+    const vendedores = await Vendedor.findAll({
+      where: { idEmpresa },
+      attributes: ['id', 'nomeCompleto', 'cpf']
+    });
+
+    const empresa = await Empresa.findOne({
+        where: { idEmpresa: idEmpresa },
+        attributes: ['nome', 'logradouro', 'numero', 'complemento', 'cep', 'bairro', 'cidade', 'estado', 'telefone', 'celular']
+    });
+
+    const ranking = [];
+
+    for (const vendedor of vendedores) {
+      // Vendas do vendedor
+      const vendas = await Venda.findAll({
+        where: {
+          idEmpresa,
+          idVendedor: vendedor.id,
+          ...(startDate || endDate ? { createdAt: whereDate } : {})
+        },
+        attributes: ['valorTotal']
+      });
+
+      const totalVendas = vendas.reduce((acc, venda) => acc + parseFloat(venda.valorTotal || 0), 0);
+      const quantidadeVendas = vendas.length;
+
+      // Contar ordens de serviço
+      const ordensServico = await OrdemServico.count({
+        where: {
+          idEmpresa,
+          idVendedor: vendedor.id,
+          ...(startDate || endDate ? { createdAt: whereDate } : {})
+        }
+      });
+
+      // Contar orçamentos
+      const orcamentos = await Orcamento.count({
+        where: {
+          idEmpresa,
+          idVendedor: vendedor.id,
+          ...(startDate || endDate ? { createdAt: whereDate } : {})
+        }
+      });
+
+      ranking.push({
+        idVendedor: vendedor.id,
+        nomeVendedor: vendedor.nomeCompleto,
+        cpf: vendedor.cpf,
+        totalVendas: totalVendas.toFixed(2),
+        quantidadeVendas,
+        ordensServico,
+        orcamentos
+      });
+    }
+
+    // Ordenar pelo total de vendas decrescente
+    ranking.sort((a, b) => parseFloat(b.totalVendas) - parseFloat(a.totalVendas));
+
+    res.status(200).json({ 
+        empresa,
+        periodo: {
+            inicio: startDate,
+            fim: endDate,
+        },
+        ranking 
+    });
+
+  } catch (error) {
+    console.error('Erro ao gerar ranking de vendedores:', error);
+    res.status(500).json({ message: 'Erro ao gerar ranking de vendedores', error });
+  }
+}
+
 async function putVendedor(req, res) {
     try {
         const { id } = req.params; 
@@ -257,6 +349,7 @@ module.exports = {
     listVendedores,
     getVendedor,
     getVendasVendedor,
+    getRankingVendedores,
     putVendedor,
     deleteVendedor
 };

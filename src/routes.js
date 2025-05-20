@@ -113,6 +113,7 @@ router.delete('/api/oticas/empresas/:idEmpresa/filiais/:id', IsAuthApiKey, filia
 // rotas de vendedores
 router.post('/api/oticas/empresas/:idEmpresa/vendedores', IsAuthApiKey, vendedorController.postVendedor);
 router.get('/api/oticas/empresas/:idEmpresa/vendedores', IsAuthApiKey, vendedorController.listVendedores);
+router.get('/api/oticas/empresas/:idEmpresa/vendedores/ranking', IsAuthApiKey, vendedorController.getRankingVendedores);
 router.get('/api/oticas/empresas/:idEmpresa/vendedores/:id', IsAuthApiKey, vendedorController.getVendedor);
 router.get('/api/oticas/empresas/:idEmpresa/vendedores/:id/vendas', IsAuthApiKey, vendedorController.getVendasVendedor);
 router.put('/api/oticas/empresas/:idEmpresa/vendedores/:id', IsAuthApiKey, vendedorController.putVendedor);
