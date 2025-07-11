@@ -32,6 +32,10 @@ OrcamentoProduto.init({
    type: DataTypes.STRING(15),
    allowNull: true
 },
+ ncm: {
+    type: DataTypes.STRING(20),
+    allowNull: true
+ },
  descricao: {
     type: DataTypes.STRING(200),
     allowNull: true

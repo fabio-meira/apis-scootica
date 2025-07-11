@@ -226,7 +226,7 @@ async function putProduto(req, res) {
             produtoData.hasOwnProperty('estoque') &&
             produtoData.hasOwnProperty('estoqueReservado')
         ) {
-            produtoData.estoqueDisponivel = produtoData.estoque - produtoData.estoqueReservado;
+            produtoData.estoqueDisponivel = produtoData.estoque - produtoData.estoqueMinimo  - produtoData.estoqueReservado;
         }
 
         // Atualiza o produto no banco de dados

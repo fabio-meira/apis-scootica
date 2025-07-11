@@ -35,6 +35,10 @@ VendaProduto.init({
    type: DataTypes.STRING(15),
    allowNull: true
 },
+ ncm: {
+    type: DataTypes.STRING(20),
+    allowNull: true
+ },
  unidadeMedida: {
    type: DataTypes.STRING(200),
    allowNull: true
