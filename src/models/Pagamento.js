@@ -1,7 +1,7 @@
 // models/Pagemento.js
 const { Model, DataTypes } = require('sequelize');
 const sequelize = require('../database/connection');
-// const Venda = require('./Venda');
+// const Venda = require('../models/Venda');
 
 class Pagamento extends Model {}
 
@@ -51,6 +51,10 @@ adiantamento: {
     type: DataTypes.INTEGER,
     allowNull: true
  },
+ valorParcela: {
+    type: DataTypes.DECIMAL(9,2),
+    allowNull: true
+ },
  valor: {
     type: DataTypes.DECIMAL(9,2),
     allowNull: true
@@ -97,10 +101,9 @@ adiantamento: {
  tableName: 'pagamentos'
 });
 
-
 // Pagamento.belongsTo(Venda, {
 //     foreignKey: 'idVenda',
-//     as: 'Venda'
+//     as: 'venda'
 //   });
 
 // models/OrdemServico.js

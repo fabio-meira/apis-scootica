@@ -10,6 +10,7 @@ const Laboratorio = require('../models/Laboratorio')
 const Vendedor = require('./Vendedor');
 const Receituario = require('./Receita');
 const Empresa = require('../models/Empresa');
+const OrdemServicoArquivo = require('./OrdemServicoArquivo');
 
 class OrdemServico extends Model {}
 
@@ -161,5 +162,10 @@ OrdemServico.belongsTo(Receituario, {
   foreignKey: 'idReceita',
   as: 'receita' 
 });  
+
+OrdemServico.hasMany(OrdemServicoArquivo, {
+  foreignKey: 'idOrdemServico',
+  as: 'ordemServicoArquivo' 
+});
 
 module.exports = OrdemServico;

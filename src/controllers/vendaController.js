@@ -6,6 +6,7 @@ const Medico = require('../models/Medico');
 const Receituario = require('../models/Receita');
 const Laboratorio = require('../models/Laboratorio');
 const Pagamento = require('../models/Pagamento');
+const Parcela = require('../models/Parcela');
 const Empresa = require('../models/Empresa');
 const VendaProduto = require('../models/VendaProduto');
 const OrdemServico = require('../models/OrdemServico');
@@ -73,7 +74,25 @@ async function postVenda(req, res) {
                     idEmpresa: venda.idEmpresa
                 };
                 // Cria o novo pagamento
-                await Pagamento.create(newPayment, { transaction });
+                //await Pagamento.create(newPayment, { transaction });
+                const createdPayment = await Pagamento.create(newPayment, { transaction });
+
+                // Se for cartão de crédito, cria as parcelas
+                if (pagamento.statusRecebimento === 'Credito' && pagamento.parcelas && pagamento.valor) {
+                    for (let i = 0; i < pagamento.quantidadeParcelas; i++) {
+                        const vencimento = new Date(pagamento.dataVencimento); // Assume que a data da primeira parcela vem no corpo
+                        vencimento.setMonth(vencimento.getMonth() + i);
+
+                        await Parcela.create({
+                            idPagamento: createdPayment.id, // ID do pagamento
+                            idEmpresa: venda.idEmpresa,
+                            quantidade: pagamento.parcelas,
+                            dataVencimento: vencimento,
+                            outrasInformacoes: `Parcela ${i + 1} de ${pagamento.parcelas} - Valor: R$ ${pagamento.parcelas}`,
+                            tipoPagamento: 'Credito'
+                        }, { transaction });
+                    }
+                }
             }
         }
         
@@ -349,6 +368,7 @@ async function getVenda(req, res) {
                 {
                     model: Pagamento,
                     as: 'pagamentos'
+                    // incluir as parcelas de pagamento, caso tenha
                 },
                 {
                     model: OrdemProdutoTotal,

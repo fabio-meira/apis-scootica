@@ -1,4 +1,5 @@
 const uploadXml = require('./middleware/uploadXml');
+const uploadImage = require('./middleware/uploadImage');
 const router = require('express').Router()
 const empresaController = require('./controllers/empresaController')
 const clienteController = require('./controllers/clienteController')
@@ -32,12 +33,17 @@ const vendaController = require('./controllers/vendaController')
 const caixaController = require('./controllers/caixaController')
 const dashboardController = require('./controllers/dashboardController')
 const financeiroController = require('./controllers/financeiroController')
+const metaController = require('./controllers/metaController')
 const origemController = require('./controllers/origemController')
 const filialController = require('./controllers/filialController')
 const nfeController = require('./controllers/nfeController')
 const mensagemController = require('./controllers/mensagemController')
 const contratoController = require('./controllers/contratoController')
-
+const cobradorController = require('./controllers/cobradorController')
+const upload = require('./middleware/uploadCertificado')
+const { salvarCertificado } = require('./controllers/certificadoController')
+const nfceController = require('./controllers/nfceController')
+const parametroJuros = require('./controllers/parametrosJurosController')
 
 // jwt-authorization
 router.post('/api/oticas/token', authorization.auth);
@@ -148,7 +154,7 @@ router.put('/api/oticas/empresas/:idEmpresa/orcamentos/:id', IsAuthApiKey, orcam
 router.delete('/api/oticas/empresas/:idEmpresa/orcamentos/:id', IsAuthApiKey, orcamentoController.deleteOrcamento);
 
 // rotas de ordem de serviços
-router.post('/api/oticas/empresas/:idEmpresa/ordemServico', IsAuthApiKey, ordemServicoController.postOrdemServico);
+router.post('/api/oticas/empresas/:idEmpresa/ordemServico', IsAuthApiKey, uploadImage.array('imagens', 10), ordemServicoController.postOrdemServico);
 router.get('/api/oticas/empresas/:idEmpresa/ordemServico', IsAuthApiKey, ordemServicoController.getOrdemServico);
 router.get('/api/oticas/empresas/:idEmpresa/ordemServico/sv', IsAuthApiKey, ordemServicoController.getOrdemServicoSV);
 router.get('/api/oticas/empresas/:idEmpresa/ordemServico/:id', IsAuthApiKey, ordemServicoController.getIdOrdemServico);
@@ -271,6 +277,34 @@ router.get('/api/oticas/empresas/:idEmpresa/contratos/:id', IsAuthApiKey, contra
 router.put('/api/oticas/empresas/:idEmpresa/contratos/:id', IsAuthApiKey, contratoController.putContrato);
 router.delete('/api/oticas/empresas/:idEmpresa/contratos/:id', IsAuthApiKey, contratoController.deleteContrato);
 router.get('/api/oticas/empresas/:idEmpresa/contratos/dataReferencia/:date', IsAuthApiKey, contratoController.validarContratos);
+
+// rotas de cobradores
+router.post('/api/oticas/empresas/:idEmpresa/cobradores', IsAuthApiKey, cobradorController.postCobrador);
+router.get('/api/oticas/empresas/:idEmpresa/cobradores', IsAuthApiKey, cobradorController.listCobradores);
+router.get('/api/oticas/empresas/:idEmpresa/cobradores/ranking', IsAuthApiKey, cobradorController.getRankingCobradores);
+router.get('/api/oticas/empresas/:idEmpresa/cobradores/:id', IsAuthApiKey, cobradorController.getCobrador);
+router.get('/api/oticas/empresas/:idEmpresa/cobradores/:id/vendas', IsAuthApiKey, cobradorController.getRankingCobradores);
+router.put('/api/oticas/empresas/:idEmpresa/cobradores/:id', IsAuthApiKey, cobradorController.putCobrador);
+router.delete('/api/oticas/empresas/:idEmpresa/cobradores/:id', IsAuthApiKey, cobradorController.deleteCobrador);
+
+// rotas de parametros de juros
+router.post('/api/oticas/empresas/:idEmpresa/juros', IsAuthApiKey, parametroJuros.postJuros);
+router.get('/api/oticas/empresas/:idEmpresa/juros', IsAuthApiKey, parametroJuros.listJuros);
+
+// rotas de metas
+router.post('/api/oticas/empresas/:idEmpresa/metas', IsAuthApiKey, metaController.postMeta);
+router.get('/api/oticas/empresas/:idEmpresa/metas', IsAuthApiKey, metaController.listMetas);
+// router.put('/api/oticas/empresas/:idEmpresa/metas/:mes/:ano', IsAuthApiKey, metaController.getFinanceiroMes);
+
+
+// rotas de certificados
+// router.post('/api/oticas/empresas/:idEmpresa/:cnpj/certificado', IsAuthApiKey, certificadoController.salvarCertificado);
+router.post('/api/oticas/empresas/:idEmpresa/:cnpj/certificado', upload.single('certificado'), salvarCertificado);
+// router.get('/api/oticas/empresas/:idEmpresa/vendedores', IsAuthApiKey, vendedorController.listVendedores);
+
+// rotas de criar notas fiscais
+router.post('/api/oticas/empresas/:idEmpresa/nfce', IsAuthApiKey, nfceController.emitirNfceCompleta);
+// router.get('/api/oticas/empresas/:idEmpresa/vendedores', IsAuthApiKey, vendedorController.listVendedores);
 
 // Localizar CEPs
 router.get('/api/oticas/cep/:cep', IsAuthApiKey, cepController.getCep);

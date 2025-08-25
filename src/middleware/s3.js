@@ -1,24 +1,35 @@
+// middlewares/s3.js
 const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
+// const path = require('path');
 
 const s3Client = new S3Client({
-  region: 'us-east-1', // A região do seu bucket
+  region: process.env.AWS_REGION || 'us-east-1',
   credentials: {
     accessKeyId: process.env.AWS_ACCESS_KEY_ID,
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
   }
 });
 
-const uploadToS3 = async (file, bucketName) => {
+const uploadToS3 = async (file, bucketName, prefix = 'uploads/') => {
+  const timestamp = Date.now();
+  const safeFilename = file.originalname.replace(/\s+/g, '_');
+  const key = `${prefix}${timestamp}_${safeFilename}`;
+
   const params = {
-    Bucket: bucketName,  // Certifique-se de que o Bucket está sendo passado corretamente
-    Key: file.originalname,
+    Bucket: bucketName,
+    Key: key,
     Body: file.buffer,
-    ContentType: file.mimetype
+    ContentType: file.mimetype,
+    ACL: 'public-read'
   };
 
   try {
-    const data = await s3Client.send(new PutObjectCommand(params));
-    console.log('Arquivo enviado com sucesso:', data);
+    const result = await s3Client.send(new PutObjectCommand(params));
+    // console.log('Upload S3 sucesso:', key);
+    return {
+      key,
+      result
+    };
   } catch (err) {
     console.error('Erro ao enviar arquivo para o S3:', err);
     throw err;

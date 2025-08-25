@@ -9,21 +9,33 @@ Parcela.init({
       primaryKey: true,
       autoIncrement: true,
    },
-   idContas: {
-    type: DataTypes.INTEGER,
-    allowNull: false,
-    },
    idEmpresa: {
         type: DataTypes.STRING(50),
         allowNull: true,
    },
-   idFornecedor: {
-    type: DataTypes.STRING(100),
+   idFilial: {
+    type: DataTypes.INTEGER,
     allowNull: true,
+   },
+   idPagamento: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+   },
+   tipoPagamento: {
+     type: DataTypes.ENUM('Credito', 'Debito', 'Boleto', 'Duplicata', 'Crediario', 'Pix'), 
+     allowNull: false
    },
    quantidade: {
      type: DataTypes.INTEGER,
      allowNull: true,
+   },
+   valorParcela: {
+    type: DataTypes.DECIMAL(9,2),
+    allowNull: true
+   },
+   percJuros: {
+    type: DataTypes.DECIMAL(5,2),
+    allowNull: true
    },
    dataVencimento: {
       type: DataTypes.DATE,
@@ -33,16 +45,19 @@ Parcela.init({
       type: DataTypes.STRING(1000),
       allowNull: false,
    },
-   statusRecebimento: {
-      type: DataTypes.ENUM('Credito', 'Debito', 'Boleto', 'Duplicata'),
-      allowNull: false
+    createdAt: {
+    type: DataTypes.DATE,
+    allowNull: true
    },
+   updatedAt: {
+    type: DataTypes.DATE,
+    allowNull: true
+   }
 }, 
 {
  sequelize,
  modelName: 'Parcela',
- tableName: 'parcelas',
- timestamps: false 
+ tableName: 'parcelas'
 });
 
 module.exports = Parcela;

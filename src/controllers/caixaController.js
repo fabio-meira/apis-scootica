@@ -469,7 +469,7 @@ async function getCaixa(req, res) {
                 {
                     model: Venda,
                     as: 'vendas',
-                    attributes: ['id', 'idCaixa', 'valorTotal', 'createdAt'],
+                    attributes: ['id', 'numeroVenda', 'idCaixa', 'valorTotal', 'createdAt'],
                     include: [
                         {
                             model: Cliente,
@@ -539,6 +539,11 @@ async function getCaixa(req, res) {
         caixa.vendas.forEach(venda => {
             venda.pagamentos.forEach(pagamento => {
                 totalPagamentos += parseFloat(pagamento.valor);
+
+                // Adiciona numeroVenda e idVenda dentro do pagamento
+                pagamento.numeroVenda = venda.numeroVenda;
+                pagamento.idVenda = venda.id;
+
                 if (pagamento.adiantamento) {
                     totalAdiantamentos += parseFloat(pagamento.valor);
                 } else {
@@ -552,6 +557,7 @@ async function getCaixa(req, res) {
                         valor: parseFloat(pagamento.valor).toFixed(2),
                         adiantamento: pagamento.adiantamento,
                         venda: pagamento.idVenda,
+                        numeroVenda: pagamento.numeroVenda, 
                         tipo: pagamento.tipo,
                         data: pagamento.createdAt
                     });

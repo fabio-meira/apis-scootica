@@ -14,12 +14,17 @@ const Produto = require('../models/Produto');
 const Reserva = require('../models/Reserva');
 const sequelize = require('../database/connection');
 const Mensagem = require('../models/Mensagem');
+const { uploadToS3 } = require('../middleware/s3');
+const { BUCKET_IMAGES } = require('../../config/s3Client');
+const OrdemServicoArquivo = require('../models/OrdemServicoArquivo');
 
 // Função para criar uma nova Ordem de Serviço e seus pagamentos relacionados
 async function postOrdemServico(req, res) {
+
   const transaction = await sequelize.transaction(); 
   try {
-    const ordemServicoData = req.body;
+    // const ordemServicoData = req.body;
+    const ordemServicoData = JSON.parse(req.body.body || '{}');
     const { idEmpresa } = req.params;
 
     // Adiciona idEmpresa aos dados da Ordem de Serviço
@@ -133,6 +138,33 @@ async function postOrdemServico(req, res) {
         },
         { where: { id: ordemServicoData.idOrcamento }, transaction }
       );
+    }
+
+    // Verifica se tem arquivo para ser anexado na O.S.
+    if (req.files && req.files.length > 0) {
+        const uploads = await Promise.all(
+            req.files.map(async (file) => {
+            const { key } = await uploadToS3(file, BUCKET_IMAGES, 'OS/');
+            
+            return {
+                originalname: file.originalname,
+                mimetype: file.mimetype,
+                key
+            };
+            })
+        );
+
+        await Promise.all(
+            uploads.map(upload => 
+            OrdemServicoArquivo.create({
+                idEmpresa,
+                idOrdemServico: ordemServico.id,
+                nomeArquivo: upload.originalname,
+                caminhoS3: upload.key,
+                tipoArquivo: upload.mimetype
+            }, { transaction })
+            )
+        );
     }
 
     await transaction.commit(); 
@@ -269,6 +301,10 @@ async function getOrdemServico(req, res) {
                     model: OrdemProdutoTotal,
                     as: 'totais'
                 },
+                {
+                    model: OrdemServicoArquivo,
+                    as: 'ordemServicoArquivo'
+                },
             ],
             order: [
                 ['id', 'DESC']
@@ -338,6 +374,10 @@ async function getOrdemServicoSV(req, res) {
                     model: OrdemProdutoTotal,
                     as: 'totais'
                 },
+                {
+                    model: OrdemServicoArquivo,
+                    as: 'ordemServicoArquivo'
+                },
             ],
             order: [
                 ['id', 'DESC']
@@ -404,6 +444,10 @@ async function getIdOrdemServico(req, res) {
                 {
                     model: OrdemProdutoTotal,
                     as: 'totais'
+                },
+                {
+                    model: OrdemServicoArquivo,
+                    as: 'ordemServicoArquivo'
                 },
             ],
             order: [

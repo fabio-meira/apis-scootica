@@ -5,8 +5,10 @@ const { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } = re
 
 const REGION = process.env.AWS_REGION;
 const BUCKET = process.env.S3_BUCKET_NAME;
+const BUCKET_IMAGES = process.env.S3_BUCKET_NAME_IMAGES;
 
-if (!BUCKET) {
+// if (!BUCKET) {
+if (!BUCKET || !BUCKET_IMAGES){
   throw new Error('A variável de ambiente AWS_BUCKET_NAME não foi definida.');
 }
 
@@ -18,4 +20,5 @@ const s3 = new S3Client({
   },
 });
 
-module.exports = { s3, BUCKET, PutObjectCommand, GetObjectCommand, DeleteObjectCommand };
+module.exports = { s3, BUCKET, BUCKET_IMAGES, PutObjectCommand, GetObjectCommand, DeleteObjectCommand };
+

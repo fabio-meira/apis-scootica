@@ -1,4 +1,5 @@
 const FormaRecebimento = require('../models/FormaRecebimento');
+const ParametrosJuros = require('../models/parametrosJuros');
 const Banco = require('../models/Banco')
 
 // Função para cadastrar nova forma de recebimento
@@ -8,6 +9,8 @@ async function postFormaRecebimento(req, res) {
         const { idEmpresa } = req.params; 
         const { descricao } = req.body; 
         const { idBanco } = req.body; 
+        const { tipoRecebimento } = req.body;
+        const { parcelas = [] } = req.body;
 
         // Verificar se forma de recebimento já está cadastrado
         const formaExists = await FormaRecebimento.findOne({ 
@@ -28,6 +31,21 @@ async function postFormaRecebimento(req, res) {
         formaData.idEmpresa = idEmpresa;
 
         const formaRecebimento = await FormaRecebimento.create(formaData);
+
+        // Se tipoRecebimento for CREDIARIO, salva parcelas
+        if (tipoRecebimento === 'Crediário' && Array.isArray(parcelas) && parcelas.length > 0) {
+        const parametrosToCreate = parcelas.map(parcela => ({
+            idEmpresa: idEmpresa,
+            idFormaPagamento: formaRecebimento.id,
+            quantidadeParcelas: parcela.qtdParcelas,
+            jurosMensal: parcela.jurosMensal,
+            ativo: true,
+            createdAt: new Date(),
+            updatedAt: new Date()
+        }));
+
+        await ParametrosJuros.bulkCreate(parametrosToCreate);
+        }
 
         res.status(201).json({ message: 'Forma de recebimento cadastrada com sucesso', formaRecebimento });
     } catch (error) {
@@ -50,6 +68,11 @@ async function listFormaRecebimento(req, res) {
                     model: Banco, 
                     as: 'banco',
                     attributes: ['codigoBanco', 'nomeBanco', 'nome'] 
+                },
+                {
+                    model: ParametrosJuros,
+                    as: 'parametrosJuros', 
+                    attributes: ['quantidadeParcelas', 'jurosMensal', 'ativo']
                 }
             ],
             order: [
@@ -80,6 +103,11 @@ async function getFormaRecebimento(req, res) {
                     model: Banco, 
                     as: 'banco',
                     attributes: ['codigoBanco', 'nomeBanco', 'nome'] 
+                },
+                {
+                    model: ParametrosJuros,
+                    as: 'parametrosJuros', 
+                    attributes: ['quantidadeParcelas', 'jurosMensal', 'ativo']
                 }
             ]
         });
