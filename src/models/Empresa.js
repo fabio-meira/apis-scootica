@@ -27,6 +27,10 @@ Empresa.init({
     type: DataTypes.STRING(14),
     allowNull: true,
  },
+ razaoSocial: {
+    type: DataTypes.STRING(200),
+    allowNull: true,
+ },
  ie: {
     type: DataTypes.STRING(20),
     allowNull: true,
@@ -71,11 +75,27 @@ Empresa.init({
     type: DataTypes.STRING(200),
     allowNull: true,
  },
+ codCidade: {
+    type: DataTypes.STRING(20),
+    allowNull: true,
+ },
  estado: {
     type: DataTypes.STRING(50),
     allowNull: true,
  },
+ codUf: {
+    type: DataTypes.STRING(2),
+    allowNull: true,
+ },
+ uf: {
+    type: DataTypes.STRING(2),
+    allowNull: true,
+ },
  pais: {
+    type: DataTypes.STRING(20),
+    allowNull: true,
+ },
+  ambienteSefaz: {
     type: DataTypes.STRING(20),
     allowNull: true,
  },

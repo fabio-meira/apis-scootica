@@ -15,12 +15,42 @@ const sequelize = require('../database/connection');
 const Reserva = require('../models/Reserva');
 const Produto = require('../models/Produto');
 const Mensagem = require('../models/Mensagem');
+const { uploadToS3 } = require('../middleware/s3');
+const { BUCKET_IMAGES } = require('../../config/s3Client');
+const OrdemServicoArquivo = require('../models/OrdemServicoArquivo');
+
+// Função para sanear os campos
+function sanitizeVendaData(data) {
+  const parseNum = (val) => {
+    if (val === null || val === undefined || val === '') return null;
+    const num = Number(val);
+    return isNaN(num) ? null : num;
+  };
+
+  return {
+    ...data,
+    idCliente: parseNum(data.idCliente),
+    idVendedor: parseNum(data.idVendedor),
+    idCaixa: parseNum(data.idCaixa),
+    idOrdemServico: parseNum(data.idOrdemServico),
+    idReceita: parseNum(data.idReceita),
+    idLaboratorio: parseNum(data.idLaboratorio),
+    aro: parseNum(data.aro),
+    ponte: parseNum(data.ponte),
+    diagonalMaior: parseNum(data.diagonalMaior),
+    verticalAro: parseNum(data.verticalAro),
+    valorTotal: parseNum(data.valorTotal),
+    dtEstimadaEntrega: data.dtEstimadaEntrega || null,
+    enviadoLaboratorio: data.enviadoLaboratorio ?? false,
+  };
+}
 
 // Função para criar uma nova venda e seus produtos, ordem de serviço, totais e pagamentos relacionados
 async function postVenda(req, res) {
     const transaction = await sequelize.transaction();
     try {
-        const vendaData = req.body;
+        // const vendaData = req.body;
+        const vendaData = JSON.parse(req.body.body || '{}');
         const { idEmpresa } = req.params;
 
         // Adiciona idEmpresa aos dados de venda
@@ -224,12 +254,56 @@ async function postVenda(req, res) {
             );
         };
 
+        // Verifica se tem arquivo para ser anexado na Venda
+        if (req.files && req.files.length > 0) {
+        const uploads = await Promise.all(
+            req.files.map(async (file) => {
+            const { key } = await uploadToS3(file, BUCKET_IMAGES, 'OS/');
+            return {
+                originalname: file.originalname,
+                mimetype: file.mimetype,
+                key
+            };
+            })
+        );
+
+        await Promise.all(
+            uploads.map(upload => 
+            OrdemServicoArquivo.create({
+                idEmpresa,
+                idOrdemServico: vendaData.idOrdemServico || null,
+                idVenda: venda.id,
+                nomeArquivo: upload.originalname,
+                caminhoS3: upload.key,
+                tipoArquivo: upload.mimetype
+            }, { transaction })
+            )
+        );
+        };
+
+        if (vendaData.idOrdemServico != null) {
+            await OrdemServicoArquivo.update(
+                { idVenda: venda.id },
+                {
+                where: {
+                    idOrdemServico: vendaData.idOrdemServico,
+                    idVenda: null
+                },
+                transaction
+                }
+            );
+        };
+
         await transaction.commit();
+
         res.status(201).json({ message: 'Venda criada com sucesso', vendaData });
+
     } catch (error) {
         await transaction.rollback();
         console.error(error);
-        res.status(500).json({ message: 'Erro ao criar venda', error });
+        const statusCode = error.status || 500;
+        // res.status(500).json({ message: 'Erro ao criar venda', error });
+        res.status(statusCode).json({ message: error.message });
     }
 }
 
@@ -374,6 +448,10 @@ async function getVenda(req, res) {
                     model: OrdemProdutoTotal,
                     as: 'totais'
                 },
+                {
+                    model: OrdemServicoArquivo,
+                    as: 'ordemServicoArquivo'
+                },
             ],
             order: [
                 ['id', 'DESC']
@@ -447,6 +525,10 @@ async function getIdVenda(req, res) {
                     model: OrdemServico,
                     as: 'ordemServico',
                     attributes: ['createdAt']
+                },
+                {
+                    model: OrdemServicoArquivo,
+                    as: 'ordemServicoArquivo'
                 },
             ],
             order: [

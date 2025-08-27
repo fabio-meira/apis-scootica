@@ -18,7 +18,11 @@ OrdemServicoArquivo.init({
   },
   idOrdemServico: {
     type: DataTypes.INTEGER,
-    allowNull: false
+    allowNull: true
+  },
+  idVenda: {
+    type: DataTypes.INTEGER,
+    allowNull: true
   },
   nomeArquivo: {
     type: DataTypes.STRING(255),
