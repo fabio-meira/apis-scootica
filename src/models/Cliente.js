@@ -114,8 +114,16 @@ Cliente.init({
     type: DataTypes.STRING(100),
     allowNull: true,
  },
+ codCidade: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+ },
  estado: {
     type: DataTypes.STRING(100),
+    allowNull: true,
+ },
+ codUF: {
+    type: DataTypes.INTEGER,
     allowNull: true,
  },
  pais: {

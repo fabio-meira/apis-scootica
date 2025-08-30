@@ -31,6 +31,10 @@ Pagamento.init({
    type: DataTypes.STRING(500),
    allowNull: true
 },
+tipoRecebimento: {
+   type: DataTypes.STRING(100),
+   allowNull: false
+},
 adiantamento: {
    type: DataTypes.BOOLEAN,
    allowNull: false
@@ -49,7 +53,8 @@ adiantamento: {
  },
  parcelas: {
     type: DataTypes.INTEGER,
-    allowNull: true
+    allowNull: true,
+    defaultValue: 1
  },
  valorParcela: {
     type: DataTypes.DECIMAL(9,2),

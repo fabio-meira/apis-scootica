@@ -284,7 +284,7 @@ async function getClienteVendas(req, res) {
 
         const empresa = await Empresa.findOne({
             where: { idEmpresa: idEmpresa },
-            attributes: ['cnpj', 'nome', 'logradouro', 'numero', 'complemento', 'cep', 'bairro', 'cidade', 'estado', 'telefone', 'celular']
+            attributes: ['cnpj', 'nome', 'logradouro', 'numero', 'complemento', 'cep', 'bairro', 'cidade', 'estado', 'uf', 'telefone', 'celular']
         });
         
         if (!cliente) {

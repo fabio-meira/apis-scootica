@@ -31,6 +31,10 @@ Empresa.init({
     type: DataTypes.STRING(200),
     allowNull: true,
  },
+ nomeFantasia: {
+    type: DataTypes.STRING(500),
+    allowNull: true,
+ },
  ie: {
     type: DataTypes.STRING(20),
     allowNull: true,
@@ -83,7 +87,7 @@ Empresa.init({
     type: DataTypes.STRING(50),
     allowNull: true,
  },
- codUf: {
+ codUF: {
     type: DataTypes.STRING(2),
     allowNull: true,
  },
@@ -95,7 +99,16 @@ Empresa.init({
     type: DataTypes.STRING(20),
     allowNull: true,
  },
-  ambienteSefaz: {
+ emiteNF: {
+    type: DataTypes.BOOLEAN,
+    allowNull: true,
+    defaultValue: false
+ },
+ tipoNF: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+ },
+ ambienteSefaz: {
     type: DataTypes.STRING(20),
     allowNull: true,
  },
