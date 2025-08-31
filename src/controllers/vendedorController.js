@@ -98,7 +98,7 @@ async function getVendasVendedor(req, res) {
 
         const empresa = await Empresa.findOne({
             where: { idEmpresa: idEmpresa },
-            attributes: ['cnpj', 'nome', 'logradouro', 'numero', 'complemento', 'cep', 'bairro', 'cidade', 'estado', 'telefone', 'celular']
+            attributes: ['cnpj', 'nome', 'logradouro', 'numero', 'complemento', 'cep', 'bairro', 'cidade', 'estado', 'uf', 'telefone', 'celular']
         });
 
         if (!vendedor) {
@@ -224,7 +224,7 @@ async function getRankingVendedores(req, res) {
 
     const empresa = await Empresa.findOne({
         where: { idEmpresa: idEmpresa },
-        attributes: ['nome', 'logradouro', 'numero', 'complemento', 'cep', 'bairro', 'cidade', 'estado', 'telefone', 'celular']
+        attributes: ['nome', 'logradouro', 'numero', 'complemento', 'cep', 'bairro', 'cidade', 'estado', 'uf', 'telefone', 'celular']
     });
 
     const ranking = [];

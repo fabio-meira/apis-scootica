@@ -371,7 +371,7 @@ async function getReceita(req, res) {
                 {
                     model: Empresa,
                     as: 'empresa',
-                    attributes: ['cnpj', 'nome', 'logradouro', 'numero', 'complemento', 'cep', 'bairro', 'cidade', 'estado', 'telefone', 'celular']
+                    attributes: ['cnpj', 'nome', 'logradouro', 'numero', 'complemento', 'cep', 'bairro', 'cidade', 'estado', 'uf', 'telefone', 'celular']
                 },
                 { 
                     model: Cliente, 
