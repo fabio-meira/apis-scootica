@@ -17,6 +17,11 @@ Filial.init({
     type: DataTypes.STRING(15),
     allowNull: true,
  },
+ matriz: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
+ },
  razaoSocial: {
     type: DataTypes.STRING(200),
     allowNull: true,
