@@ -9,7 +9,7 @@ const BUCKET_IMAGES = process.env.S3_BUCKET_NAME_IMAGES;
 
 // if (!BUCKET) {
 if (!BUCKET || !BUCKET_IMAGES){
-  throw new Error('A variável de ambiente AWS_BUCKET_NAME não foi definida.');
+  throw new Error('A variável de ambiente S3_BUCKET_NAME não foi definida.');
 }
 
 const s3 = new S3Client({

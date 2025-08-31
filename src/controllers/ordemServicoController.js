@@ -157,7 +157,7 @@ async function postOrdemServico(req, res) {
         await Promise.all(
             uploads.map(upload => 
             OrdemServicoArquivo.create({
-                idEmpresa,
+                idEmpresa, 
                 idOrdemServico: ordemServico.id,
                 nomeArquivo: upload.originalname,
                 caminhoS3: upload.key,
