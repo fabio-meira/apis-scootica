@@ -485,7 +485,7 @@ async function getIdVenda(req, res) {
                 {
                     model: Empresa,
                     as: 'empresa',
-                    attributes: ['cnpj', 'ie', 'razaoSocial', 'nome', 'logradouro', 'numero', 'complemento', 'cep', 'bairro', 'cidade', 'codCidade', 'estado', 'uf', 'codUF', 'telefone', 'celular']
+                    attributes: ['cnpj', 'ie', 'razaoSocial', 'nomeFantasia', 'nome', 'logradouro', 'numero', 'complemento', 'cep', 'bairro', 'cidade', 'codCidade', 'estado', 'uf', 'codUF', 'telefone', 'celular']
                 },
                 {
                     model: Cliente,

@@ -222,8 +222,7 @@ function montarJsonNFe(venda, empresa) {
   const infCpl = `
     Inf. Contribuinte: DOCUMENTO EMITIDO POR ME OU EPP OPTANTE PELO SIMPLES NACIONAL.
     NAO GERA DIREITO A CREDITO FISCAL DE IPI.
-    Valor aprox. dos tributos: R$ ${totalTributos.toFixed(2)} (Federal: R$ ${totalTributosFederal.toFixed(2)} e Estadual: ${totalTributosEstadual.toFixed(2)}).
-    Fonte: IBPT
+    Valor aprox. dos tributos: R$ ${totalTributos.toFixed(2)} (Federal: R$ ${totalTributosFederal.toFixed(2)} e Estadual: ${totalTributosEstadual.toFixed(2)}). Fonte: IBPT
     `;
 
   return {
