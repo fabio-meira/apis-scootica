@@ -42,7 +42,7 @@ const contratoController = require('./controllers/contratoController')
 const cobradorController = require('./controllers/cobradorController')
 const upload = require('./middleware/uploadCertificado')
 const { salvarCertificado } = require('./controllers/certificadoController')
-const nfceController = require('./controllers/nfceController')
+const notaFiscalController = require('./controllers/notaFiscalController')
 const parametroJuros = require('./controllers/parametrosJurosController')
 
 // jwt-authorization
@@ -162,7 +162,7 @@ router.put('/api/oticas/empresas/:idEmpresa/ordemServico/:id', IsAuthApiKey, ord
 router.delete('/api/oticas/empresas/:idEmpresa/ordemServico/:id', IsAuthApiKey, ordemServicoController.deleteOrdemServico);
 
 // rotas de vendas
-router.post('/api/oticas/empresas/:idEmpresa/vendas', IsAuthApiKey, vendaController.postVenda);
+router.post('/api/oticas/empresas/:idEmpresa/vendas', IsAuthApiKey, uploadImage.array('imagens', 10), vendaController.postVenda);
 router.get('/api/oticas/empresas/:idEmpresa/vendas', IsAuthApiKey, vendaController.getVenda);
 router.get('/api/oticas/empresas/:idEmpresa/vendas/:id', IsAuthApiKey, vendaController.getIdVenda);
 router.get('/api/oticas/empresas/:idEmpresa/vendas/caixa/:id', IsAuthApiKey, vendaController.getCaixaIdVenda);
@@ -303,8 +303,10 @@ router.post('/api/oticas/empresas/:idEmpresa/:cnpj/certificado', upload.single('
 // router.get('/api/oticas/empresas/:idEmpresa/vendedores', IsAuthApiKey, vendedorController.listVendedores);
 
 // rotas de criar notas fiscais
-router.post('/api/oticas/empresas/:idEmpresa/nfce', IsAuthApiKey, nfceController.emitirNfceCompleta);
+// router.post('/api/oticas/empresas/:idEmpresa/nfce', IsAuthApiKey, nfceController.emitirNfceCompleta);
 // router.get('/api/oticas/empresas/:idEmpresa/vendedores', IsAuthApiKey, vendedorController.listVendedores);
+router.post('/api/oticas/empresas/:idEmpresa/notaFiscal', IsAuthApiKey, notaFiscalController.emitirNotaFiscal);
+
 
 // Localizar CEPs
 router.get('/api/oticas/cep/:cep', IsAuthApiKey, cepController.getCep);
