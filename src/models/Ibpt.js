@@ -4,6 +4,12 @@ const sequelize = require('../database/connection');
 class Ibpt extends Model {}
 
 Ibpt.init({
+   id: {
+     type: DataTypes.INTEGER,
+     allowNull: false,
+     primaryKey: true,
+     autoIncrement: true
+   },
    Codigo: {
       type: DataTypes.STRING(20),
       primaryKey: false,
