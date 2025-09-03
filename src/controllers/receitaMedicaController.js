@@ -1,5 +1,6 @@
 const Empresa = require('../models/Empresa');
 const { Medico, Receita, Cliente } = require('../models/Association');
+const Mensagem = require('../models/Mensagem');
 const { Op, fn, col, literal } = require('sequelize');
 const moment = require('moment');
 
@@ -14,6 +15,20 @@ async function postReceita(req, res) {
         receitaData.ativo = true;
 
         const receita = await Receita.create(receitaData);
+
+        // Tenta criar a mensagem, mas se der erro não bloqueia a receita
+        try {
+            await Mensagem.create({
+                idEmpresa: idEmpresa, 
+                chave: `Receita`,
+                mensagem: `Receita do profissional ${receitaData.idMedico?? 'desconhecido'} está pronta para impressão.`,
+                lida: false,
+                observacoes: `Receita para orçamento do cliente ${receitaData.idMedico ?? 'desconhecido'}.`
+            });
+        } catch (msgError) {
+            console.error("Erro ao criar mensagem:", msgError);
+            // aqui você pode até salvar um log, mas segue o fluxo
+        }
 
         res.status(201).json({ message: 'Receituário cadastrado com sucesso', receita });
     } catch (error) {
