@@ -185,7 +185,7 @@ async function postOrdemServico(req, res) {
     // Buscar vendedor antes de validar integracaoCRM
     const vendedor = await Vendedor.findOne({
         where: { idEmpresa: idEmpresa,
-            id: orcamentoData.idVendedor
+            id: ordemServico.idVendedor
             },
             transaction
     });
