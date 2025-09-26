@@ -8,9 +8,12 @@ const Pagamento = require('../models/Pagamento');
 const VendaProduto = require('../models/VendaProduto');
 const Empresa = require('../models/Empresa');
 const Vendedor = require('../models/Vendedor');
+const sequelize = require('../database/connection');
+const { criarContatoNoKommo } = require("../services/kommoService");
 
 // Função para cadastrar um novo cliente
 async function postCliente(req, res) {
+    const transaction = await sequelize.transaction();
     try {
         const clienteData = req.body;
         const { idEmpresa } = req.params; 
@@ -21,9 +24,10 @@ async function postCliente(req, res) {
             where: { 
                 cpf: cpf,
                 idEmpresa: idEmpresa 
-            } 
+            }, 
+            transaction
         });
-
+ 
         if (clienteExists) {
             return res.status(400).json({
                 error: "Cliente já cadastrado no sistema"
@@ -33,10 +37,41 @@ async function postCliente(req, res) {
         // Adiciona o idEmpresa como idEmpresa no objeto clienteData
         clienteData.idEmpresa = idEmpresa;
 
-        const cliente = await Cliente.create(clienteData);
+        const idFilial = clienteData.idFilial;
 
+        const cliente = await Cliente.create(clienteData, { transaction });
+
+        // Buscar empresa antes de validar integracaoCRM
+        const empresa = await Empresa.findOne({
+            where: { idEmpresa: idEmpresa },
+            transaction 
+        });
+       
+        // Cria cliente no Kommo somente se integração CRM estiver habilitada
+        try {
+            if (empresa.integracaoCRM === true) {
+                const contatoKommo = await criarContatoNoKommo(idEmpresa, idFilial, cliente, empresa);
+                 // Extrai o id retornado pelo Kommo
+                const idCRM = contatoKommo?._embedded?.contacts?.[0]?.id;
+
+                if (idCRM) {
+                    // Atualiza cliente com idCRM e marca exportado = true
+                    await cliente.update(
+                        { idCRM, exportado: true },
+                        { transaction }
+                    );
+                            
+                    cliente.dataValues.kommoResponse = contatoKommo;
+                }
+            }
+        } catch (kommoErr) {
+            console.error("Erro ao criar contato no Kommo:", kommoErr.response?.data || kommoErr.message);
+        }
+
+        await transaction.commit();
         res.status(201).json({ message: 'Cliente cadastrado com sucesso', cliente });
     } catch (error) {
+        await transaction.rollback();
         console.error(error);
         res.status(500).json({ message: 'Erro ao cadastrar cliente', error });
     }

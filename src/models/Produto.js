@@ -101,6 +101,10 @@ Produto.init({
    ncm: {
      type: DataTypes.STRING(100),
      allowNull: true
+   },   
+    cfop: {
+     type: DataTypes.INTEGER,
+     allowNull: true
    },
    idColecao: {
      type: DataTypes.INTEGER,

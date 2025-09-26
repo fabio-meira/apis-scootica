@@ -14,6 +14,10 @@ Cliente.init({
     type: DataTypes.STRING(100),
     allowNull: true,
  },
+ idFilial: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+ },
  cpf: {
     type: DataTypes.STRING(11),
     allowNull: true,
@@ -134,6 +138,15 @@ Cliente.init({
    type: DataTypes.BOOLEAN,
    allowNull: true,
    defaultValue: true
+ },
+ idCRM: {
+  type: DataTypes.STRING(100),
+  allowNull: true,
+ },
+ exportado: {
+  type: DataTypes.BOOLEAN,
+  allowNull: false,
+  defaultValue: 0,
  },
  createdAt: {
     type: DataTypes.DATE,

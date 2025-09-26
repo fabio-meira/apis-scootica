@@ -40,6 +40,10 @@ OrdemServico.init({
     type: DataTypes.INTEGER,
     allowNull: true
   },
+  idFilial: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+  },
   idCliente: {
     type: DataTypes.INTEGER,
     allowNull: false
@@ -101,6 +105,15 @@ OrdemServico.init({
   valorTotal: {
     type: DataTypes.DECIMAL(9, 2),
     allowNull: true
+  },
+  idLead: {
+  type: DataTypes.INTEGER,
+  allowNull: true,
+  },
+  integradoCRM: {
+   type: DataTypes.BOOLEAN,
+   allowNull: true,
+   defaultValue: false
   },
   createdAt: {
     type: DataTypes.DATE,

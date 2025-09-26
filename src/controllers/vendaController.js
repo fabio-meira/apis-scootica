@@ -18,6 +18,7 @@ const Mensagem = require('../models/Mensagem');
 const { uploadToS3 } = require('../middleware/s3');
 const { BUCKET_IMAGES } = require('../../config/s3Client');
 const OrdemServicoArquivo = require('../models/OrdemServicoArquivo');
+const { criarVendaNoKommo, avancarKanbanKommo } = require("../services/kommoService");
 
 // Função para sanear os campos
 function sanitizeVendaData(data) {
@@ -294,6 +295,91 @@ async function postVenda(req, res) {
             );
         };
 
+        // Posteriormente colocar esse processo num integrador (NiFi)
+        // Buscar empresa antes de validar integracaoCRM
+        const empresa = await Empresa.findOne({
+            where: { idEmpresa: idEmpresa },
+            transaction
+        });
+
+        // Buscar cliente antes de validar integracaoCRM
+        const cliente = await Cliente.findOne({
+            where: { idEmpresa: idEmpresa,
+                id: vendaData.idCliente
+              },
+              transaction
+        });
+
+        // Busca ordem de serviço para integrar idLead no avançar status
+        let os = null;
+        let idLead = null;
+        let type = 3;
+
+        if (vendaData?.idOrdemServico) {
+            os = await OrdemServico.findOne({
+                where: { 
+                    idEmpresa: idEmpresa,
+                    id: vendaData.idOrdemServico
+                },
+                transaction
+            });
+
+            if (os) {
+                idLead = os.idLead;
+            }
+        };
+
+        // Cria venda no Kommo somente se integração CRM estiver habilitada
+        try {
+            if (empresa.integracaoCRM === true) {    
+                
+                const idFilial = vendaData.idFilial;
+
+                if (!venda.idOrdemServico) {
+                    // Criar venda no Kommo (não tem ordem de serviço vinculada)
+                    const vendaKommo = await criarVendaNoKommo(
+                        idEmpresa,
+                        idFilial,
+                        vendaData,
+                        cliente,
+                        produtos,
+                        totais
+                    );
+
+                    idLead = vendaKommo?.[0]?.id;
+                    console.log("Venda criada no Kommo, idLead:", idLead);
+                } 
+                else {
+                    // Atualizar Kanban no Kommo (tem ordem de serviço vinculada)
+                    const kanbanResponse = await avancarKanbanKommo(
+                        idEmpresa,
+                        idFilial,
+                        idLead,   
+                        type      
+                    );
+
+                    idCRM = kanbanResponse?.id || venda.idLead;
+                    console.log("Venda atualizada no Kanban Kommo, idCRM:", idCRM);
+                }
+
+                if (idCRM) {
+                    await Venda.update(
+                        { idLead: idCRM, integradoCRM: true },
+                        {
+                            where: { 
+                                id: venda.id,        
+                                idEmpresa: idEmpresa 
+                            },
+                            transaction
+                        }
+                    );
+                };
+            }
+
+        } catch (kommoErr) {
+            console.error("Erro ao criar venda no Kommo:", kommoErr.response?.data || kommoErr.message);
+        }
+
         await transaction.commit();
 
         res.status(201).json({ message: 'Venda criada com sucesso', vendaData });
@@ -302,7 +388,6 @@ async function postVenda(req, res) {
         await transaction.rollback();
         console.error(error);
         const statusCode = error.status || 500;
-        // res.status(500).json({ message: 'Erro ao criar venda', error });
         res.status(statusCode).json({ message: error.message });
     }
 }
@@ -311,7 +396,7 @@ async function postVenda(req, res) {
 async function getVenda(req, res) {
     try {
         const { idEmpresa } = req.params;
-        const { startDate, endDate, dataEstimada, idVendedor, status, idOrdemServico, numeroOS, idVenda, numeroVenda } = req.query; 
+        const { startDate, endDate, dataEstimada, idVendedor, status, idOrdemServico, numeroOS, idVenda, numeroVenda, idFilial } = req.query; 
 
         // Construa o objeto de filtro
         const whereConditions = {
@@ -395,6 +480,11 @@ async function getVenda(req, res) {
             whereConditions.numeroVenda = numeroVenda; 
         }
 
+        // Adicione filtro por filial, se fornecido
+        if (idFilial) {
+            whereConditions.idFilial = idFilial;
+        }
+
         const venda = await Venda.findAll({
             where: whereConditions,
             include: [
@@ -472,6 +562,7 @@ async function getIdVenda(req, res) {
     try {
         const { id } = req.params; 
         const { idEmpresa } = req.params;
+
         const venda = await Venda.findOne({
             where: { idEmpresa: idEmpresa,
                 id: id
@@ -636,6 +727,167 @@ async function putVenda(req, res) {
     }
 }
 
+// Função para atualizar uma venda pelo Id
+async function patchVenda(req, res) {
+    const transaction = await sequelize.transaction();
+    try {
+        const { id, idEmpresa } = req.params;
+        // const vendaData = JSON.parse(req.body.body || '{}');
+        const vendaData = req.body;
+        console.log('body: ', vendaData);
+
+        // Verifica se existe a venda
+        const consulta = await Venda.findOne({
+            where: { id, idEmpresa },
+        });
+
+        console.log('consulta:' , consulta);
+
+        if (!consulta) {
+            // await transaction.rollback();
+            return res.status(404).json({ message: "Venda não encontrada" });
+        }
+
+        // Atualiza os dados principais da venda
+        const [updated] = await Venda.update({
+            idVendedor: vendaData.idVendedor,
+            idCliente: vendaData.idCliente,
+            valorTotal: Number(vendaData.valorTotal),
+            vendaAlterada: Boolean(vendaData.vendaAlterada)
+        }, {
+            where: { id, idEmpresa },
+            transaction
+        });
+
+        if (!updated) {
+            await transaction.rollback();
+            return res.status(404).json({ message: "Venda não encontrada" });
+        }
+
+        // Atualizar produtos
+        if (vendaData.produtos && vendaData.produtos.length > 0) {
+            for (const produto of vendaData.produtos) {
+                if (produto.idProduto) {
+                    // Atualiza produto já existente
+                    await VendaProduto.update(
+                        {
+                            quantidade: Number(produto.quantidade),
+                            preco: Number(produto.preco),
+                            valorTotal: (produto.quantidade * produto.preco).toFixed(2),
+                        },
+                        { where: { idProduto: produto.idProduto, idVenda: id }, transaction }
+                    );
+                } 
+                else {
+                    // Novo produto adicionado na venda
+                    await VendaProduto.create({ ...produto, idVenda: id }, { transaction });
+                }
+            }
+        }
+
+        // Atualizar totais
+        if (vendaData.totais) {
+            await OrdemProdutoTotal.update({
+                quantidadeTotal: Number(vendaData.totais.quantidadeTotal),
+                totalProdutos:Number(vendaData.totais.totalProdutos),
+                desconto: Number(vendaData.totais.desconto),
+                Percdesconto: Number(vendaData.totais.Percdesconto),
+                acrescimo: Number(vendaData.totais.acrescimo),
+                frete: Number(vendaData.totais.frete),
+                total: Number(vendaData.totais.total),
+                vlAlteradoNF: Boolean(vendaData.totais.vlAlteradoNF)  
+             }, { where: { idVenda: id},
+                transaction
+            });
+        }
+
+        // Atualizar pagamentos
+        if (vendaData.pagamentos && vendaData.pagamentos.length > 0) {
+            for (const pagamento of vendaData.pagamentos) {
+                if (pagamento.id) {
+                    // Atualiza pagamento existente
+                    await Pagamento.update(pagamento, {
+                        where: { id: pagamento.id, idVenda: id },
+                        transaction
+                    });
+                } else {
+                    // Cria novo pagamento
+                    const createdPayment = await Pagamento.create(
+                        { ...pagamento },
+                        { transaction }
+                    );
+
+                    // Se for crédito, recria as parcelas
+                    if (pagamento.statusRecebimento === 'Credito' && pagamento.parcelas && pagamento.valor) {
+                        await Parcela.destroy({ where: { idPagamento: createdPayment.id }, transaction });
+
+                        for (let i = 0; i < pagamento.quantidadeParcelas; i++) {
+                            const vencimento = new Date(pagamento.dataVencimento);
+                            vencimento.setMonth(vencimento.getMonth() + i);
+
+                            await Parcela.create({
+                                idPagamento: createdPayment.id,
+                                idEmpresa,
+                                quantidade: pagamento.parcelas,
+                                dataVencimento: vencimento,
+                                outrasInformacoes: `Parcela ${i + 1} de ${pagamento.parcelas} - Valor: R$ ${pagamento.parcelas}`,
+                                tipoPagamento: 'Credito'
+                            }, { transaction });
+                        }
+                    }
+                }
+            }
+        }
+
+        // Atualizar anexos (se enviados novamente)
+        if (req.files && req.files.length > 0) {
+            const uploads = await Promise.all(
+                req.files.map(async (file) => {
+                    const { key } = await uploadToS3(file, BUCKET_IMAGES, 'OS/');
+                    return {
+                        originalname: file.originalname,
+                        mimetype: file.mimetype,
+                        key
+                    };
+                })
+            );
+
+            await Promise.all(
+                uploads.map(upload =>
+                    OrdemServicoArquivo.create({
+                        idEmpresa,
+                        idVenda: id,
+                        nomeArquivo: upload.originalname,
+                        caminhoS3: upload.key,
+                        tipoArquivo: upload.mimetype
+                    }, { transaction })
+                )
+            );
+        }
+
+        await transaction.commit();
+
+        const venda = await Venda.findOne({
+            where: { id, idEmpresa },
+            include: [
+                { model: VendaProduto, as: 'produtos' },
+                { model: OrdemProdutoTotal, as: 'totais' }, // se tiver alias
+                { model: Pagamento, as: 'pagamentos' }      // se tiver alias
+            ]
+        });
+
+        res.status(200).json({ message: "Venda atualizada com sucesso", venda })
+
+        } catch (error) {
+        if (transaction.finished !== 'commit' && transaction.finished !== 'rollback') {
+            await transaction.rollback();
+        }
+        console.error(error);
+        const statusCode = error.status || 500;
+        res.status(statusCode).json({ message: error.message });
+    }
+}
+
 // Função para deletar uma venda pelo id
 async function deleteVenda(req, res) {
     try {
@@ -668,5 +920,6 @@ module.exports = {
     getIdVenda,
     getCaixaIdVenda,
     putVenda,
+    patchVenda,
     deleteVenda 
 };

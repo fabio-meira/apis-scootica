@@ -96,7 +96,7 @@ Usuario.belongsTo(Auth, {
 
  Usuario.belongsTo(Filial, {
    foreignKey: 'idFilial',
-   targetKey: 'id', 
+   targetKey: 'idFilial', 
    as: 'filial'
  });
 

@@ -112,6 +112,11 @@ Empresa.init({
     type: DataTypes.STRING(20),
     allowNull: true,
  },
+  integracaoCRM: {
+    type: DataTypes.BOOLEAN,
+    allowNull: true,
+    defaultValue: 0
+  },
  createdAt: {
     type: DataTypes.DATE,
     allowNull: true,

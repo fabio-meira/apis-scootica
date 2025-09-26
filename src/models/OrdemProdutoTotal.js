@@ -50,6 +50,11 @@ OrdemProdutoTotal.init({
     type: DataTypes.DECIMAL(9, 2),
     allowNull: true
  },
+vlrAlteradoNF: {
+    type: DataTypes.BOOLEAN,
+    allowNull: true,
+    defaultValue: false
+ },
  createdAt: {
     type: DataTypes.DATE,
     allowNull: true

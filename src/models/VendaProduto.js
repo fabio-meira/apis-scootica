@@ -63,6 +63,18 @@ VendaProduto.init({
     type: DataTypes.DECIMAL(9, 2),
     allowNull: true
  },
+ cfop: {
+    type: DataTypes.INTEGER,
+    allowNull: true
+ },
+ aliquotaICMS: {
+    type: DataTypes.DECIMAL(5, 2),
+    allowNull: true
+ },
+ cst: {
+    type: DataTypes.INTEGER,
+    allowNull: true
+ },
  createdAt: {
     type: DataTypes.DATE,
     allowNull: true

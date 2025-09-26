@@ -17,6 +17,7 @@ const Mensagem = require('../models/Mensagem');
 const { uploadToS3 } = require('../middleware/s3');
 const { BUCKET_IMAGES } = require('../../config/s3Client');
 const OrdemServicoArquivo = require('../models/OrdemServicoArquivo');
+const { criarOrdemServicoNoKommo, avancarKanbanKommo } = require("../services/kommoService");
 
 // Função para criar uma nova Ordem de Serviço e seus pagamentos relacionados
 async function postOrdemServico(req, res) {
@@ -165,6 +166,99 @@ async function postOrdemServico(req, res) {
             }, { transaction })
             )
         );
+    }
+
+    // Buscar empresa antes de validar integracaoCRM
+    const empresa = await Empresa.findOne({
+        where: { idEmpresa: idEmpresa },
+        transaction
+    });
+
+    // Buscar cliente antes de validar integracaoCRM
+    const cliente = await Cliente.findOne({
+        where: { idEmpresa: idEmpresa,
+            id: ordemServicoData.idCliente
+            },
+            transaction
+    });
+
+    // Buscar vendedor antes de validar integracaoCRM
+    const vendedor = await Vendedor.findOne({
+        where: { idEmpresa: idEmpresa,
+            id: orcamentoData.idVendedor
+            },
+            transaction
+    });
+
+    // Busca orçamento para integrar idLead e status
+    let or = null;
+    let idLead = null;
+    let type = 2;
+
+    if (ordemServicoData?.idOrcamento) {
+        or = await Orcamento.findOne({
+            where: { 
+                idEmpresa: idEmpresa,
+                id: ordemServicoData.idOrcamento
+            },
+            transaction
+        });
+
+        if (or) {
+            idLead = or.idLead;
+        }
+    };
+
+    // Cria ordem de serviço no Kommo somente se integração CRM estiver habilitada
+    try {
+        if (empresa.integracaoCRM === true) {    
+            
+            const idFilial = ordemServicoData.idFilial; 
+
+            if (!ordemServico.idOrcamento) {
+                // Criar venda no Kommo (não tem ordem de serviço vinculada)
+                const vendaKommo = await criarOrdemServicoNoKommo(
+                    idEmpresa,
+                    idFilial,
+                    ordemServicoData,
+                    cliente,
+                    vendedor,
+                    produtos,
+                    totais
+                );
+
+                idLead = vendaKommo?.[0]?.id;
+                console.log("Ordem de serviço criada no Kommo, idLead:", idLead);
+            } 
+            else {
+                // Atualizar Kanban no Kommo (tem ordem de serviço vinculada)
+                const kanbanResponse = await avancarKanbanKommo(
+                    idEmpresa,
+                    idFilial,
+                    idLead,          
+                    type             
+                );
+
+                idCRM = kanbanResponse?.id || ordemServico.idLead;
+                console.log("Ordem de serviço atualizada no Kanban Kommo, idCRM:", idCRM);
+            }
+
+            if (idCRM) {
+                await OrdemServico.update(
+                    { idLead: idCRM, integradoCRM: true },
+                    {
+                        where: { 
+                            id: ordemServico.id,        
+                            idEmpresa: idEmpresa 
+                        },
+                        transaction
+                    }
+                );
+            };
+        }
+
+    } catch (kommoErr) {
+        console.error("Erro ao criar ordem de serviço no Kommo:", kommoErr.response?.data || kommoErr.message);
     }
 
     await transaction.commit(); 

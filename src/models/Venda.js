@@ -28,6 +28,10 @@ Venda.init({
     type: DataTypes.STRING(100),
     allowNull: false
   },
+  idFilial: {
+   type: DataTypes.STRING(100),
+   allowNull: true,
+  },
   numeroVenda: {
     type: DataTypes.INTEGER,
     allowNull: false
@@ -97,6 +101,25 @@ Venda.init({
   valorTotal: {
     type: DataTypes.DECIMAL(9, 2),
     allowNull: true
+  },
+  notaFiscalEmitida: {
+    type: DataTypes.BOOLEAN,
+    allowNull: true,
+    defaultValue: false
+  },
+  vendaAlterada: {
+    type: DataTypes.BOOLEAN,
+    allowNull: true,
+    defaultValue: false
+  },
+  idLead: {
+    type: DataTypes.INTEGER,
+    allowNull: true
+  },
+  integradoCRM: {
+    type: DataTypes.BOOLEAN,
+    allowNull: true,
+    defaultValue: false
   },
   createdAt: {
     type: DataTypes.DATE,

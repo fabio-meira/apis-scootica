@@ -10,6 +10,7 @@ const Empresa = require('../models/Empresa');
 const OrdemServico = require('../models/OrdemServico');
 const { Op } = require('sequelize')
 const sequelize = require('../database/connection');
+const { criarOrcamentoNoKommo } = require("../services/kommoService");
 
 // Função para criar um novo orçamentos e seus relacionamentos
 async function postOrcamento(req, res) {
@@ -41,6 +42,68 @@ async function postOrcamento(req, res) {
             idOrcamento: orcamento.id
         };
         await OrdemProdutoTotal.create(totais, { transaction });
+
+        // Buscar empresa antes de validar integracaoCRM
+        const empresa = await Empresa.findOne({
+            where: { idEmpresa: idEmpresa },
+            transaction
+        });
+
+        // Buscar cliente antes de validar integracaoCRM
+        const cliente = await Cliente.findOne({
+            where: { idEmpresa: idEmpresa,
+                id: orcamentoData.idCliente
+              },
+              transaction
+        });
+
+        // Buscar vendedor antes de validar integracaoCRM
+        const vendedor = await Vendedor.findOne({
+            where: { idEmpresa: idEmpresa,
+                id: orcamentoData.idVendedor
+              },
+              transaction
+        });
+
+        // Cria orçamento no Kommo somente se integração CRM estiver habilitada
+        try {
+            if (empresa.integracaoCRM === true) {
+
+                const idFilial = orcamentoData.idFilial; 
+                
+                const orcamentoKommo = await criarOrcamentoNoKommo(
+                    idEmpresa,
+                    idFilial,                     
+                    orcamentoData,                
+                    cliente,   
+                    vendedor,                   
+                    produtos,
+                    totais          
+                );
+
+                 // Extrai o id retornado pelo Kommo
+                const idCRM = orcamentoKommo?.[0]?.id;
+                console.log('idCRM', idCRM);
+
+                if (idCRM) {
+                    // Atualiza cliente com idCRM e marca exportado = true
+                    await orcamento.update(
+                        { idLead: idCRM, integradoCRM: true },
+                        { 
+                            where: { 
+                                id: orcamento.id,        
+                                idEmpresa: idEmpresa 
+                            },
+                            transaction 
+                        }
+                    );
+                            
+                    orcamento.dataValues.kommoResponse = orcamentoKommo;
+                }
+            }
+        } catch (kommoErr) {
+            console.error("Erro ao criar orçamento no Kommo:", kommoErr.response?.data || kommoErr.message);
+        }
 
         await transaction.commit();
         res.status(201).json({ message: 'Orçamento criado com sucesso', orcamento });

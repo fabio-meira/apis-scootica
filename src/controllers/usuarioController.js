@@ -160,24 +160,25 @@ async function loginEmail(req, res) {
         });
 
         // Criar o link de recuperação de senha
-        const recoveryLink = `http://localhost:3000/password/${recoveryToken}`;
+        // const recoveryLink = `http://localhost:3000/password/${recoveryToken}`;
+        const recoveryLink = `https://app.optware.com.br/password/${recoveryToken}`;
         // const userEmail = process.env.EMAIL;
         // const passEmail = process.env.EMAIL_PASS;
 
         // Criação do transportador com as configurações do SMTP da Locaweb
         let transporter = nodemailer.createTransport({
-            host: 'email-ssl.com.br',     // Servidor SMTP da Locaweb
+            host: 'smtp.hostinger.com',    // Servidor SMTP da Locaweb
             port: 465,                    // Porta do SMTP com TLS
             secure: true,                 // Usando TLS (não SSL)
             auth: {
-            user: 'contato@fabester.com.br',  
-            pass: 'Ester@21032014',           
+            user: 'fabio.meira@optware.com.br',  
+            pass: 'Optware@2025',           
             },
         });
 
         // Configurar o conteúdo do e-mail
         const mailOptions = {
-            from: 'contato@fabester.com.br',
+            from: 'contato@optware.com.br',
             to: usuario.email,
             subject: 'Recuperação de Senha', 
             html: `

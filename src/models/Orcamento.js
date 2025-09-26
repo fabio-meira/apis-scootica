@@ -21,6 +21,10 @@ Orcamento.init({
    type: DataTypes.STRING(100),
    allowNull: false
 },
+idFilial: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+ },
 numeroOR: {
    type: DataTypes.INTEGER,
    allowNull: false
@@ -90,6 +94,15 @@ idCliente: {
  observacoes: {
     type: DataTypes.STRING(1000),
     allowNull: true
+ },
+ idLead: {
+  type: DataTypes.INTEGER,
+  allowNull: true,
+ },
+ integradoCRM: {
+   type: DataTypes.BOOLEAN,
+   allowNull: true,
+   defaultValue: false
  },
  createdAt: {
     type: DataTypes.DATE,
