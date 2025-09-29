@@ -104,6 +104,14 @@ Receita.init({
     type: DataTypes.INTEGER,
     allowNull: true,
  },
+ odpEsfericoPerto: {
+    type: DataTypes.DECIMAL(5,2),
+    allowNull: true,
+ },
+ oepEsfericoPerto: {
+    type: DataTypes.DECIMAL(5,2),
+    allowNull: true,
+ },
  observacoes: {
     type: DataTypes.STRING(1000),
     allowNull: true,
