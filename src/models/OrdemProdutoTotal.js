@@ -32,11 +32,17 @@ OrdemProdutoTotal.init({
  },
  Percdesconto: {
     type: DataTypes.DECIMAL(5, 2),
-    allowNull: true
+    allowNull: true,
+    defaultValue: 0
  },
  acrescimo: {
     type: DataTypes.DECIMAL(9, 2),
     allowNull: true
+ },
+ percAcrescimo: {
+    type: DataTypes.DECIMAL(5, 2),
+    allowNull: true,
+    defaultValue: 0
  },
  frete: {
     type: DataTypes.DECIMAL(9, 2),
