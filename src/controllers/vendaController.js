@@ -358,13 +358,13 @@ async function postVenda(req, res) {
                         type      
                     );
 
-                    idCRM = kanbanResponse?.id || venda.idLead;
-                    console.log("Venda atualizada no Kanban Kommo, idCRM:", idCRM);
+                    idLead = kanbanResponse?.id || venda.idLead;
+                    console.log("Venda atualizada no Kanban Kommo, idCRM:", idLead);
                 }
 
-                if (idCRM) {
+                if (idLead) {
                     await Venda.update(
-                        { idLead: idCRM, integradoCRM: true },
+                        { idLead: idLead, integradoCRM: true },
                         {
                             where: { 
                                 id: venda.id,        

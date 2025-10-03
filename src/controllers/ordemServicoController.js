@@ -217,7 +217,7 @@ async function postOrdemServico(req, res) {
 
             if (!ordemServico.idOrcamento) {
                 // Criar venda no Kommo (não tem ordem de serviço vinculada)
-                const vendaKommo = await criarOrdemServicoNoKommo(
+                const osKommo = await criarOrdemServicoNoKommo(
                     idEmpresa,
                     idFilial,
                     ordemServicoData,
@@ -227,7 +227,7 @@ async function postOrdemServico(req, res) {
                     totais
                 );
 
-                idLead = vendaKommo?.[0]?.id;
+                idLead = osKommo?.[0]?.id;
                 console.log("Ordem de serviço criada no Kommo, idLead:", idLead);
             } 
             else {
@@ -239,13 +239,14 @@ async function postOrdemServico(req, res) {
                     type             
                 );
 
-                idCRM = kanbanResponse?.id || ordemServico.idLead;
-                console.log("Ordem de serviço atualizada no Kanban Kommo, idCRM:", idCRM);
+                // idCRM = kanbanResponse?.id || ordemServico.idLead;
+                idLead =  kanbanResponse?.id || ordemServico.idLead;
+                console.log("Ordem de serviço atualizada no Kanban Kommo, idCRM:", idLead);
             }
 
-            if (idCRM) {
+            if (idLead) {
                 await OrdemServico.update(
-                    { idLead: idCRM, integradoCRM: true },
+                    { idLead: idLead, integradoCRM: true },
                     {
                         where: { 
                             id: ordemServico.id,        
