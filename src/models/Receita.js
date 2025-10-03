@@ -16,6 +16,10 @@ Receita.init({
     type: DataTypes.STRING(100),
     allowNull: true,
  },
+ idFilial: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+ },
  idCliente: {
     type: DataTypes.STRING(11),
     allowNull: true,
@@ -117,6 +121,14 @@ Receita.init({
     allowNull: true,
  },
  ativo: {
+    type: DataTypes.BOOLEAN,
+    allowNull: true,
+ },
+ idLead: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+ },
+ integradoCRM: {
     type: DataTypes.BOOLEAN,
     allowNull: true,
  },

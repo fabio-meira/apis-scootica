@@ -216,7 +216,7 @@ async function criarOrcamentoNoKommo(idEmpresa, idFilial, orcamento, cliente, ve
 
   const ORPayload = [
     {
-        name: `Cliente: ${cliente?.nomeCompleto || "Cliente"} - Vendedor: ${vendedor.nomeCompleto}`,
+        name: `Cliente: ${cliente?.nomeCompleto} - Vendedor: ${vendedor.nomeCompleto}`,
         pipeline_id: pipeline_id,
         status_id: statuses_id,
         responsible_user_id: responsible_user_id,
@@ -244,25 +244,25 @@ async function criarOrcamentoNoKommo(idEmpresa, idFilial, orcamento, cliente, ve
 
   console.log("post orçamento: ", JSON.stringify(ORPayload, null, 2));
 
-  const response = await axios.post(
-    `${baseUrl}/leads/complex`,
-    ORPayload,
-    { headers: { 
-        Authorization: `Bearer ${token}`, 
-        "Content-Type": "application/json"
-      } 
-    }
+  // const response = await axios.post(
+  //   `${baseUrl}/leads/complex`,
+  //   ORPayload,
+  //   { headers: { 
+  //       Authorization: `Bearer ${token}`, 
+  //       "Content-Type": "application/json"
+  //     } 
+  //   }
     
-  );
-// const response = await axios.get(
-//   `${baseUrl}/leads/14138422`,
-//   { 
-//     headers: { 
-//       Authorization: `Bearer ${token}`, 
-//       "Content-Type": "application/json"
-//     } 
-//   }
-// );
+  // );
+const response = await axios.get(
+  `${baseUrl}/leads/14138422`,
+  { 
+    headers: { 
+      Authorization: `Bearer ${token}`, 
+      "Content-Type": "application/json"
+    } 
+  }
+);
   return response.data;
 }
 
@@ -495,7 +495,7 @@ async function criarVendaNoKommo(idEmpresa, idFilial, venda, cliente, vendedor, 
 }
 
 // Criar exame de vista no Kommo
-async function criarExameVistaNoKommo(idEmpresa, idFilial, orcamento, cliente, produtos, totais) {
+async function criarExameVistaNoKommo(idEmpresa, idFilial, orcamento, cliente, medico) {
   const { baseUrl, token } = await getKommoIntegracao(idEmpresa);
   const { pipeline_id, responsible_user_id, name } = await getPipilene(idEmpresa, idFilial);
   const type = 4; // name: Exame de vista - Receita
@@ -558,11 +558,10 @@ async function criarExameVistaNoKommo(idEmpresa, idFilial, orcamento, cliente, p
 
   const EVPayload = [
     {
-        name: `EV Cliente - ${cliente.nomeCompleto} - Médico ${receita.dtReceita}`,
+        name: `EV Cliente - ${cliente.nomeCompleto} - Médico ${medico.nomeCompleto}`,
         pipeline_id: pipeline_id,
-        status_id: statuses_id, // Exame de vista - Receita
+        status_id: statuses_id, 
         responsible_user_id: responsible_user_id,
-        // price: toCents(totais.total || 0),
         custom_fields_values: customFields,
         _embedded: {
         contacts: [
@@ -571,16 +570,12 @@ async function criarExameVistaNoKommo(idEmpresa, idFilial, orcamento, cliente, p
             is_main: true
             }
         ],
-        tags: (produtos || []).map(p => {
-            let tagText = `${p.referencia} - ${p.descricao} - R$ ${p.valorTotal}`;
-
-            if (tagText.length > 50) {
-            tagText = tagText.substring(0, 47) + "...";
-            }
-
-            return { name: tagText };
-        })
-        }
+        tags: [
+          {
+            name: `Exame de vista de ${cliente.nomeCompleto} - Médico ${medico.nomeCompleto}`
+          }
+        ]
+      }
     }
   ];
 
@@ -620,7 +615,6 @@ async function avancarKanbanKommo(idEmpresa, idFilial, idLead, type) {
         responsible_user_id: responsible_user_id   // Responsável no Kommo
     };
 
-    console.log("avançar status: ", idLead);
     console.log("avançar status: ", JSON.stringify(AVPayload, null, 2));
 
     try {

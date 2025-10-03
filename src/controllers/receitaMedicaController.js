@@ -1,11 +1,15 @@
 const Empresa = require('../models/Empresa');
 const { Medico, Receita, Cliente } = require('../models/Association');
+const Vendedor = require('../models/Vendedor');
 const Mensagem = require('../models/Mensagem');
 const { Op, fn, col, literal } = require('sequelize');
+const sequelize = require('../database/connection');
 const moment = require('moment');
+const { criarExameVistaNoKommo } = require("../services/kommoService");
 
 // Função para cadastrar um nova receita
 async function postReceita(req, res) {
+    const transaction = await sequelize.transaction();
     try {
         const receitaData = req.body;
         const { idEmpresa } = req.params; 
@@ -17,22 +21,95 @@ async function postReceita(req, res) {
         const receita = await Receita.create(receitaData);
 
         // Tenta criar a mensagem, mas se der erro não bloqueia a receita
+
+        // Buscar médico antes de criar mensagem
+        const medico = await Medico.findOne({
+            where: { idEmpresa: idEmpresa,
+                id: receitaData.idMedico
+              },
+              transaction
+        });
+
         try {
             await Mensagem.create({
                 idEmpresa: idEmpresa, 
                 chave: `Receita`,
-                mensagem: `Receita do profissional ${receitaData.idMedico?? 'desconhecido'} está pronta para impressão.`,
+                mensagem: `Receita do profissional ${medico.nomeCompleto ?? 'desconhecido'} está pronta para impressão.`,
                 lida: false,
-                observacoes: `Receita para orçamento do cliente ${receitaData.idMedico ?? 'desconhecido'}.`
+                observacoes: `Receita para orçamento do cliente ${medico.nomeCompleto ?? 'desconhecido'}.`
             });
         } catch (msgError) {
             console.error("Erro ao criar mensagem:", msgError);
             // aqui você pode até salvar um log, mas segue o fluxo
         }
 
+        // Integração com Kommo CRM - exame de vista como um novo orçamento sem valor
+        
+        // Buscar empresa antes de validar integracaoCRM
+        const empresa = await Empresa.findOne({
+            where: { idEmpresa: idEmpresa },
+            transaction
+        });
+
+        // Buscar cliente antes de validar integracaoCRM
+        const cliente = await Cliente.findOne({
+            where: { idEmpresa: idEmpresa,
+                id: receitaData.idCliente
+              },
+              transaction
+        });
+
+        // // Buscar vendedor antes de validar integracaoCRM
+        // const vendedor = await Vendedor.findOne({
+        //     where: { idEmpresa: idEmpresa,
+        //         id: receitaData.idVendedor
+        //       },
+        //       transaction
+        // });
+
+        // Cria orçamento no Kommo somente se integração CRM estiver habilitada
+        try {
+            if (empresa.integracaoCRM === true) {
+
+                const idFilial = receitaData.idFilial; 
+                
+                const exameVistaKommo = await criarExameVistaNoKommo(
+                    idEmpresa,
+                    idFilial,                     
+                    receitaData,                
+                    cliente,   
+                    medico
+                );
+
+                 // Extrai o id retornado pelo Kommo
+                const idCRM = exameVistaKommo?.[0]?.id;
+                console.log('idCRM', idCRM);
+
+                if (idCRM) {
+                    // Atualiza receita com idCRM e marca exportado = true
+                    await receita.update(
+                        { idLead: idCRM, integradoCRM: true },
+                        { 
+                            where: { 
+                                id: receita.id,        
+                                idEmpresa: idEmpresa 
+                            },
+                            transaction 
+                        }
+                    );
+                            
+                    receita.dataValues.kommoResponse = exameVistaKommo;
+                }
+            }
+        } catch (kommoErr) {
+            console.error("Erro ao criar orçamento no Kommo:", kommoErr.response?.data || kommoErr.message);
+        }
+
+        await transaction.commit();
         res.status(201).json({ message: 'Receituário cadastrado com sucesso', receita });
     } catch (error) {
         console.error(error);
+        await transaction.rollback();
         res.status(500).json({ message: 'Erro ao cadastrar receituário', error });
     }
 }
