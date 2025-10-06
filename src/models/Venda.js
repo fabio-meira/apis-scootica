@@ -28,6 +28,10 @@ Venda.init({
     type: DataTypes.STRING(100),
     allowNull: false
   },
+  idNotaFiscal: {
+   type: DataTypes.INTEGER,
+   allowNull: true,
+  },
   idFilial: {
    type: DataTypes.STRING(100),
    allowNull: true,

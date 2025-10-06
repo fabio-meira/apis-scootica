@@ -558,7 +558,7 @@ async function criarExameVistaNoKommo(idEmpresa, idFilial, orcamento, cliente, m
 
   const EVPayload = [
     {
-        name: `EV Cliente - ${cliente.nomeCompleto} - Médico ${medico.nomeCompleto}`,
+        name: `Exame Vista: ${cliente.nomeCompleto} - Médico: ${medico.nomeCompleto}`,
         pipeline_id: pipeline_id,
         status_id: statuses_id, 
         responsible_user_id: responsible_user_id,
@@ -572,7 +572,7 @@ async function criarExameVistaNoKommo(idEmpresa, idFilial, orcamento, cliente, m
         ],
         tags: [
           {
-            name: `Exame de vista de ${cliente.nomeCompleto} - Médico ${medico.nomeCompleto}`
+            name: `Exame de vista de ${cliente.nomeCompleto} - Médico: ${medico.nomeCompleto}`
           }
         ]
       }

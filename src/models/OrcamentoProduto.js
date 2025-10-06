@@ -64,6 +64,10 @@ OrcamentoProduto.init({
     type: DataTypes.INTEGER,
     allowNull: true
  },
+ csosn: {
+    type: DataTypes.INTEGER,
+    allowNull: true
+ },
  aliquotaICMS: {
     type: DataTypes.DECIMAL(5, 2),
     allowNull: true

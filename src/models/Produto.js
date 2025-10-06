@@ -102,7 +102,19 @@ Produto.init({
      type: DataTypes.STRING(100),
      allowNull: true
    },   
-    cfop: {
+   cfop: {
+     type: DataTypes.INTEGER,
+     allowNull: true
+   },
+   csosn: {
+     type: DataTypes.INTEGER,
+     allowNull: true
+   },
+   aliquotaIcms: {
+     type: DataTypes.DECIMAL(5,2),
+     allowNull: true
+   },
+   cst: {
      type: DataTypes.INTEGER,
      allowNull: true
    },
