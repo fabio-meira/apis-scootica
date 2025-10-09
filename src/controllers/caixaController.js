@@ -6,6 +6,7 @@ const Usuario = require('../models/Usuario');
 const Cliente = require('../models/Cliente');
 const Pagamento = require('../models/Pagamento');
 const EntradaSaida = require('../models/EntradaSaida');
+const OrdemServico = require('../models/OrdemServico');
 // const OrdemProdutoTotal = require('../models/OrdemProdutoTotal');
 
 // Função para abertura de um caixa
@@ -48,26 +49,151 @@ async function patchCaixa(req, res) {
     }
 }
 
-// Função para consultar todas os caixas
+// // Função para consultar todas os caixas
+// async function listCaixa(req, res) {
+//     try {
+//         const { idEmpresa } = req.params;
+
+//         const caixas = await Caixa.findAll({
+//             where: {
+//                 idEmpresa: idEmpresa
+//             },
+//             include: [
+//                 {
+//                     model: Empresa,
+//                     as: 'empresa',
+//                     attributes: ['cnpj', 'nome']
+//                 },
+//                 // {
+//                 //     model: Usuario,
+//                 //     as: 'usuario',
+//                 //     attributes: ['login', 'nome', 'email']
+//                 // },
+//                 {
+//                     model: EntradaSaida,
+//                     as: 'entradaSaida',
+//                     attributes: ['idUsuario', 'tipo', 'valor']
+//                 },
+//                 {
+//                     model: Venda,
+//                     as: 'vendas',
+//                     attributes: ['id', 'idCaixa', 'valorTotal', 'createdAt'],
+//                     include: [
+//                         {
+//                             model: Cliente,
+//                             as: 'cliente',
+//                             attributes: ['id', 'nomeCompleto']
+//                         },
+//                         {
+//                             model: Pagamento,
+//                             as: 'pagamentos',
+//                             attributes: ['valor', 'tipo', 'parcelas', 'adiantamento']
+//                         }
+//                     ]
+//                 },
+//                 {
+//                     model: OrdemServico,
+//                     as: 'ordemServico',
+//                     attributes: ['id', 'idCaixa', 'valorTotal', 'createdAt'],
+//                     include: [
+//                         {
+//                             model: Cliente,
+//                             as: 'cliente',
+//                             attributes: ['id', 'nomeCompleto']
+//                         },
+//                         {
+//                             model: Pagamento,
+//                             as: 'pagamentos',
+//                             attributes: ['idVenda', 'valor', 'tipo', 'parcelas', 'adiantamento', 'createdAt']
+//                         }
+//                     ]
+//                 }
+//             ],
+//             order: [
+//                 ['id', 'DESC']
+//             ]
+//         });
+
+//         if (!caixas || caixas.length === 0) {
+//             return res.status(404).json({ message: 'Nenhum caixa encontrado' });
+//         }
+
+//         caixas.forEach(caixa => {
+//             let totalEntradas = 0;
+//             let totalSaidas = 0;
+//             let totalPagamentos = 0;
+//             let totalAdiantamentos = 0;
+//             let totalPagamentosNormais = 0;
+//             let pagamentosArray = [];
+
+//             caixa.entradaSaida.forEach(item => {
+//                 if (item.tipo === 1) {
+//                     totalEntradas += parseFloat(item.valor);
+//                 } else if (item.tipo === 0) {
+//                     totalSaidas += parseFloat(item.valor);
+//                 }
+//             });
+
+//             caixa.vendas.forEach(venda => {
+//                 venda.pagamentos.forEach(pagamento => {
+//                     totalPagamentos += parseFloat(pagamento.valor);
+//                     if (pagamento.adiantamento) {
+//                         totalAdiantamentos += parseFloat(pagamento.valor);
+//                     } else {
+//                         totalPagamentosNormais += parseFloat(pagamento.valor);
+//                     }
+//                     pagamentosArray.push({
+//                         valor: parseFloat(pagamento.valor).toFixed(2),
+//                         tipo: pagamento.tipo,
+//                         adiantamento: pagamento.adiantamento
+//                     });
+//                 });
+//             });
+
+//             caixa.ordemServico.forEach(ordemServico => {
+//                 ordemServico.pagamentos.forEach(pagamento => {
+//                     totalPagamentos += parseFloat(pagamento.valor);
+//                     if (pagamento.adiantamento) {
+//                         totalAdiantamentos += parseFloat(pagamento.valor);
+//                     } else {
+//                         totalPagamentosNormais += parseFloat(pagamento.valor);
+//                     }
+//                     pagamentosArray.push({
+//                         valor: parseFloat(pagamento.valor).toFixed(2),
+//                         tipo: pagamento.tipo,
+//                         adiantamento: pagamento.adiantamento
+//                     });
+//                 });
+//             });
+
+//             // Adicionar os totais ao objeto caixa
+//             caixa.setDataValue('totalEntradas', totalEntradas.toFixed(2));
+//             caixa.setDataValue('totalSaidas', totalSaidas.toFixed(2));
+//             caixa.setDataValue('totalPagamentos', totalPagamentos.toFixed(2));
+//             caixa.setDataValue('totalAdiantamentos', totalAdiantamentos.toFixed(2));
+//             caixa.setDataValue('totalPagamentosNormais', totalPagamentosNormais.toFixed(2));
+//             caixa.setDataValue('pagamentos', pagamentosArray);
+//         });
+
+//         res.status(200).json(caixas);
+//     } catch (error) {
+//         console.error(error);
+//         res.status(500).json({ message: 'Erro ao buscar caixas', error });
+//     }
+// }
+// Função para consultar todos os caixas
 async function listCaixa(req, res) {
     try {
         const { idEmpresa } = req.params;
 
         const caixas = await Caixa.findAll({
-            where: {
-                idEmpresa: idEmpresa
-            },
+            where: { idEmpresa: idEmpresa },
             include: [
                 {
                     model: Empresa,
                     as: 'empresa',
                     attributes: ['cnpj', 'nome']
                 },
-                // {
-                //     model: Usuario,
-                //     as: 'usuario',
-                //     attributes: ['login', 'nome', 'email']
-                // },
                 {
                     model: EntradaSaida,
                     as: 'entradaSaida',
@@ -89,11 +215,26 @@ async function listCaixa(req, res) {
                             attributes: ['valor', 'tipo', 'parcelas', 'adiantamento']
                         }
                     ]
+                },
+                {
+                    model: OrdemServico,
+                    as: 'ordemServico',
+                    attributes: ['id', 'idCaixa', 'valorTotal', 'createdAt'],
+                    include: [
+                        {
+                            model: Cliente,
+                            as: 'cliente',
+                            attributes: ['id', 'nomeCompleto']
+                        },
+                        {
+                            model: Pagamento,
+                            as: 'pagamentos',
+                            attributes: ['idVenda', 'valor', 'tipo', 'parcelas', 'adiantamento', 'createdAt']
+                        }
+                    ]
                 }
             ],
-            order: [
-                ['id', 'DESC']
-            ]
+            order: [['id', 'DESC']]
         });
 
         if (!caixas || caixas.length === 0) {
@@ -108,6 +249,7 @@ async function listCaixa(req, res) {
             let totalPagamentosNormais = 0;
             let pagamentosArray = [];
 
+            // Entradas e saídas
             caixa.entradaSaida.forEach(item => {
                 if (item.tipo === 1) {
                     totalEntradas += parseFloat(item.valor);
@@ -116,16 +258,42 @@ async function listCaixa(req, res) {
                 }
             });
 
+            // Pagamentos de vendas
             caixa.vendas.forEach(venda => {
                 venda.pagamentos.forEach(pagamento => {
-                    totalPagamentos += parseFloat(pagamento.valor);
+                    const valor = parseFloat(pagamento.valor);
+                    totalPagamentos += valor;
+
                     if (pagamento.adiantamento) {
-                        totalAdiantamentos += parseFloat(pagamento.valor);
+                        totalAdiantamentos += valor;
                     } else {
-                        totalPagamentosNormais += parseFloat(pagamento.valor);
+                        totalPagamentosNormais += valor;
                     }
+
                     pagamentosArray.push({
-                        valor: parseFloat(pagamento.valor).toFixed(2),
+                        valor: valor.toFixed(2),
+                        tipo: pagamento.tipo,
+                        adiantamento: pagamento.adiantamento
+                    });
+                });
+            });
+
+            // Pagamentos de OS (só considerar os que NÃO estão vinculados a venda)
+            caixa.ordemServico.forEach(ordemServico => {
+                ordemServico.pagamentos.forEach(pagamento => {
+                    if (pagamento.idVenda) return; // evita duplicação
+
+                    const valor = parseFloat(pagamento.valor);
+                    totalPagamentos += valor;
+
+                    if (pagamento.adiantamento) {
+                        totalAdiantamentos += valor;
+                    } else {
+                        totalPagamentosNormais += valor;
+                    }
+
+                    pagamentosArray.push({
+                        valor: valor.toFixed(2),
                         tipo: pagamento.tipo,
                         adiantamento: pagamento.adiantamento
                     });
@@ -148,142 +316,8 @@ async function listCaixa(req, res) {
     }
 }
 
-// Função para buscar por um caixa aberto
-// async function caixaAberto(req, res) {
-//     try {
-//         const { id } = req.params; 
-//         const { idEmpresa } = req.params;
-
-//         const caixa = await Caixa.findOne({
-//             where: {
-//                 idEmpresa: idEmpresa,
-//                 situacao: true
-//             },
-//             include: [
-//                 {
-//                     model: Empresa,
-//                     as: 'empresa',
-//                     attributes: ['cnpj', 'nome']
-//                 },
-//                 {
-//                     model: EntradaSaida,
-//                     as: 'entradaSaida',
-//                     attributes: ['idUsuario', 'tipo', 'valor', 'dtInclusao']
-//                 },
-//                 {
-//                     model: Venda,
-//                     as: 'vendas',
-//                     attributes: ['id', 'idCaixa', 'valorTotal', 'createdAt'],
-//                     include: [
-//                         {
-//                             model: Cliente,
-//                             as: 'cliente',
-//                             attributes: ['id', 'nomeCompleto']
-//                         },
-//                         {
-//                             model: Pagamento,
-//                             as: 'pagamentos',
-//                             attributes: ['idVenda', 'valor', 'tipo', 'parcelas', 'adiantamento', 'createdAt']
-//                         }
-//                     ]
-//                 }
-//             ],
-//             order: [
-//                 ['id', 'DESC']
-//             ]
-//         });
-
-//         if (!caixa) {
-//             return res.status(404).json({ message: 'Caixa não encontrado' });
-//         }
-
-//         // Calcular o total de entradas e saídas
-//         let totalEntradas = 0;
-//         let totalSaidas = 0;
-//         let totalPagamentos = 0;
-//         let totalAdiantamentos = 0;
-//         let totalPagamentosVendas = 0;
-//         let pagamentosArray = [];
-
-//         // Inicializar totais por tipo de pagamento
-//         const totaisPorTipo = {
-//             'credito': 0,
-//             'debito': 0,
-//             'boleto': 0,
-//             'dinheiro': 0,
-//             'pix': 0,
-//             'crediario': 0,
-//             'duplicata': 0
-//         };
-
-//         // Agrupamento por tipo de pagamento
-//         const tiposPagamento = {
-//             'credito': [],
-//             'debito': [],
-//             'boleto': [],
-//             'dinheiro': [],
-//             'pix': [],
-//             'crediario': [],
-//             'duplicata': []
-//         };
-
-//         caixa.entradaSaida.forEach(item => {
-//             if (item.tipo === 1) {
-//                 totalEntradas += parseFloat(item.valor);
-//             } else if (item.tipo === 0) {
-//                 totalSaidas += parseFloat(item.valor);
-//             }
-//         });
-
-//         // Função para normalizar strings e remover acentuação
-//         const normalizeString = (str) => {
-//             return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-//         };
-
-//         caixa.vendas.forEach(venda => {
-//             venda.pagamentos.forEach(pagamento => {
-//                 totalPagamentos += parseFloat(pagamento.valor);
-//                 if (pagamento.adiantamento) {
-//                     totalAdiantamentos += parseFloat(pagamento.valor);
-//                 } else {
-//                     totalPagamentosVendas += parseFloat(pagamento.valor);
-//                 }
-
-//                 // Agrupando os pagamentos pelo tipo
-//                 const tipo = normalizeString(pagamento.tipo); // Normaliza o tipo
-//                 if (tiposPagamento[tipo]) {
-//                     tiposPagamento[tipo].push({
-//                         valor: parseFloat(pagamento.valor).toFixed(2),
-//                         adiantamento: pagamento.adiantamento,
-//                         venda: pagamento.idVenda,
-//                         tipo: pagamento.tipo,
-//                         data: pagamento.createdAt
-//                     });
-//                     // Somando ao total por tipo
-//                     totaisPorTipo[tipo] += parseFloat(pagamento.valor);
-//                 }
-//             });
-//         });
-
-//         // Adiciona os totais ao objeto caixa
-//         caixa.setDataValue('totalEntradas', totalEntradas.toFixed(2));
-//         caixa.setDataValue('totalSaidas', totalSaidas.toFixed(2));
-//         caixa.setDataValue('totalPagamentos', totalPagamentos.toFixed(2));
-//         caixa.setDataValue('totalAdiantamentos', totalAdiantamentos.toFixed(2));
-//         caixa.setDataValue('totalPagamentosVendas', totalPagamentosVendas.toFixed(2));
-//         caixa.setDataValue('pagamentos', tiposPagamento);
-//         caixa.setDataValue('totaisPorTipo', totaisPorTipo); 
-
-//         res.status(200).json(caixa);
-//     } catch (error) {
-//         console.error(error);
-//         res.status(500).json({ message: 'Erro ao buscar um caixa', error });
-//     }
-// }
-
 async function caixaAberto(req, res) {
     try {
-        const { id } = req.params; 
         const { idEmpresa } = req.params;
 
         const caixa = await Caixa.findOne({
@@ -325,109 +359,125 @@ async function caixaAberto(req, res) {
                             attributes: ['idVenda', 'valor', 'tipo', 'parcelas', 'adiantamento', 'createdAt']
                         }
                     ]
+                },
+                {
+                    model: OrdemServico,
+                    as: 'ordemServico',
+                    attributes: ['id', 'idCaixa', 'valorTotal', 'createdAt'],
+                    include: [
+                        {
+                            model: Cliente,
+                            as: 'cliente',
+                            attributes: ['id', 'nomeCompleto']
+                        },
+                        {
+                            model: Pagamento,
+                            as: 'pagamentos',
+                            attributes: ['idVenda', 'valor', 'tipo', 'parcelas', 'adiantamento', 'createdAt']
+                        }
+                    ]
                 }
             ],
-            order: [
-                ['id', 'DESC']
-            ]
+            order: [['id', 'DESC']]
         });
 
         if (!caixa) {
             return res.status(404).json({ message: 'Caixa não encontrado' });
         }
 
-        // Calcular o total de entradas e saídas
+        // Totais
         let totalEntradas = 0;
         let totalSaidas = 0;
         let totalPagamentos = 0;
         let totalAdiantamentos = 0;
         let totalPagamentosVendas = 0;
 
-        // Inicializar totais por tipo de pagamento
-        const totaisPorTipo = {
-            'credito': 0,
-            'debito': 0,
-            'boleto': 0,
-            'dinheiro': 0,
-            'pix': 0,
-            'crediario': 0,
-            'duplicata': 0
-        };
+        // Totais por tipo
+        const totaisPorTipo = { credito: 0, debito: 0, boleto: 0, dinheiro: 0, pix: 0, crediario: 0, duplicata: 0 };
+        const totaisAdiantamentosPorTipo = { credito: 0, debito: 0, boleto: 0, dinheiro: 0, pix: 0, crediario: 0, duplicata: 0 };
+        const tiposPagamento = { credito: [], debito: [], boleto: [], dinheiro: [], pix: [], crediario: [], duplicata: [] };
 
-        // Agrupamento por tipo de pagamento
-        const tiposPagamento = {
-            'credito': [],
-            'debito': [],
-            'boleto': [],
-            'dinheiro': [],
-            'pix': [],
-            'crediario': [],
-            'duplicata': []
-        };
-
-        // Inicializar totais de adiantamentos por tipo
-        const totaisAdiantamentosPorTipo = {
-            'credito': 0,
-            'debito': 0,
-            'boleto': 0,
-            'dinheiro': 0,
-            'pix': 0,
-            'crediario': 0,
-            'duplicata': 0
-        };
-
+        // Entradas e saídas avulsas
         caixa.entradaSaida.forEach(item => {
-            if (item.tipo === 1) {
-                totalEntradas += parseFloat(item.valor);
-            } else if (item.tipo === 0) {
-                totalSaidas += parseFloat(item.valor);
-            }
+            if (item.tipo === 1) totalEntradas += parseFloat(item.valor);
+            else if (item.tipo === 0) totalSaidas += parseFloat(item.valor);
         });
 
-        // Função para normalizar strings e remover acentuação
-        const normalizeString = (str) => {
-            return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-        };
+        // Normalizador
+        const normalizeString = str => str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 
+        // Pagamentos de vendas
         caixa.vendas.forEach(venda => {
             venda.pagamentos.forEach(pagamento => {
-                totalPagamentos += parseFloat(pagamento.valor);
+                const valor = parseFloat(pagamento.valor);
+                totalPagamentos += valor;
+
                 if (pagamento.adiantamento) {
-                    totalAdiantamentos += parseFloat(pagamento.valor);
+                    totalAdiantamentos += valor;
                     const tipo = normalizeString(pagamento.tipo);
-                    // Somando ao total por tipo de adiantamento
                     if (totaisAdiantamentosPorTipo[tipo] !== undefined) {
-                        totaisAdiantamentosPorTipo[tipo] += parseFloat(pagamento.valor);
+                        totaisAdiantamentosPorTipo[tipo] += valor;
                     }
                 } else {
-                    totalPagamentosVendas += parseFloat(pagamento.valor);
+                    totalPagamentosVendas += valor;
                 }
 
-                // Agrupando os pagamentos pelo tipo
-                const tipo = normalizeString(pagamento.tipo); // Normaliza o tipo
+                const tipo = normalizeString(pagamento.tipo);
                 if (tiposPagamento[tipo]) {
                     tiposPagamento[tipo].push({
-                        valor: parseFloat(pagamento.valor).toFixed(2),
+                        valor: valor.toFixed(2),
                         adiantamento: pagamento.adiantamento,
                         venda: pagamento.idVenda,
                         tipo: pagamento.tipo,
                         data: pagamento.createdAt
                     });
-                    // Somando ao total por tipo
-                    totaisPorTipo[tipo] += parseFloat(pagamento.valor);
+                    totaisPorTipo[tipo] += valor;
                 }
             });
         });
 
-        // Adiciona os totais ao objeto caixa
+        // Pagamentos de OS (só considerar os que NÃO estão vinculados a venda)
+        caixa.ordemServico.forEach(ordemServico => {
+            ordemServico.pagamentos.forEach(pagamento => {
+                // se o pagamento está vinculado a uma venda, já foi somado na venda
+                if (pagamento.idVenda) return;
+
+                const valor = parseFloat(pagamento.valor);
+                totalPagamentos += valor;
+
+                if (pagamento.adiantamento) {
+                    totalAdiantamentos += valor;
+                    const tipo = normalizeString(pagamento.tipo);
+                    if (totaisAdiantamentosPorTipo[tipo] !== undefined) {
+                        totaisAdiantamentosPorTipo[tipo] += valor;
+                    }
+                } else {
+                    totalPagamentosVendas += valor;
+                }
+
+                const tipo = normalizeString(pagamento.tipo);
+                if (tiposPagamento[tipo]) {
+                    tiposPagamento[tipo].push({
+                        valor: valor.toFixed(2),
+                        adiantamento: pagamento.adiantamento,
+                        venda: pagamento.idVenda,
+                        tipo: pagamento.tipo,
+                        data: pagamento.createdAt
+                    });
+                    totaisPorTipo[tipo] += valor;
+                }
+            });
+        });
+
+        // Setar dados no objeto caixa
         caixa.setDataValue('totalEntradas', totalEntradas.toFixed(2));
         caixa.setDataValue('totalSaidas', totalSaidas.toFixed(2));
         caixa.setDataValue('totalPagamentos', totalPagamentos.toFixed(2));
         caixa.setDataValue('totalAdiantamentos', totalAdiantamentos.toFixed(2));
         caixa.setDataValue('totalPagamentosVendas', totalPagamentosVendas.toFixed(2));
         caixa.setDataValue('pagamentos', tiposPagamento);
-        caixa.setDataValue('totaisPorTipo', totaisPorTipo); 
-        caixa.setDataValue('totaisAdiantamentosPorTipo', totaisAdiantamentosPorTipo); // Adiciona totais de adiantamentos
+        caixa.setDataValue('totaisPorTipo', totaisPorTipo);
+        caixa.setDataValue('totaisAdiantamentosPorTipo', totaisAdiantamentosPorTipo);
 
         res.status(200).json(caixa);
     } catch (error) {
@@ -435,7 +485,6 @@ async function caixaAberto(req, res) {
         res.status(500).json({ message: 'Erro ao buscar um caixa', error });
     }
 }
-
 
 // Função para buscar por um caixa específico
 async function getCaixa(req, res) {
@@ -482,99 +531,132 @@ async function getCaixa(req, res) {
                             attributes: ['idVenda', 'valor', 'tipo', 'parcelas', 'adiantamento', 'createdAt']
                         }
                     ]
+                },
+                {
+                    model: OrdemServico,
+                    as: 'ordemServico',
+                    attributes: ['id', 'idCaixa', 'valorTotal', 'createdAt'],
+                    include: [
+                        {
+                            model: Cliente,
+                            as: 'cliente',
+                            attributes: ['id', 'nomeCompleto']
+                        },
+                        {
+                            model: Pagamento,
+                            as: 'pagamentos',
+                            attributes: ['idVenda', 'valor', 'tipo', 'parcelas', 'adiantamento', 'createdAt']
+                        }
+                    ]
                 }
             ],
-            order: [
-                ['id', 'DESC']
-            ]
+            order: [['id', 'DESC']]
         });
 
         if (!caixa) {
             return res.status(404).json({ message: 'Caixa não encontrado' });
         }
 
-        // Calcular o total de entradas e saídas
+        // Totais
         let totalEntradas = 0;
         let totalSaidas = 0;
         let totalPagamentos = 0;
         let totalAdiantamentos = 0;
         let totalPagamentosVendas = 0;
-        let pagamentosArray = [];
 
-        // Inicializar totais por tipo de pagamento
-        const totaisPorTipo = {
-            'credito': 0,
-            'debito': 0,
-            'boleto': 0,
-            'dinheiro': 0,
-            'pix': 0,
-            'crediario': 0,
-            'duplicata': 0
-        };
+        // Totais por tipo
+        const totaisPorTipo = { credito: 0, debito: 0, boleto: 0, dinheiro: 0, pix: 0, crediario: 0, duplicata: 0 };
+        const totaisAdiantamentosPorTipo = { credito: 0, debito: 0, boleto: 0, dinheiro: 0, pix: 0, crediario: 0, duplicata: 0 };
+        const tiposPagamento = { credito: [], debito: [], boleto: [], dinheiro: [], pix: [], crediario: [], duplicata: [] };
 
-        // Agrupamento por tipo de pagamento
-        const tiposPagamento = {
-            'credito': [],
-            'debito': [],
-            'boleto': [],
-            'dinheiro': [],
-            'pix': [],
-            'crediario': [],
-            'duplicata': []
-        };
-
+        // Entradas e saídas avulsas
         caixa.entradaSaida.forEach(item => {
-            if (item.tipo === 1) {
-                totalEntradas += parseFloat(item.valor);
-            } else if (item.tipo === 0) {
-                totalSaidas += parseFloat(item.valor);
-            }
+            if (item.tipo === 1) totalEntradas += parseFloat(item.valor);
+            else if (item.tipo === 0) totalSaidas += parseFloat(item.valor);
         });
 
-        // Função para normalizar strings e remover acentuação
-        const normalizeString = (str) => {
-            return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-        };
+        // Normalizador
+        const normalizeString = str => str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 
+        // Pagamentos de vendas
         caixa.vendas.forEach(venda => {
             venda.pagamentos.forEach(pagamento => {
-                totalPagamentos += parseFloat(pagamento.valor);
+                const valor = parseFloat(pagamento.valor);
+                totalPagamentos += valor;
 
                 // Adiciona numeroVenda e idVenda dentro do pagamento
                 pagamento.numeroVenda = venda.numeroVenda;
                 pagamento.idVenda = venda.id;
 
+
                 if (pagamento.adiantamento) {
-                    totalAdiantamentos += parseFloat(pagamento.valor);
+                    totalAdiantamentos += valor;
+                    const tipo = normalizeString(pagamento.tipo);
+                    if (totaisAdiantamentosPorTipo[tipo] !== undefined) {
+                        totaisAdiantamentosPorTipo[tipo] += valor;
+                    }
                 } else {
-                    totalPagamentosVendas += parseFloat(pagamento.valor);
+                    totalPagamentosVendas += valor;
                 }
 
-                // Agrupando os pagamentos pelo tipo
-                const tipo = normalizeString(pagamento.tipo); // Normaliza o tipo
+                const tipo = normalizeString(pagamento.tipo);
                 if (tiposPagamento[tipo]) {
                     tiposPagamento[tipo].push({
-                        valor: parseFloat(pagamento.valor).toFixed(2),
+                        valor: valor.toFixed(2),
                         adiantamento: pagamento.adiantamento,
                         venda: pagamento.idVenda,
                         numeroVenda: pagamento.numeroVenda, 
                         tipo: pagamento.tipo,
                         data: pagamento.createdAt
                     });
-                    // Somando ao total por tipo
-                    totaisPorTipo[tipo] += parseFloat(pagamento.valor);
+                    totaisPorTipo[tipo] += valor;
                 }
             });
         });
 
-        // Adiciona os totais ao objeto caixa
+        // Pagamentos de OS (só considerar os que NÃO estão vinculados a venda)
+        caixa.ordemServico.forEach(ordemServico => {
+            ordemServico.pagamentos.forEach(pagamento => {
+                // se o pagamento está vinculado a uma venda, já foi somado na venda
+                if (pagamento.idVenda) return;
+
+                const valor = parseFloat(pagamento.valor);
+                totalPagamentos += valor;
+
+                if (pagamento.adiantamento) {
+                    totalAdiantamentos += valor;
+                    const tipo = normalizeString(pagamento.tipo);
+                    if (totaisAdiantamentosPorTipo[tipo] !== undefined) {
+                        totaisAdiantamentosPorTipo[tipo] += valor;
+                    }
+                } else {
+                    totalPagamentosVendas += valor;
+                }
+
+                const tipo = normalizeString(pagamento.tipo);
+                if (tiposPagamento[tipo]) {
+                    tiposPagamento[tipo].push({
+                        valor: valor.toFixed(2),
+                        adiantamento: pagamento.adiantamento,
+                        venda: pagamento.idVenda,
+                        numeroOS: pagamento.numeroOS, 
+                        tipo: pagamento.tipo,
+                        data: pagamento.createdAt
+                    });
+                    totaisPorTipo[tipo] += valor;
+                }
+            });
+        });
+
+        // Setar dados no objeto caixa
         caixa.setDataValue('totalEntradas', totalEntradas.toFixed(2));
         caixa.setDataValue('totalSaidas', totalSaidas.toFixed(2));
         caixa.setDataValue('totalPagamentos', totalPagamentos.toFixed(2));
         caixa.setDataValue('totalAdiantamentos', totalAdiantamentos.toFixed(2));
         caixa.setDataValue('totalPagamentosVendas', totalPagamentosVendas.toFixed(2));
         caixa.setDataValue('pagamentos', tiposPagamento);
-        caixa.setDataValue('totaisPorTipo', totaisPorTipo); 
+        caixa.setDataValue('totaisPorTipo', totaisPorTipo);
+        caixa.setDataValue('totaisAdiantamentosPorTipo', totaisAdiantamentosPorTipo);
 
         res.status(200).json(caixa);
     } catch (error) {

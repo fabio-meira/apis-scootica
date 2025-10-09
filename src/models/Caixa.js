@@ -97,6 +97,11 @@ Caixa.hasMany(Venda, {
   as: 'vendas'
 });
 
+Caixa.hasMany(OrdemServico, {
+  foreignKey: 'idCaixa',
+  as: 'ordemServico'
+});
+
 Caixa.hasMany(EntradaSaida, {
   foreignKey: 'idCaixa',
   as: 'entradaSaida'
