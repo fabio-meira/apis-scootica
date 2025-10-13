@@ -112,8 +112,18 @@ Empresa.init({
     type: DataTypes.STRING(20),
     allowNull: true,
  },
-  integracaoCRM: {
+ integracaoCRM: {
     type: DataTypes.BOOLEAN,
+    allowNull: true,
+    defaultValue: 0
+  },
+ NFSimplesNac: {
+    type: DataTypes.BOOLEAN,
+    allowNull: true,
+    defaultValue: false
+ },
+ emailXML: {
+    type: DataTypes.STRING(200),
     allowNull: true,
     defaultValue: 0
   },
