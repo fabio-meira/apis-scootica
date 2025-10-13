@@ -40,7 +40,7 @@ Medico.init({
    },
    email: {
       type: DataTypes.STRING(255),
-      allowNull: false,
+      allowNull: true,
    },
    telefone: {
       type: DataTypes.STRING(15),
