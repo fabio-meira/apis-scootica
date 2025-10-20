@@ -9,6 +9,10 @@ Filial.init({
     primaryKey: true,
     autoIncrement: true,
  },
+ codFilial: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+ },
  idEmpresa: {
     type: DataTypes.STRING(100),
     allowNull: true,

@@ -258,6 +258,7 @@ async function listClienteAniversarioMes(req, res) {
 async function listAniversariantesNoAno(req, res) {
     try {
         const { idEmpresa } = req.params;
+        const { idFilial } = req.query;
         
         // Definir a estrutura para armazenar os resultados
         const resultados = {
@@ -275,9 +276,19 @@ async function listAniversariantesNoAno(req, res) {
             '12': { quantidade: 0, clientes: [] },
         };
 
+        // Construa o objeto de filtro
+        const whereConditions = {
+            idEmpresa: idEmpresa
+        };
+
+        // Adicione filtro por filial, se fornecido
+        if (idFilial) {
+            whereConditions.idFilial = idFilial;
+        }
+
         // Buscar clientes da empresa
         const clientes = await Cliente.findAll({
-            where: { idEmpresa },
+            where: whereConditions,
             attributes: ['nomeCompleto', 'dtNascimento', 'celular', 'email'],
         });
 

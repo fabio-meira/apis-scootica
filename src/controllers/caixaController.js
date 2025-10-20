@@ -49,145 +49,21 @@ async function patchCaixa(req, res) {
     }
 }
 
-// // Função para consultar todas os caixas
-// async function listCaixa(req, res) {
-//     try {
-//         const { idEmpresa } = req.params;
-
-//         const caixas = await Caixa.findAll({
-//             where: {
-//                 idEmpresa: idEmpresa
-//             },
-//             include: [
-//                 {
-//                     model: Empresa,
-//                     as: 'empresa',
-//                     attributes: ['cnpj', 'nome']
-//                 },
-//                 // {
-//                 //     model: Usuario,
-//                 //     as: 'usuario',
-//                 //     attributes: ['login', 'nome', 'email']
-//                 // },
-//                 {
-//                     model: EntradaSaida,
-//                     as: 'entradaSaida',
-//                     attributes: ['idUsuario', 'tipo', 'valor']
-//                 },
-//                 {
-//                     model: Venda,
-//                     as: 'vendas',
-//                     attributes: ['id', 'idCaixa', 'valorTotal', 'createdAt'],
-//                     include: [
-//                         {
-//                             model: Cliente,
-//                             as: 'cliente',
-//                             attributes: ['id', 'nomeCompleto']
-//                         },
-//                         {
-//                             model: Pagamento,
-//                             as: 'pagamentos',
-//                             attributes: ['valor', 'tipo', 'parcelas', 'adiantamento']
-//                         }
-//                     ]
-//                 },
-//                 {
-//                     model: OrdemServico,
-//                     as: 'ordemServico',
-//                     attributes: ['id', 'idCaixa', 'valorTotal', 'createdAt'],
-//                     include: [
-//                         {
-//                             model: Cliente,
-//                             as: 'cliente',
-//                             attributes: ['id', 'nomeCompleto']
-//                         },
-//                         {
-//                             model: Pagamento,
-//                             as: 'pagamentos',
-//                             attributes: ['idVenda', 'valor', 'tipo', 'parcelas', 'adiantamento', 'createdAt']
-//                         }
-//                     ]
-//                 }
-//             ],
-//             order: [
-//                 ['id', 'DESC']
-//             ]
-//         });
-
-//         if (!caixas || caixas.length === 0) {
-//             return res.status(404).json({ message: 'Nenhum caixa encontrado' });
-//         }
-
-//         caixas.forEach(caixa => {
-//             let totalEntradas = 0;
-//             let totalSaidas = 0;
-//             let totalPagamentos = 0;
-//             let totalAdiantamentos = 0;
-//             let totalPagamentosNormais = 0;
-//             let pagamentosArray = [];
-
-//             caixa.entradaSaida.forEach(item => {
-//                 if (item.tipo === 1) {
-//                     totalEntradas += parseFloat(item.valor);
-//                 } else if (item.tipo === 0) {
-//                     totalSaidas += parseFloat(item.valor);
-//                 }
-//             });
-
-//             caixa.vendas.forEach(venda => {
-//                 venda.pagamentos.forEach(pagamento => {
-//                     totalPagamentos += parseFloat(pagamento.valor);
-//                     if (pagamento.adiantamento) {
-//                         totalAdiantamentos += parseFloat(pagamento.valor);
-//                     } else {
-//                         totalPagamentosNormais += parseFloat(pagamento.valor);
-//                     }
-//                     pagamentosArray.push({
-//                         valor: parseFloat(pagamento.valor).toFixed(2),
-//                         tipo: pagamento.tipo,
-//                         adiantamento: pagamento.adiantamento
-//                     });
-//                 });
-//             });
-
-//             caixa.ordemServico.forEach(ordemServico => {
-//                 ordemServico.pagamentos.forEach(pagamento => {
-//                     totalPagamentos += parseFloat(pagamento.valor);
-//                     if (pagamento.adiantamento) {
-//                         totalAdiantamentos += parseFloat(pagamento.valor);
-//                     } else {
-//                         totalPagamentosNormais += parseFloat(pagamento.valor);
-//                     }
-//                     pagamentosArray.push({
-//                         valor: parseFloat(pagamento.valor).toFixed(2),
-//                         tipo: pagamento.tipo,
-//                         adiantamento: pagamento.adiantamento
-//                     });
-//                 });
-//             });
-
-//             // Adicionar os totais ao objeto caixa
-//             caixa.setDataValue('totalEntradas', totalEntradas.toFixed(2));
-//             caixa.setDataValue('totalSaidas', totalSaidas.toFixed(2));
-//             caixa.setDataValue('totalPagamentos', totalPagamentos.toFixed(2));
-//             caixa.setDataValue('totalAdiantamentos', totalAdiantamentos.toFixed(2));
-//             caixa.setDataValue('totalPagamentosNormais', totalPagamentosNormais.toFixed(2));
-//             caixa.setDataValue('pagamentos', pagamentosArray);
-//         });
-
-//         res.status(200).json(caixas);
-//     } catch (error) {
-//         console.error(error);
-//         res.status(500).json({ message: 'Erro ao buscar caixas', error });
-//     }
-// }
 // Função para consultar todos os caixas
 async function listCaixa(req, res) {
     try {
         const { idEmpresa } = req.params;
+        const { idFilial } = req.query; 
 
+        // Filtro principal
+        const whereConditions = { idEmpresa };
+        
+        // Filtro por filials, quando informada
+        if (idFilial) whereConditions.idFilial = idFilial;
+        
         const caixas = await Caixa.findAll({
-            where: { idEmpresa: idEmpresa },
+            // where: { idEmpresa: idEmpresa },
+            where: whereConditions,
             include: [
                 {
                     model: Empresa,
@@ -197,7 +73,16 @@ async function listCaixa(req, res) {
                 {
                     model: EntradaSaida,
                     as: 'entradaSaida',
-                    attributes: ['idUsuario', 'tipo', 'valor']
+                    attributes: ['idUsuario', 'tipo', 'valor', 'dtInclusao'],
+                    include: [
+                        {
+                        model: Usuario,
+                        as: 'usuario',
+                        attributes: ['id', 'nome']
+                        }
+                    ],
+                    where: idFilial ? { idFilial } : undefined,
+                    required: false
                 },
                 {
                     model: Venda,
@@ -214,7 +99,9 @@ async function listCaixa(req, res) {
                             as: 'pagamentos',
                             attributes: ['valor', 'tipo', 'parcelas', 'adiantamento']
                         }
-                    ]
+                    ],
+                    where: idFilial ? { idFilial } : undefined,
+                    required: false
                 },
                 {
                     model: OrdemServico,
@@ -231,7 +118,9 @@ async function listCaixa(req, res) {
                             as: 'pagamentos',
                             attributes: ['idVenda', 'valor', 'tipo', 'parcelas', 'adiantamento', 'createdAt']
                         }
-                    ]
+                    ],
+                    where: idFilial ? { idFilial } : undefined,
+                    required: false
                 }
             ],
             order: [['id', 'DESC']]
@@ -316,174 +205,389 @@ async function listCaixa(req, res) {
     }
 }
 
+// async function caixaAberto(req, res) {
+//     try {
+//         const { idEmpresa } = req.params;
+//         const { idFilial } = req.query; 
+
+//         // Construa o objeto de filtro
+//         const whereConditions = {
+//             idEmpresa: idEmpresa
+//         };
+
+//         // Adicione filtro por filial, se fornecido
+//         if (idFilial) {
+//             whereConditions.idFilial = idFilial;
+//         }
+
+//         const caixa = await Caixa.findOne({
+//             where: {
+//                 idEmpresa: idEmpresa,
+//                 situacao: true
+//             },
+//             include: [
+//                 {
+//                     model: Empresa,
+//                     as: 'empresa',
+//                     attributes: ['cnpj', 'nome']
+//                 },
+//                 {
+//                     model: EntradaSaida,
+//                     as: 'entradaSaida',
+//                     attributes: ['idUsuario', 'tipo', 'valor', 'dtInclusao'],
+//                     include: [
+//                         {
+//                             model: Usuario,
+//                             as: 'usuario',
+//                             attributes: ['id', 'nome']
+//                         }
+//                     ]
+//                 },
+//                 {
+//                     model: Venda,
+//                     as: 'vendas',
+//                     attributes: ['id', 'idCaixa', 'valorTotal', 'createdAt'],
+//                     include: [
+//                         {
+//                             model: Cliente,
+//                             as: 'cliente',
+//                             attributes: ['id', 'nomeCompleto']
+//                         },
+//                         {
+//                             model: Pagamento,
+//                             as: 'pagamentos',
+//                             attributes: ['idVenda', 'valor', 'tipo', 'parcelas', 'adiantamento', 'createdAt']
+//                         }
+//                     ]
+//                 },
+//                 {
+//                     model: OrdemServico,
+//                     as: 'ordemServico',
+//                     attributes: ['id', 'idCaixa', 'valorTotal', 'createdAt'],
+//                     include: [
+//                         {
+//                             model: Cliente,
+//                             as: 'cliente',
+//                             attributes: ['id', 'nomeCompleto']
+//                         },
+//                         {
+//                             model: Pagamento,
+//                             as: 'pagamentos',
+//                             attributes: ['idVenda', 'valor', 'tipo', 'parcelas', 'adiantamento', 'createdAt']
+//                         }
+//                     ]
+//                 }
+//             ],
+//             order: [['id', 'DESC']]
+//         });
+
+//         if (!caixa) {
+//             return res.status(404).json({ message: 'Caixa não encontrado' });
+//         }
+
+//         // Totais
+//         let totalEntradas = 0;
+//         let totalSaidas = 0;
+//         let totalPagamentos = 0;
+//         let totalAdiantamentos = 0;
+//         let totalPagamentosVendas = 0;
+
+//         // Totais por tipo
+//         const totaisPorTipo = { credito: 0, debito: 0, boleto: 0, dinheiro: 0, pix: 0, crediario: 0, duplicata: 0 };
+//         const totaisAdiantamentosPorTipo = { credito: 0, debito: 0, boleto: 0, dinheiro: 0, pix: 0, crediario: 0, duplicata: 0 };
+//         const tiposPagamento = { credito: [], debito: [], boleto: [], dinheiro: [], pix: [], crediario: [], duplicata: [] };
+
+//         // Entradas e saídas avulsas
+//         caixa.entradaSaida.forEach(item => {
+//             if (item.tipo === 1) totalEntradas += parseFloat(item.valor);
+//             else if (item.tipo === 0) totalSaidas += parseFloat(item.valor);
+//         });
+
+//         // Normalizador
+//         const normalizeString = str => str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+//         // Pagamentos de vendas
+//         caixa.vendas.forEach(venda => {
+//             venda.pagamentos.forEach(pagamento => {
+//                 const valor = parseFloat(pagamento.valor);
+//                 totalPagamentos += valor;
+
+//                 if (pagamento.adiantamento) {
+//                     totalAdiantamentos += valor;
+//                     const tipo = normalizeString(pagamento.tipo);
+//                     if (totaisAdiantamentosPorTipo[tipo] !== undefined) {
+//                         totaisAdiantamentosPorTipo[tipo] += valor;
+//                     }
+//                 } else {
+//                     totalPagamentosVendas += valor;
+//                 }
+
+//                 const tipo = normalizeString(pagamento.tipo);
+//                 if (tiposPagamento[tipo]) {
+//                     tiposPagamento[tipo].push({
+//                         valor: valor.toFixed(2),
+//                         adiantamento: pagamento.adiantamento,
+//                         venda: pagamento.idVenda,
+//                         tipo: pagamento.tipo,
+//                         data: pagamento.createdAt
+//                     });
+//                     totaisPorTipo[tipo] += valor;
+//                 }
+//             });
+//         });
+
+//         // Pagamentos de OS (só considerar os que NÃO estão vinculados a venda)
+//         caixa.ordemServico.forEach(ordemServico => {
+//             ordemServico.pagamentos.forEach(pagamento => {
+//                 // se o pagamento está vinculado a uma venda, já foi somado na venda
+//                 if (pagamento.idVenda) return;
+
+//                 const valor = parseFloat(pagamento.valor);
+//                 totalPagamentos += valor;
+
+//                 if (pagamento.adiantamento) {
+//                     totalAdiantamentos += valor;
+//                     const tipo = normalizeString(pagamento.tipo);
+//                     if (totaisAdiantamentosPorTipo[tipo] !== undefined) {
+//                         totaisAdiantamentosPorTipo[tipo] += valor;
+//                     }
+//                 } else {
+//                     totalPagamentosVendas += valor;
+//                 }
+
+//                 const tipo = normalizeString(pagamento.tipo);
+//                 if (tiposPagamento[tipo]) {
+//                     tiposPagamento[tipo].push({
+//                         valor: valor.toFixed(2),
+//                         adiantamento: pagamento.adiantamento,
+//                         venda: pagamento.idVenda,
+//                         tipo: pagamento.tipo,
+//                         data: pagamento.createdAt
+//                     });
+//                     totaisPorTipo[tipo] += valor;
+//                 }
+//             });
+//         });
+
+//         // Setar dados no objeto caixa
+//         caixa.setDataValue('totalEntradas', totalEntradas.toFixed(2));
+//         caixa.setDataValue('totalSaidas', totalSaidas.toFixed(2));
+//         caixa.setDataValue('totalPagamentos', totalPagamentos.toFixed(2));
+//         caixa.setDataValue('totalAdiantamentos', totalAdiantamentos.toFixed(2));
+//         caixa.setDataValue('totalPagamentosVendas', totalPagamentosVendas.toFixed(2));
+//         caixa.setDataValue('pagamentos', tiposPagamento);
+//         caixa.setDataValue('totaisPorTipo', totaisPorTipo);
+//         caixa.setDataValue('totaisAdiantamentosPorTipo', totaisAdiantamentosPorTipo);
+
+//         res.status(200).json(caixa);
+//     } catch (error) {
+//         console.error(error);
+//         res.status(500).json({ message: 'Erro ao buscar um caixa', error });
+//     }
+// }
+
 async function caixaAberto(req, res) {
-    try {
-        const { idEmpresa } = req.params;
+  try {
+    const { idEmpresa } = req.params;
+    const { idFilial } = req.query;
 
-        const caixa = await Caixa.findOne({
-            where: {
-                idEmpresa: idEmpresa,
-                situacao: true
+    // Filtro base
+    const whereConditions = { idEmpresa, situacao: true };
+    if (idFilial) whereConditions.idFilial = idFilial;
+
+    // Busca o caixa aberto, incluindo as relações filtradas
+    const caixa = await Caixa.findOne({
+      where: whereConditions,
+      include: [
+        {
+          model: Empresa,
+          as: 'empresa',
+          attributes: ['cnpj', 'nome']
+        },
+        {
+          model: EntradaSaida,
+          as: 'entradaSaida',
+          attributes: ['idUsuario', 'tipo', 'valor', 'dtInclusao'],
+          include: [
+            {
+              model: Usuario,
+              as: 'usuario',
+              attributes: ['id', 'nome']
+            }
+          ],
+          // Filtro de filial dentro de entrada/saída (se existir esse campo)
+          where: idFilial ? { idFilial } : undefined,
+          required: false
+        },
+        {
+          model: Venda,
+          as: 'vendas',
+          attributes: ['id', 'idCaixa', 'idFilial', 'valorTotal', 'createdAt'],
+          include: [
+            {
+              model: Cliente,
+              as: 'cliente',
+              attributes: ['id', 'nomeCompleto']
             },
-            include: [
-                {
-                    model: Empresa,
-                    as: 'empresa',
-                    attributes: ['cnpj', 'nome']
-                },
-                {
-                    model: EntradaSaida,
-                    as: 'entradaSaida',
-                    attributes: ['idUsuario', 'tipo', 'valor', 'dtInclusao'],
-                    include: [
-                        {
-                            model: Usuario,
-                            as: 'usuario',
-                            attributes: ['id', 'nome']
-                        }
-                    ]
-                },
-                {
-                    model: Venda,
-                    as: 'vendas',
-                    attributes: ['id', 'idCaixa', 'valorTotal', 'createdAt'],
-                    include: [
-                        {
-                            model: Cliente,
-                            as: 'cliente',
-                            attributes: ['id', 'nomeCompleto']
-                        },
-                        {
-                            model: Pagamento,
-                            as: 'pagamentos',
-                            attributes: ['idVenda', 'valor', 'tipo', 'parcelas', 'adiantamento', 'createdAt']
-                        }
-                    ]
-                },
-                {
-                    model: OrdemServico,
-                    as: 'ordemServico',
-                    attributes: ['id', 'idCaixa', 'valorTotal', 'createdAt'],
-                    include: [
-                        {
-                            model: Cliente,
-                            as: 'cliente',
-                            attributes: ['id', 'nomeCompleto']
-                        },
-                        {
-                            model: Pagamento,
-                            as: 'pagamentos',
-                            attributes: ['idVenda', 'valor', 'tipo', 'parcelas', 'adiantamento', 'createdAt']
-                        }
-                    ]
-                }
-            ],
-            order: [['id', 'DESC']]
-        });
+            {
+              model: Pagamento,
+              as: 'pagamentos',
+              attributes: ['idVenda', 'valor', 'tipo', 'parcelas', 'adiantamento', 'createdAt']
+            }
+          ],
+          where: idFilial ? { idFilial } : undefined,
+          required: false
+        },
+        {
+          model: OrdemServico,
+          as: 'ordemServico',
+          attributes: ['id', 'idCaixa', 'idFilial', 'valorTotal', 'createdAt'],
+          include: [
+            {
+              model: Cliente,
+              as: 'cliente',
+              attributes: ['id', 'nomeCompleto']
+            },
+            {
+              model: Pagamento,
+              as: 'pagamentos',
+              attributes: ['idVenda', 'valor', 'tipo', 'parcelas', 'adiantamento', 'createdAt']
+            }
+          ],
+          where: idFilial ? { idFilial } : undefined,
+          required: false
+        }
+      ],
+      order: [['id', 'DESC']]
+    });
 
-        if (!caixa) {
-            return res.status(404).json({ message: 'Caixa não encontrado' });
+    if (!caixa) {
+      return res.status(404).json({ message: 'Caixa não encontrado' });
+    }
+
+    // ========================
+    // CÁLCULOS DOS TOTAIS
+    // ========================
+
+    let totalEntradas = 0;
+    let totalSaidas = 0;
+    let totalPagamentos = 0;
+    let totalAdiantamentos = 0;
+    let totalPagamentosVendas = 0;
+
+    const totaisPorTipo = {
+      credito: 0,
+      debito: 0,
+      boleto: 0,
+      dinheiro: 0,
+      pix: 0,
+      crediario: 0,
+      duplicata: 0
+    };
+
+    const totaisAdiantamentosPorTipo = {
+      credito: 0,
+      debito: 0,
+      boleto: 0,
+      dinheiro: 0,
+      pix: 0,
+      crediario: 0,
+      duplicata: 0
+    };
+
+    const tiposPagamento = {
+      credito: [],
+      debito: [],
+      boleto: [],
+      dinheiro: [],
+      pix: [],
+      crediario: [],
+      duplicata: []
+    };
+
+    // Normalizador
+    const normalizeString = (str) =>
+      str ? str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase() : '';
+
+    // Entradas e saídas
+    caixa.entradaSaida?.forEach(item => {
+      if (item.tipo === 1) totalEntradas += parseFloat(item.valor);
+      else if (item.tipo === 0) totalSaidas += parseFloat(item.valor);
+    });
+
+    // Pagamentos de Vendas
+    caixa.vendas?.forEach(venda => {
+      venda.pagamentos?.forEach(pagamento => {
+        const valor = parseFloat(pagamento.valor);
+        totalPagamentos += valor;
+
+        const tipo = normalizeString(pagamento.tipo);
+        if (pagamento.adiantamento) {
+          totalAdiantamentos += valor;
+          if (totaisAdiantamentosPorTipo[tipo] !== undefined)
+            totaisAdiantamentosPorTipo[tipo] += valor;
+        } else {
+          totalPagamentosVendas += valor;
         }
 
-        // Totais
-        let totalEntradas = 0;
-        let totalSaidas = 0;
-        let totalPagamentos = 0;
-        let totalAdiantamentos = 0;
-        let totalPagamentosVendas = 0;
+        if (tiposPagamento[tipo]) {
+          tiposPagamento[tipo].push({
+            valor: valor.toFixed(2),
+            adiantamento: pagamento.adiantamento,
+            venda: pagamento.idVenda,
+            tipo: pagamento.tipo,
+            data: pagamento.createdAt
+          });
+          totaisPorTipo[tipo] += valor;
+        }
+      });
+    });
 
-        // Totais por tipo
-        const totaisPorTipo = { credito: 0, debito: 0, boleto: 0, dinheiro: 0, pix: 0, crediario: 0, duplicata: 0 };
-        const totaisAdiantamentosPorTipo = { credito: 0, debito: 0, boleto: 0, dinheiro: 0, pix: 0, crediario: 0, duplicata: 0 };
-        const tiposPagamento = { credito: [], debito: [], boleto: [], dinheiro: [], pix: [], crediario: [], duplicata: [] };
+    // Pagamentos de Ordem de Serviço
+    caixa.ordemServico?.forEach(os => {
+      os.pagamentos?.forEach(pagamento => {
+        if (pagamento.idVenda) return; // já somado em venda
 
-        // Entradas e saídas avulsas
-        caixa.entradaSaida.forEach(item => {
-            if (item.tipo === 1) totalEntradas += parseFloat(item.valor);
-            else if (item.tipo === 0) totalSaidas += parseFloat(item.valor);
-        });
+        const valor = parseFloat(pagamento.valor);
+        totalPagamentos += valor;
 
-        // Normalizador
-        const normalizeString = str => str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+        const tipo = normalizeString(pagamento.tipo);
+        if (pagamento.adiantamento) {
+          totalAdiantamentos += valor;
+          if (totaisAdiantamentosPorTipo[tipo] !== undefined)
+            totaisAdiantamentosPorTipo[tipo] += valor;
+        } else {
+          totalPagamentosVendas += valor;
+        }
 
-        // Pagamentos de vendas
-        caixa.vendas.forEach(venda => {
-            venda.pagamentos.forEach(pagamento => {
-                const valor = parseFloat(pagamento.valor);
-                totalPagamentos += valor;
+        if (tiposPagamento[tipo]) {
+          tiposPagamento[tipo].push({
+            valor: valor.toFixed(2),
+            adiantamento: pagamento.adiantamento,
+            venda: pagamento.idVenda,
+            tipo: pagamento.tipo,
+            data: pagamento.createdAt
+          });
+          totaisPorTipo[tipo] += valor;
+        }
+      });
+    });
 
-                if (pagamento.adiantamento) {
-                    totalAdiantamentos += valor;
-                    const tipo = normalizeString(pagamento.tipo);
-                    if (totaisAdiantamentosPorTipo[tipo] !== undefined) {
-                        totaisAdiantamentosPorTipo[tipo] += valor;
-                    }
-                } else {
-                    totalPagamentosVendas += valor;
-                }
+    // Define os totais no objeto retornado
+    caixa.setDataValue('totalEntradas', totalEntradas.toFixed(2));
+    caixa.setDataValue('totalSaidas', totalSaidas.toFixed(2));
+    caixa.setDataValue('totalPagamentos', totalPagamentos.toFixed(2));
+    caixa.setDataValue('totalAdiantamentos', totalAdiantamentos.toFixed(2));
+    caixa.setDataValue('totalPagamentosVendas', totalPagamentosVendas.toFixed(2));
+    caixa.setDataValue('pagamentos', tiposPagamento);
+    caixa.setDataValue('totaisPorTipo', totaisPorTipo);
+    caixa.setDataValue('totaisAdiantamentosPorTipo', totaisAdiantamentosPorTipo);
 
-                const tipo = normalizeString(pagamento.tipo);
-                if (tiposPagamento[tipo]) {
-                    tiposPagamento[tipo].push({
-                        valor: valor.toFixed(2),
-                        adiantamento: pagamento.adiantamento,
-                        venda: pagamento.idVenda,
-                        tipo: pagamento.tipo,
-                        data: pagamento.createdAt
-                    });
-                    totaisPorTipo[tipo] += valor;
-                }
-            });
-        });
-
-        // Pagamentos de OS (só considerar os que NÃO estão vinculados a venda)
-        caixa.ordemServico.forEach(ordemServico => {
-            ordemServico.pagamentos.forEach(pagamento => {
-                // se o pagamento está vinculado a uma venda, já foi somado na venda
-                if (pagamento.idVenda) return;
-
-                const valor = parseFloat(pagamento.valor);
-                totalPagamentos += valor;
-
-                if (pagamento.adiantamento) {
-                    totalAdiantamentos += valor;
-                    const tipo = normalizeString(pagamento.tipo);
-                    if (totaisAdiantamentosPorTipo[tipo] !== undefined) {
-                        totaisAdiantamentosPorTipo[tipo] += valor;
-                    }
-                } else {
-                    totalPagamentosVendas += valor;
-                }
-
-                const tipo = normalizeString(pagamento.tipo);
-                if (tiposPagamento[tipo]) {
-                    tiposPagamento[tipo].push({
-                        valor: valor.toFixed(2),
-                        adiantamento: pagamento.adiantamento,
-                        venda: pagamento.idVenda,
-                        tipo: pagamento.tipo,
-                        data: pagamento.createdAt
-                    });
-                    totaisPorTipo[tipo] += valor;
-                }
-            });
-        });
-
-        // Setar dados no objeto caixa
-        caixa.setDataValue('totalEntradas', totalEntradas.toFixed(2));
-        caixa.setDataValue('totalSaidas', totalSaidas.toFixed(2));
-        caixa.setDataValue('totalPagamentos', totalPagamentos.toFixed(2));
-        caixa.setDataValue('totalAdiantamentos', totalAdiantamentos.toFixed(2));
-        caixa.setDataValue('totalPagamentosVendas', totalPagamentosVendas.toFixed(2));
-        caixa.setDataValue('pagamentos', tiposPagamento);
-        caixa.setDataValue('totaisPorTipo', totaisPorTipo);
-        caixa.setDataValue('totaisAdiantamentosPorTipo', totaisAdiantamentosPorTipo);
-
-        res.status(200).json(caixa);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Erro ao buscar um caixa', error });
-    }
+    res.status(200).json(caixa);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Erro ao buscar um caixa', error });
+  }
 }
 
 // Função para buscar por um caixa específico

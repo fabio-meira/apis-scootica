@@ -21,6 +21,10 @@ Caixa.init({
     type: DataTypes.STRING(100),
     allowNull: false
   },
+  idFilial: {
+    type: DataTypes.STRING(100),
+    allowNull: false
+  },
   idUsuarioAbertura: {
     type: DataTypes.INTEGER,
     allowNull: true

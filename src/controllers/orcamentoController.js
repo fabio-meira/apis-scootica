@@ -118,7 +118,7 @@ async function postOrcamento(req, res) {
 async function getOrcamentos(req, res) {
     try {
         const { idEmpresa } = req.params; 
-        const { startDate, endDate, status, idVendedor, orcamento, numeroOR } = req.query; 
+        const { startDate, endDate, status, idVendedor, orcamento, numeroOR, idFilial } = req.query; 
 
         // Construa o objeto de filtro
         const whereConditions = {
@@ -161,6 +161,11 @@ async function getOrcamentos(req, res) {
         // Adicione filtro por idOrcamento, se fornecido
         if (numeroOR) {
             whereConditions.numeroOR = numeroOR;
+        }
+
+        // Adicione filtro por filial, se fornecido
+        if (idFilial) {
+            whereConditions.idFilial = idFilial;
         }
 
         const orcamentos = await Orcamento.findAll({

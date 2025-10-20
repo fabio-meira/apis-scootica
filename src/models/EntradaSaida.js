@@ -19,6 +19,10 @@ EntradaSaida.init({
     type: DataTypes.INTEGER,
     allowNull: true
   },
+  idFilial: {
+    type: DataTypes.STRING(100),
+    allowNull: false
+  },
   idUsuario: {
     type: DataTypes.INTEGER,
     allowNull: true

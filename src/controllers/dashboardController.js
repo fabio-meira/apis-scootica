@@ -13,6 +13,8 @@ const { format, utcToZonedTime } = require('date-fns-tz');
 async function getVendaSemanal(req, res) {
     try {
         const { idEmpresa } = req.params; 
+        const { idFilial } = req.query;
+
         const startOfWeek = new Date();
         // Obtém o início da semana (domingo)
         startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay()); 
@@ -22,11 +24,21 @@ async function getVendaSemanal(req, res) {
         // Obtém o fim da semana (sábado)
         endOfWeek.setDate(startOfWeek.getDate() + 6); 
         endOfWeek.setHours(23, 59, 59, 999);
+
+        // Construa o objeto de filtro
+        const whereConditions = {
+            idEmpresa: idEmpresa
+        };
+
+        // Adicione filtro por filial, se fornecido
+        if (idFilial) {
+            whereConditions.idFilial = idFilial;
+        }
   
         // Consulta os orçamentos gerados durante a semana
         const orcamentos = await Orcamento.findAll({
             where: {
-                idEmpresa: idEmpresa,
+                ...whereConditions,
                 createdAt: {
                     [Op.between]: [startOfWeek, endOfWeek],
                 },
@@ -53,7 +65,7 @@ async function getVendaSemanal(req, res) {
         // Consulta as ordens de serviço geradas durante a semana e calcula o total do valor
         const ordensServico = await OrdemServico.findAll({
             where: {
-                idEmpresa: idEmpresa,
+                ...whereConditions,
                 createdAt: {
                     [Op.between]: [startOfWeek, endOfWeek],
                 },
@@ -82,7 +94,7 @@ async function getVendaSemanal(req, res) {
         // Consulta as vendas geradas durante a semana e calcula o total do valor
         const vendas = await Venda.findAll({
             where: {
-                idEmpresa: idEmpresa,
+                ...whereConditions,
                 createdAt: {
                     [Op.between]: [startOfWeek, endOfWeek],
                 },
@@ -149,6 +161,8 @@ async function getVendaSemanal(req, res) {
 async function getConsolidadoMensal(req, res) {
     try {
         const { idEmpresa } = req.params; 
+        const { idFilial } = req.query;
+        
         const year = new Date().getFullYear();
         const month = new Date().getMonth(); // Mês atual (0 = janeiro, 1 = fevereiro, etc.)
         
@@ -168,10 +182,20 @@ async function getConsolidadoMensal(req, res) {
             });
         }
 
+        // Construa o objeto de filtro
+        const whereConditions = {
+            idEmpresa: idEmpresa
+        };
+
+        // Adicione filtro por filial, se fornecido
+        if (idFilial) {
+            whereConditions.idFilial = idFilial;
+        }
+
         // Coletar os dados diários de orçamentos
         const orcamentos = await Orcamento.findAll({
             where: {
-                idEmpresa,
+                ...whereConditions,
                 createdAt: {
                     [Op.between]: [startOfMonth, endOfMonth],
                 },
@@ -196,7 +220,7 @@ async function getConsolidadoMensal(req, res) {
         // Coletar os dados diários de ordens de serviço
         const ordensServico = await OrdemServico.findAll({
             where: {
-                idEmpresa,
+                ...whereConditions,
                 createdAt: {
                     [Op.between]: [startOfMonth, endOfMonth],
                 },
@@ -221,7 +245,7 @@ async function getConsolidadoMensal(req, res) {
         // Coletar os dados diários de vendas
         const vendas = await Venda.findAll({
             where: {
-                idEmpresa,
+                ...whereConditions,
                 createdAt: {
                     [Op.between]: [startOfMonth, endOfMonth],
                 },
@@ -278,6 +302,8 @@ async function getConsolidadoMensal(req, res) {
 async function getConsolidadoAnual(req, res) {
     try {
         const { idEmpresa } = req.params;
+        const { idFilial } = req.query;
+
         const currentDate = new Date();
         const currentYear = currentDate.getFullYear();
         const currentMonth = currentDate.getMonth(); // Mês atual (0 = Janeiro, 11 = Dezembro)
@@ -287,10 +313,20 @@ async function getConsolidadoAnual(req, res) {
         startOfLast12Months.setMonth(currentMonth - 11); // Mês atual - 11 meses atrás
         const endOfLast12Months = new Date(currentDate); // Mês atual (inclusive)
 
+        // Construa o objeto de filtro
+        const whereConditions = {
+            idEmpresa: idEmpresa
+        };
+
+        // Adicione filtro por filial, se fornecido
+        if (idFilial) {
+            whereConditions.idFilial = idFilial;
+        }
+
         // Consulta orçamentos
         const orcamentos = await Orcamento.findAll({
             where: {
-                idEmpresa: idEmpresa,
+                ...whereConditions,
                 createdAt: {
                     [Op.between]: [startOfLast12Months, endOfLast12Months],
                 },
@@ -315,7 +351,7 @@ async function getConsolidadoAnual(req, res) {
         // Consulta ordens de serviço
         const ordensServico = await OrdemServico.findAll({
             where: {
-                idEmpresa: idEmpresa,
+                ...whereConditions,
                 createdAt: {
                     [Op.between]: [startOfLast12Months, endOfLast12Months],
                 },
@@ -332,7 +368,7 @@ async function getConsolidadoAnual(req, res) {
         // Consulta vendas
         const vendas = await Venda.findAll({
             where: {
-                idEmpresa: idEmpresa,
+                ...whereConditions,
                 createdAt: {
                     [Op.between]: [startOfLast12Months, endOfLast12Months],
                 },
@@ -430,7 +466,7 @@ async function getConsolidadoAnual(req, res) {
 async function listMensagens(req, res) {
     try {
         const { idEmpresa } = req.params;
-        const { search, month } = req.query;
+        const { search, month, idFilial } = req.query;
 
         // Calcular o intervalo de datas para o mês corrente ou o mês especificado
         const currentYear = moment().year();
@@ -447,10 +483,20 @@ async function listMensagens(req, res) {
         // Data corrente
         const today = moment().format('YYYY-MM-DD');
 
+        // Construa o objeto de filtro
+        const whereConditions = {
+            idEmpresa: idEmpresa
+        };
+
+        // Adicione filtro por filial, se fornecido
+        if (idFilial) {
+            whereConditions.idFilial = idFilial;
+        }
+
         // Consulta de clientes com aniversário no mês
         const clientes = await Cliente.findAll({
             where: {
-                idEmpresa,
+                ...whereConditions,
                 [Op.and]: [
                     literal(`MONTH(dtNascimento) = ${monthToCheck}`),
                     literal(`DAY(dtNascimento) BETWEEN ${startDate.format('DD')} AND ${endDate.format('DD')}`)
@@ -466,7 +512,7 @@ async function listMensagens(req, res) {
         // Consulta de receitas no mês
         const receitas = await Receita.findAll({
             where: {
-                idEmpresa,
+                ...whereConditions,
                 [Op.and]: [
                     literal(`MONTH(dtReceita) = ${monthToCheck}`),
                     literal(`DAY(dtReceita) BETWEEN ${startDate.format('DD')} AND ${endDate.format('DD')}`)
@@ -493,7 +539,7 @@ async function listMensagens(req, res) {
         // Consulta de aniversariantes do dia corrente
         const aniversariantesHoje = await Cliente.findAll({
             where: {
-                idEmpresa,
+                ...whereConditions,
                 [Op.and]: [
                     literal(`MONTH(dtNascimento) = ${moment().month() + 1}`),
                     literal(`DAY(dtNascimento) = ${moment().date()}`)
@@ -505,7 +551,7 @@ async function listMensagens(req, res) {
         // Consulta de receitas vencidas no dia corrente
         const receitasHoje = await Receita.findAll({
             where: {
-                idEmpresa,
+                ...whereConditions,
                 [Op.and]: [
                     literal(`DATE(dtReceita) = '${oneYearAgoDate}'`)
                 ],

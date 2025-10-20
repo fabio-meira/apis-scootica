@@ -278,7 +278,7 @@ async function postOrdemServico(req, res) {
 async function getOrdemServico(req, res) {
     try {
         const { idEmpresa } = req.params;
-        const { startDate, endDate, dataEstimada, idVendedor, status, idOrcamento, numeroOS, numeroOR, os } = req.query; 
+        const { startDate, endDate, dataEstimada, idVendedor, status, idOrcamento, numeroOS, numeroOR, os, idFilial } = req.query; 
 
         // Construa o objeto de filtro
         const whereConditions = {
@@ -342,6 +342,11 @@ async function getOrdemServico(req, res) {
         // Adicione filtro por ordem de servico, se fornecido
         if (os) {
             whereConditions.id = os; 
+        }
+
+        // Adicione filtro por filial, se fornecido
+        if (idFilial) {
+            whereConditions.idFilial = idFilial;
         }
 
         const ordemServico = await OrdemServico.findAll({

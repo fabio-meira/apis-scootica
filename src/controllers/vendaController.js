@@ -396,7 +396,8 @@ async function postVenda(req, res) {
 async function getVenda(req, res) {
     try {
         const { idEmpresa } = req.params;
-        const { startDate, endDate, dataEstimada, idVendedor, status, idOrdemServico, numeroOS, idVenda, numeroVenda, idFilial } = req.query; 
+        const { startDate, endDate, dataEstimada, idVendedor, status, idOrdemServico, numeroOS, idVenda, 
+            numeroVenda, idFilial, notaFiscalEmitida } = req.query; 
 
         // Construa o objeto de filtro
         const whereConditions = {
@@ -421,25 +422,159 @@ async function getVenda(req, res) {
             whereConditions.createdAt[Op.lte] = end;
         }
 
+        if (dataEstimada) {
+            const [year, month, day] = dataEstimada.split('-');
+        
+            // Cria o início e fim do dia no horário local (GMT-3) e converte para UTC
+            const start = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), 0, 0, 0));
+            start.setUTCHours(start.getUTCHours() - 3); // GMT-3
+        
+            const end = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), 23, 59, 59, 999));
+            end.setUTCHours(end.getUTCHours() - 3); // GMT-3
+        
+            whereConditions.dtEstimadaEntrega = {
+                [Op.between]: [start, end]
+            };
+        }
+
+        // Adicione filtro por idFornecedor, se fornecido
+        if (idVendedor) {
+            whereConditions.idVendedor = idVendedor;
+        }
+        
         // Adicione filtro por status, se fornecido
-        // if (dataEstimada) {
-        //     // Cria um objeto Date no horário local
-        //     const date = new Date(`${dataEstimada}`);
+        if (status) {
+            whereConditions.situacao = status; 
+        }
+
+        // Adicione filtro por id ordem de servico, se fornecido
+        if (idOrdemServico) {
+            whereConditions.idOrdemServico = idOrdemServico; 
+        }
+
+        // Adicione filtro por id venda, se fornecido
+        if (idVenda) {
+            whereConditions.id = idVenda; 
+        }
+
+        // Adicione filtro por número venda, se fornecido
+        if (numeroVenda) {
+            whereConditions.numeroVenda = numeroVenda; 
+        }
+
+        // Adicione filtro por filial, se fornecido
+        if (idFilial) {
+            whereConditions.idFilial = idFilial;
+        }
+
+        // Adicione filtro por nota fiscal emitida, se fornecido
+        if (notaFiscalEmitida) {
+            whereConditions.notaFiscalEmitida = notaFiscalEmitida;
+        }
+
+        const venda = await Venda.findAll({
+            where: whereConditions,
+            include: [
+                {
+                    model: OrdemServico,
+                    as: 'ordemServico',
+                    attributes: ['id', 'numeroOS'],
+                    // somente aplica o JOIN se usuário informou filtro numeroOS
+                    ...(numeroOS ? {
+                      where: { numeroOS },
+                      required: true
+                    } : {})
+                },
+                {
+                    model: Empresa,
+                    as: 'empresa',
+                    attributes: ['cnpj', 'nome'] 
+                },
+                {
+                    model: Cliente,
+                    as: 'cliente'
+                },
+                {
+                    model: Vendedor,
+                    as: 'vendedor'
+                },
+                {
+                    model: Receituario,
+                    as: 'receita',
+                    include: [
+                        {
+                            model: Medico,
+                            as: 'medico'
+                        }
+                    ]
+                },
+                {
+                    model: Laboratorio,
+                    as: 'laboratorio'
+                },
+                {
+                    model: VendaProduto,
+                    as: 'produtos'
+                },
+                {
+                    model: Pagamento,
+                    as: 'pagamentos'
+                    // incluir as parcelas de pagamento, caso tenha
+                },
+                {
+                    model: OrdemProdutoTotal,
+                    as: 'totais'
+                },
+                {
+                    model: OrdemServicoArquivo,
+                    as: 'ordemServicoArquivo'
+                },
+            ],
+            order: [
+                ['id', 'DESC']
+            ]
+        });
+        if (!venda) {
+            return res.status(404).json({ message: 'Nenhuma venda localizada' });
+        }
+        res.status(200).json(venda);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Erro ao buscar vendas', error });
+    }
+}
+
+// Função para consultar todas as vendas e seus relacionamentos
+async function getNotaFiscalEmitida(req, res) {
+    try {
+        const { idEmpresa } = req.params;
+        const { startDate, endDate, dataEstimada, idVendedor, status, idOrdemServico, numeroOS, idVenda, 
+            numeroVenda, idFilial } = req.query; 
+
+        // Construa o objeto de filtro
+        const whereConditions = {
+            idEmpresa: idEmpresa,
+            notaFiscalEmitida: 0
+        };
+
+        // Adicione filtro por data de início e data de fim, se fornecidos
+        if (startDate) {
+            const [year, month, day] = startDate.split('-');
+            const start = new Date(Number(year), Number(month) - 1, Number(day), 0, 0, 0); 
+            whereConditions.createdAt = {
+                [Op.gte]: start
+            };
+        }
         
-        //     // Formata a data e hora no formato local
-        //     const ano = date.getFullYear();
-        //     const mes = String(date.getMonth() + 1).padStart(2, '0');
-        //     const dia = String(date.getDate()).padStart(2, '0');
-        //     const hora = '21';
-        //     const minutos = '00';
-        //     const segundos = '00';
-        
-        //     // Converte para o formato YYYY-MM-DD HH:MM:SS no horário local
-        //     const dataEstimadaFormatada = `${ano}-${mes}-${dia} ${hora}:${minutos}:${segundos}`;
-        
-        //     // Define o filtro para a consulta
-        //     whereConditions.dtEstimadaEntrega = dataEstimadaFormatada;
-        // }
+        if (endDate) {
+            const [year, month, day] = endDate.split('-');
+            const end = new Date(Number(year), Number(month) - 1, Number(day), 23, 59, 59, 999); 
+            if (!whereConditions.createdAt) {
+                whereConditions.createdAt = {};
+            }
+            whereConditions.createdAt[Op.lte] = end;
+        }
+
         if (dataEstimada) {
             const [year, month, day] = dataEstimada.split('-');
         
@@ -735,6 +870,7 @@ async function patchVenda(req, res) {
         // const vendaData = JSON.parse(req.body.body || '{}');
         const vendaData = req.body;
         console.log('body: ', vendaData);
+        console.log('totais: ', vendaData.totais);
 
         // Verifica se existe a venda
         const consulta = await Venda.findOne({
@@ -773,6 +909,7 @@ async function patchVenda(req, res) {
                         {
                             quantidade: Number(produto.quantidade),
                             preco: Number(produto.preco),
+                            cfop: Number(produto.cfop),
                             valorTotal: (produto.quantidade * produto.preco).toFixed(2),
                         },
                         { where: { idProduto: produto.idProduto, idVenda: id }, transaction }
@@ -793,6 +930,7 @@ async function patchVenda(req, res) {
                 desconto: Number(vendaData.totais.desconto),
                 Percdesconto: Number(vendaData.totais.Percdesconto),
                 acrescimo: Number(vendaData.totais.acrescimo),
+                percAcrescimo: Number(vendaData.totais.percAcrescimo),
                 frete: Number(vendaData.totais.frete),
                 total: Number(vendaData.totais.total),
                 vlAlteradoNF: Boolean(vendaData.totais.vlAlteradoNF)  
@@ -917,6 +1055,7 @@ async function deleteVenda(req, res) {
 module.exports = {
     postVenda,
     getVenda,
+    getNotaFiscalEmitida,
     getIdVenda,
     getCaixaIdVenda,
     putVenda,
