@@ -14,7 +14,7 @@ module.exports = {
             axios.get(url)
             .then(response => {
                 const data = response.data
-                return res.json(data)
+                return res.json(data) 
             })
             .catch(error => {
                 res.status(error.response.status).send(res.json(error.response.data))        
