@@ -30,6 +30,10 @@ Conta.init({
       type: DataTypes.STRING(100),
       allowNull: true,
    },
+   idFilial: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+   },
    descricao: {
       type: DataTypes.STRING(1000),
       allowNull: true,

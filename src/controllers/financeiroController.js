@@ -11,6 +11,7 @@ require('moment/locale/pt-br');
 async function getFinanceiro(req, res) {
     try {
         const { idEmpresa } = req.params;
+        const { idFilial } = req.query;
 
         if (!idEmpresa) {
             return res.status(400).json({ message: 'idEmpresa é necessário.' });
@@ -20,13 +21,22 @@ async function getFinanceiro(req, res) {
         const startOfMonth = moment().startOf('month').toDate();
         const endOfMonth = moment().endOf('month').toDate();
 
+        // Construa o objeto de filtro
+        const whereConditions = {
+            idEmpresa: idEmpresa
+        };
+
+        // Adicione filtro por filial, se fornecido
+        if (idFilial) {
+            whereConditions.idFilial = idFilial;
+        };
 
         // Somar as receitas e contar as vendas
         const [totalVendasValor, totalVendas, entradas, contasAReceber] = await Promise.all([
             // 1. Receitas - Pagamentos (com idVenda preenchido, usando join com Venda)
             Venda.sum('valor', {
                 where: {
-                    idEmpresa: idEmpresa,
+                    ...whereConditions,
                     createdAt: {
                         [Op.between]: [startOfMonth, endOfMonth]
                     }
@@ -42,7 +52,7 @@ async function getFinanceiro(req, res) {
             // 2. Contar o número de vendas
             Venda.count({
                 where: {
-                    idEmpresa: idEmpresa,
+                    ...whereConditions,
                     createdAt: {
                         [Op.between]: [startOfMonth, endOfMonth]
                     }
@@ -52,7 +62,7 @@ async function getFinanceiro(req, res) {
             // 3. Receitas - Entradas no EntradaSaida (considerar tipo = 1 para receitas)
             EntradaSaida.sum('valor', {
                 where: {
-                    idEmpresa: idEmpresa,
+                    ...whereConditions,
                     tipo: 1,
                     dtInclusao: {
                         [Op.between]: [startOfMonth, endOfMonth]
@@ -63,7 +73,7 @@ async function getFinanceiro(req, res) {
             // 4. Receitas - Contas a receber no mês corrente
             Conta.sum('valor', {
                 where: {
-                    idEmpresa: idEmpresa,
+                    ...whereConditions,
                     tipo: 'Receber',
                     statusRecebimento: 'Pendente',
                     dataVencimento: {
@@ -84,7 +94,7 @@ async function getFinanceiro(req, res) {
             // 1. Despesas - Saídas no EntradaSaida (considerar tipo = 0 para despesas)
             EntradaSaida.sum('valor', {
                 where: {
-                    idEmpresa: idEmpresa,
+                    ...whereConditions,
                     tipo: 0,
                     dtInclusao: {
                         [Op.between]: [startOfMonth, endOfMonth]
@@ -95,7 +105,7 @@ async function getFinanceiro(req, res) {
             // 2. Despesas - Contas a pagar no mês corrente
             Conta.sum('valor', {
                 where: {
-                    idEmpresa: idEmpresa,
+                    ...whereConditions,
                     tipo: 'Pagar',
                     statusRecebimento: 'Pendente',
                     dataVencimento: {
@@ -149,7 +159,7 @@ async function getFinanceiro(req, res) {
 }
 
 // Função assíncrona que calcula as receitas e despesas para um mês específico
-async function getFinanceiroSum(idEmpresa, startOfMonth, endOfMonth) {
+async function getFinanceiroSum(idEmpresa, whereConditions, startOfMonth, endOfMonth) {
     try {
         const mes = moment(startOfMonth).locale('pt-br').format('MMMM').charAt(0).toUpperCase() + moment(startOfMonth).locale('pt-br').format('MMMM').slice(1); // Mês por extenso
         const ano = moment(startOfMonth).year();
@@ -158,7 +168,7 @@ async function getFinanceiroSum(idEmpresa, startOfMonth, endOfMonth) {
             // 1. Receitas - Pagamentos (com idVenda preenchido, usando join com Venda)
             Venda.sum('valor', {
                 where: {
-                    idEmpresa: idEmpresa,
+                    ...whereConditions,
                     createdAt: {
                         [Op.between]: [startOfMonth, endOfMonth]
                     }
@@ -174,7 +184,7 @@ async function getFinanceiroSum(idEmpresa, startOfMonth, endOfMonth) {
             // 2. Contar o número de vendas
             Venda.count({
                 where: {
-                    idEmpresa: idEmpresa,
+                    ...whereConditions,
                     createdAt: {
                         [Op.between]: [startOfMonth, endOfMonth]
                     }
@@ -184,7 +194,7 @@ async function getFinanceiroSum(idEmpresa, startOfMonth, endOfMonth) {
             // 3. Receitas - Entradas no EntradaSaida (considerar tipo = 1 para receitas)
             EntradaSaida.sum('valor', {
                 where: {
-                    idEmpresa: idEmpresa,
+                    ...whereConditions,
                     tipo: 1,
                     dtInclusao: {
                         [Op.between]: [startOfMonth, endOfMonth]
@@ -195,7 +205,7 @@ async function getFinanceiroSum(idEmpresa, startOfMonth, endOfMonth) {
             // 4. Receitas - Contas a receber no mês corrente
             Conta.sum('valor', {
                 where: {
-                    idEmpresa: idEmpresa,
+                    ...whereConditions,
                     tipo: 'Receber',
                     statusRecebimento: 'Pendente',
                     dataVencimento: {
@@ -216,7 +226,7 @@ async function getFinanceiroSum(idEmpresa, startOfMonth, endOfMonth) {
             // 1. Despesas - Saídas no EntradaSaida (considerar tipo = 0 para despesas)
             EntradaSaida.sum('valor', {
                 where: {
-                    idEmpresa: idEmpresa,
+                    ...whereConditions,
                     tipo: 0,
                     dtInclusao: {
                         [Op.between]: [startOfMonth, endOfMonth]
@@ -227,7 +237,7 @@ async function getFinanceiroSum(idEmpresa, startOfMonth, endOfMonth) {
             // 2. Despesas - Contas a pagar no mês corrente
             Conta.sum('valor', {
                 where: {
-                    idEmpresa: idEmpresa,
+                    ...whereConditions,
                     tipo: 'Pagar',
                     statusRecebimento: 'Pendente',
                     dataVencimento: {
@@ -282,10 +292,21 @@ async function getFinanceiroSum(idEmpresa, startOfMonth, endOfMonth) {
 async function getFinanceiroMeses(req, res) {
     try {
         const { idEmpresa } = req.params; 
+        const { idFilial } = req.query;
 
         if (!idEmpresa) {
             return res.status(400).json({ message: 'idEmpresa é necessário.' });
         }
+
+        // Construa o objeto de filtro
+        const whereConditions = {
+            idEmpresa: idEmpresa
+        };
+
+        // Adicione filtro por filial, se fornecido
+        if (idFilial) {
+            whereConditions.idFilial = idFilial;
+        };
 
         const meses = [];
         // Data atual
@@ -298,7 +319,7 @@ async function getFinanceiroMeses(req, res) {
             const ano = moment(startOfMonth).year(); 
 
             // Chama a função getFinanceiroSum para cada mês
-            const financeiroMes = await getFinanceiroSum(idEmpresa, startOfMonth, endOfMonth, ano);
+            const financeiroMes = await getFinanceiroSum(idEmpresa, whereConditions, startOfMonth, endOfMonth, ano);
             meses.push(financeiroMes);
         }
 
@@ -314,10 +335,21 @@ async function getFinanceiroMeses(req, res) {
 async function getFinanceiroMes(req, res) {
     try {
         const { idEmpresa, mes, ano } = req.params;
+        const { idFilial } = req.query;
 
         if (!idEmpresa || !mes || !ano) {
             return res.status(400).json({ message: 'idEmpresa, mes e ano são necessários.' });
         }
+
+                // Construa o objeto de filtro
+        const whereConditions = {
+            idEmpresa: idEmpresa
+        };
+
+        // Adicione filtro por filial, se fornecido
+        if (idFilial) {
+            whereConditions.idFilial = idFilial;
+        };
 
         // Convertendo o nome do mês para o número do mês (ex: "janeiro" -> 1)
         const meses = [
@@ -335,7 +367,7 @@ async function getFinanceiroMes(req, res) {
         const endOfMonth = moment(startOfMonth).endOf('month').toDate();
 
         // Chama a função getFinanceiroSum para o mês específico
-        const financeiroMes = await getFinanceiroSum(idEmpresa, startOfMonth, endOfMonth);
+        const financeiroMes = await getFinanceiroSum(idEmpresa, whereConditions, startOfMonth, endOfMonth);
 
         // Obter os detalhes das contas a pagar
         const contasAPagarDetalhadas = await Conta.findAll({

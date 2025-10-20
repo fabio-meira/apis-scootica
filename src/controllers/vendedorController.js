@@ -43,10 +43,20 @@ async function postVendedor(req, res) {
 async function listVendedores(req, res) {
     try {
         const { idEmpresa } = req.params; 
+        const { idFilial } = req.query;
+
+        // Construa o objeto de filtro
+        const whereConditions = {
+            idEmpresa: idEmpresa
+        };
+
+        // Adicione filtro por filial, se fornecido
+        if (idFilial) {
+            whereConditions.idFilial = idFilial;
+        };
+
         const vendedor = await Vendedor.findAll({
-            where: { 
-                idEmpresa: idEmpresa 
-            },
+            where: whereConditions,
             order: [
                 ['id', 'DESC']
             ]

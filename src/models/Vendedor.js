@@ -13,6 +13,10 @@ Vendedor.init({
     type: DataTypes.STRING(100),
     allowNull: true,
  },
+idFilial: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+ },
  cpf: {
     type: DataTypes.STRING(11),
     allowNull: true,
