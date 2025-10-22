@@ -8,11 +8,13 @@ async function postMedico(req, res) {
         const medicoData = req.body;
         const { idEmpresa } = req.params; 
         const { cpf } = req.body; 
+        const { nomeCompleto } = req.body;
 
         // Veridicar se médico já está cadastrado
         const medicoExists = await Medico.findOne({ 
             where: { 
-                cpf: cpf,
+                // cpf: cpf,
+                nomeCompleto: nomeCompleto,
                 idEmpresa: idEmpresa 
             } 
         });
