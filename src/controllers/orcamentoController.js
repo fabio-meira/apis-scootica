@@ -21,11 +21,19 @@ async function postOrcamento(req, res) {
 
         orcamentoData.idEmpresa = idEmpresa;
 
+        // Identificar o idFilial para consulta do próximo número venda
+        const idFilial = orcamentoData.idFilial;
+
         // Obter o próximo número de orçamento por idEmpresa
         const maxNumero = await Orcamento.max('numeroOR', {
-            where: { idEmpresa },
+            where: { 
+                idEmpresa,
+                idFilial, 
+            },
             transaction
-          });
+        });
+
+        // Identificar o idFilial para consulta do próximo número venda
         orcamentoData.numeroOR = (maxNumero || 0) + 1;
 
         const orcamento = await Orcamento.create(orcamentoData, { transaction });

@@ -57,11 +57,19 @@ async function postVenda(req, res) {
         // Adiciona idEmpresa aos dados de venda
         vendaData.idEmpresa = idEmpresa;
 
+        // Identificar o idFilial para consulta do próximo número venda
+        const idFilial = vendaData.idFilial;
+
         // Obter o próximo número de orçamento por idEmpresa
         const maxNumero = await Venda.max('numeroVenda', {
-            where: { idEmpresa },
+            where: { 
+                idEmpresa,
+                idFilial, 
+            },
             transaction
-            });
+        });
+
+        // Se não houver nenhuma venda ainda para essa filial, começa em 1
         vendaData.numeroVenda = (maxNumero || 0) + 1;
 
         // Cria uma venda

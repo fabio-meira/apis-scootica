@@ -31,11 +31,19 @@ async function postOrdemServico(req, res) {
     // Adiciona idEmpresa aos dados da Ordem de Serviço
     ordemServicoData.idEmpresa = idEmpresa;
 
+    // Identificar o idFilial para consulta do próximo número venda
+    const idFilial = ordemServicoData.idFilial;
+
     // Obter o próximo número de orçamento por idEmpresa
     const maxNumero = await OrdemServico.max('numeroOS', {
-        where: { idEmpresa },
+        where: { 
+            idEmpresa,
+            idFilial, 
+        },
         transaction
-        });
+    });
+
+    // Identificar o idFilial para consulta do próximo número venda
     ordemServicoData.numeroOS = (maxNumero || 0) + 1;
 
     // Cria a Ordem de Serviço
