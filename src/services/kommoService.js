@@ -125,7 +125,7 @@ async function criarContatoNoKommo(idEmpresa, idFilial, cliente, empresa) {
     }
   ];
 
-  console.log("post cliente: ", JSON.stringify(payload, null, 2));
+  // console.log("post cliente: ", JSON.stringify(payload, null, 2));
 
   const response = await axios.post(
     `${baseUrl}/contacts`,
@@ -211,8 +211,8 @@ async function criarOrcamentoNoKommo(idEmpresa, idFilial, orcamento, cliente, ve
     ]
   });
 
-  console.log('nome: ', cliente.nomeCompleto);
-  console.log('idCRM: ', cliente.idCRM);
+  // console.log('nome: ', cliente.nomeCompleto);
+  // console.log('idCRM: ', cliente.idCRM);
 
   const ORPayload = [
     {
@@ -242,27 +242,27 @@ async function criarOrcamentoNoKommo(idEmpresa, idFilial, orcamento, cliente, ve
     }
   ];
 
-  console.log("post orçamento: ", JSON.stringify(ORPayload, null, 2));
+  // console.log("post orçamento: ", JSON.stringify(ORPayload, null, 2));
 
-  // const response = await axios.post(
-  //   `${baseUrl}/leads/complex`,
-  //   ORPayload,
-  //   { headers: { 
-  //       Authorization: `Bearer ${token}`, 
-  //       "Content-Type": "application/json"
-  //     } 
-  //   }
-    
-  // );
-const response = await axios.get(
-  `${baseUrl}/leads/14138422`,
-  { 
-    headers: { 
-      Authorization: `Bearer ${token}`, 
-      "Content-Type": "application/json"
-    } 
-  }
-);
+  const response = await axios.post(
+    `${baseUrl}/leads/complex`,
+    ORPayload,
+    { headers: { 
+        Authorization: `Bearer ${token}`, 
+        "Content-Type": "application/json"
+      } 
+    }
+  );
+
+// const response = await axios.get(
+//   `${baseUrl}/leads/14138422`,
+//   { 
+//     headers: { 
+//       Authorization: `Bearer ${token}`, 
+//       "Content-Type": "application/json"
+//     } 
+//   }
+// );
   return response.data;
 }
 
@@ -356,7 +356,7 @@ async function criarOrdemServicoNoKommo(idEmpresa, idFilial, ordemServico, clien
     }
   ];
 
-  console.log("post ordem de serviço: ", JSON.stringify(OSPayload, null, 2));
+  // console.log("post ordem de serviço: ", JSON.stringify(OSPayload, null, 2));
 
   const response = await axios.post(
     `${baseUrl}/leads/complex`,
@@ -470,7 +470,7 @@ async function criarVendaNoKommo(idEmpresa, idFilial, venda, cliente, vendedor, 
     }
   ];
 
-  console.log("post venda: ", JSON.stringify(VDPayload, null, 2));
+  // console.log("post venda: ", JSON.stringify(VDPayload, null, 2));
 
   const response = await axios.post(
     `${baseUrl}/leads/complex`,
@@ -579,7 +579,7 @@ async function criarExameVistaNoKommo(idEmpresa, idFilial, orcamento, cliente, m
     }
   ];
 
-  console.log("post exame de vista: ", JSON.stringify(EVPayload, null, 2));
+  // console.log("post exame de vista: ", JSON.stringify(EVPayload, null, 2));
 
   const response = await axios.post(
     `${baseUrl}/leads/complex`,
@@ -615,7 +615,7 @@ async function avancarKanbanKommo(idEmpresa, idFilial, idLead, type) {
         responsible_user_id: responsible_user_id   // Responsável no Kommo
     };
 
-    console.log("avançar status: ", JSON.stringify(AVPayload, null, 2));
+    // console.log("avançar status: ", JSON.stringify(AVPayload, null, 2));
 
     try {
         const response = await axios.patch(
