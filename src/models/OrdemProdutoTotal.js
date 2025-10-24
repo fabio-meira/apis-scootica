@@ -22,6 +22,10 @@ OrdemProdutoTotal.init({
    type: DataTypes.INTEGER,
    allowNull: true
 },
+ idNotaAvulsa: { 
+   type: DataTypes.INTEGER,
+   allowNull: true
+},
  quantidadeTotal: {
    type: DataTypes.INTEGER,
    allowNull: true

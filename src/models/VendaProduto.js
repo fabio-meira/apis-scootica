@@ -23,6 +23,10 @@ VendaProduto.init({
     type: DataTypes.INTEGER,
     allowNull: true
  },
+ idNotaAvulsa: {
+    type: DataTypes.INTEGER,
+    allowNull: true
+ },
  idProduto: {
    type: DataTypes.INTEGER,
    allowNull: true

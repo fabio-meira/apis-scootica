@@ -1,12 +1,45 @@
-// function montarJsonNFe(venda, empresa) {
+// const Ibpt = require('../models/Ibpt');
+
+// async function montarJsonNFe(venda, empresa) {
 //   const cliente = venda.cliente;
 //   const modelo = empresa.modeloNotaFiscal || 55; // 55 = NF-e, 65 = NFC-e
 
 //   const now = new Date();
 //   const dhEmi = now.toISOString();
 
+//   let totalTributosFederal = 0;
+//   let totalTributosEstadual = 0;
+
+//   // percorre os produtos e consulta o IBPT para cada NCM
+//   for (const p of venda.produtos) {
+//     const valorItem = p.quantidade * p.preco;
+
+//     // busca os percentuais no IBPT pela NCM do produto
+//     const ibpt = await Ibpt.findOne({
+//       where: { Codigo: p.ncm.replace(/\D/g, ''), uf: empresa.uf }
+//     });
+
+//     if (ibpt) {
+//       const aliqFederal = parseFloat(ibpt.nacionalFederal) || 0;
+//       const aliqEstadual = parseFloat(ibpt.estadual) || 0;
+
+//       totalTributosFederal += (valorItem * aliqFederal) / 100;
+//       totalTributosEstadual += (valorItem * aliqEstadual) / 100;
+//     }
+//   }
+
+//   const totalTributos = totalTributosFederal + totalTributosEstadual;
+//   console.log('imposto: ', totalTributos);
+
+//   // Mensagem em Dados Adicionais
+//   const infCpl = `
+//     Inf. Contribuinte: DOCUMENTO EMITIDO POR ME OU EPP OPTANTE PELO SIMPLES NACIONAL.
+//     NAO GERA DIREITO A CREDITO FISCAL DE IPI.
+//     Valor aprox. dos tributos: R$ ${totalTributos.toFixed(2)} (Federal: R$ ${totalTributosFederal.toFixed(2)} e Estadual: R$ ${totalTributosEstadual.toFixed(2)}). Fonte: IBPT
+//   `;
+
 //   return {
-//     ambiente: "homologacao", // ou "producao", de acordo com config
+//     ambiente: "homologacao",
 //     infNFe: {
 //       versao: "4.00",
 //       ide: {
@@ -132,267 +165,288 @@
 //         modFrete: 9
 //       },
 //       pag: {
-//         detPag: venda.pagamentos.map((pag) => {
-//           let tPag;
-//           switch (pag.tipoRecebimento) {
-//             case 'DINHEIRO':
-//               tPag = "01"; break;
-//             case 'CHEQUE':
-//             tPag = "02"; break;
-//             case 'CREDITO':
-//                 tPag = "03"; break;
-//             case 'DEBITO':
-//                 tPag = "04"; break;
-//             case 'CREDITO_LOJA':
-//                 tPag = "05"; break;
-//             case 'VALE_ALIMENTACAO':
-//                 tPag = "10"; break;
-//             case 'VALE_REFEICAO':
-//                 tPag = "11"; break;
-//             case 'VALE_PRESENTE':
-//                 tPag = "12"; break;
-//             case 'VALE_COMBUSTIVEL':
-//                 tPag = "13"; break;
-//             case 'DUPLICATA':
-//                 tPag = "14"; break;
-//             case 'BOLETO':
-//                 tPag = "15"; break;
-//             case 'DEPOSITO_BANCARIO':
-//                 tPag = "16"; break;
-//             case 'PIX':
-//                 tPag = "17"; break;
-//             case 'TRANSFERENCIA_BANCARIA':
-//                 tPag = "18"; break;
-//             case 'FIDELIDADE_CASHBACK':
-//                 tPag = "19"; break;
-//             case 'SEM_PAGAMENTO':
-//                 tPag = "90"; break;
-//             case 'OUTROS':
-//             default:
-//                 tPag = "99"; break;
-//           }
+//       detPag: (empresa.idEmpresa === 'scootica') 
+//          ? [
+//              {
+//              indPag: 0,
+//              tPag: "90",
+//              vPag: 0
+//              }
+//          ]
+//          : venda.pagamentos.map((pag) => {
+//              let tPag;
+//              switch (pag.tipoRecebimento) {
+//              case 'DINHEIRO': tPag = "01"; break;
+//              case 'CHEQUE': tPag = "02"; break;
+//              case 'CREDITO': tPag = "03"; break;
+//              case 'DEBITO': tPag = "04"; break;
+//              case 'CREDITO_LOJA': tPag = "05"; break;
+//              case 'VALE_ALIMENTACAO': tPag = "10"; break;
+//              case 'VALE_REFEICAO': tPag = "11"; break;
+//              case 'VALE_PRESENTE': tPag = "12"; break;
+//              case 'VALE_COMBUSTIVEL': tPag = "13"; break;
+//              case 'DUPLICATA': tPag = "14"; break;
+//              case 'BOLETO': tPag = "15"; break;
+//              case 'DEPOSITO_BANCARIO': tPag = "16"; break;
+//              case 'PIX': tPag = "17"; break;
+//              case 'TRANSFERENCIA_BANCARIA': tPag = "18"; break;
+//              case 'FIDELIDADE_CASHBACK': tPag = "19"; break;
+//              case 'SEM_PAGAMENTO': tPag = "90"; break;
+//              case 'OUTROS': default: tPag = "99"; break;
+//              }
 
-//           // Definição automática do indPag
-//           let indPag = 2; // padrão "outros"
-//           if (pag.parcela && pag.parcela > 1) {
-//             indPag = 1; // a prazo
-//           } else if (!pag.parcela || pag.parcela === 1) {
-//            indPag = 0; // à vista
-//           }
+//              let indPag = 2;
+//              if (pag.parcela && pag.parcela > 1) {
+//              indPag = 1;
+//              } else if (!pag.parcela || pag.parcela === 1) {
+//              indPag = 0;
+//              }
 
-//           return {
-//             indPag,
-//             tPag,
-//             vPag: Number(pag.valor)
-//           };
-//         })
+//              return {
+//              indPag,
+//              tPag,
+//              vPag: Number(pag.valor)
+//              };
+//          })
+//       },
+//       infAdic: {
+//         infCpl: infCpl.trim()
 //       }
-      
-
 //     }
 //   };
 // }
 
 // module.exports = montarJsonNFe;
 
+// notas/montarJsonNFe.js
+const Ibpt = require('../models/Ibpt');
 
-function montarJsonNFe(venda, empresa) {
-  const cliente = venda.cliente;
-  const modelo = empresa.modeloNotaFiscal || 55; // 55 = NF-e, 65 = NFC-e
-
+//  Monta o JSON conforme a documentação da BrasilNFe
+async function montarJsonNFe(venda, empresa) {
   const now = new Date();
   const dhEmi = now.toISOString();
 
-  // --- Cálculo aproximado de tributos (valores fictícios, você deve substituir pelo cálculo via tabela IBPT)
-  let totalTributosFederal = 27.5;
-  let totalTributosEstadual = 18.0;
+  let totalTributosFederal = 0;
+  let totalTributosEstadual = 0;
 
-  venda.produtos.forEach((p) => {
+  // percorre os produtos e consulta o IBPT para cada NCM
+  for (const p of venda.produtos) {
     const valorItem = p.quantidade * p.preco;
-    // Exemplo: valores fixos só para estruturar (substituir por consulta IBPT)
-    const aliqFederal = p.aliqFederal || 0; 
-    const aliqEstadual = p.aliqEstadual || 0;
-    totalTributosFederal += (valorItem * aliqFederal) / 100;
-    totalTributosEstadual += (valorItem * aliqEstadual) / 100;
-  });
+
+    // busca os percentuais no IBPT pela NCM do produto
+    const ibpt = await Ibpt.findOne({
+      where: { Codigo: p.ncm.replace(/\D/g, ''), uf: empresa.uf }
+    });
+
+    if (ibpt) {
+      const aliqFederal = parseFloat(ibpt.nacionalFederal) || 0;
+      const aliqEstadual = parseFloat(ibpt.estadual) || 0;
+
+      totalTributosFederal += (valorItem * aliqFederal) / 100;
+      totalTributosEstadual += (valorItem * aliqEstadual) / 100;
+    }
+  };
 
   const totalTributos = totalTributosFederal + totalTributosEstadual;
 
+  // RATEIO DOS VALORES GERAIS (desconto, frete, acréscimo)
+  const descontoTotal = parseFloat(venda?.totais?.desconto || 0);
+  const freteTotal = parseFloat(venda?.totais?.frete || 0);
+  const acrescimoTotal = parseFloat(venda?.totais?.acrescimo || 0);
+
+  const totalProdutos = venda.produtos.reduce(
+    (acc, p) => acc + (p.quantidade * p.preco),
+    0
+  );
+
+  // Cria os produtos com rateio proporcional
+  const produtosComRateio = venda.produtos.map((p) => {
+    const valorProduto = p.quantidade * p.preco;
+    const proporcao = totalProdutos > 0 ? valorProduto / totalProdutos : 0;
+
+    const valorDesconto = descontoTotal * proporcao;
+    const valorOutrasDespesas = (freteTotal + acrescimoTotal) * proporcao;
+    const valorProdutoCalculado = valorProduto - valorDesconto + valorOutrasDespesas
+
+    return {
+      CodProdutoServico: p.referencia,
+      NmProduto: p.descricao,
+      EAN: p.codigoBarras || "SEM GTIN",
+      NCM: p.ncm.replace(/\D/g, ''),
+      CEST: p.cest || "",
+      Quantidade: Number(p.quantidade),
+      UnidadeComercial: p.unidadeMedida || "UN",
+      // ValorDesconto: parseFloat(valorDesconto.toFixed(2)),
+      ValorDesconto: 0,
+      // ValorOutrasDespesas: parseFloat(valorOutrasDespesas.toFixed(2)),
+      ValorOutrasDespesas: 0,
+      // ValorUnitario: Number(p.preco),
+      // ValorTotal: +(p.quantidade * p.preco).toFixed(2),
+      ValorUnitario: parseFloat((valorProdutoCalculado / p.quantidade).toFixed(2)),
+      ValorTotal: parseFloat(valorProdutoCalculado.toFixed(2)),
+      CFOP: p.cfop,
+      Imposto: {
+        ICMS: {
+          CodSituacaoTributaria: p.csosn,
+          AliquotaICMS: 0,
+          AliquotaMVA: 0,
+          AliquotaICMSST: 0
+        },
+        PIS: {
+          CodSituacaoTributaria: "99",
+          Aliquota: 0
+        },
+        COFINS: {
+          CodSituacaoTributaria: "99",
+          Aliquota: 0
+        },
+        IPI: {
+          CodSituacaoTributaria: 99,
+          CodEnquadramento: 999,
+          Aliquota: 0
+        }
+      }
+    };
+  });
+
+  const pagamentos = (empresa.NFSimplesNac === true) 
+  ? [
+      {
+        IndicadorPagamento: 0, // indPag
+        FormaPagamento: "90", // SEM PAGAMENTO
+        VlPago: 0,
+        VlTroco: 0,
+        TipoIntegracao: 0,
+        CNPJCredenciadora: null,
+        BandeiraOperadora: 0,
+        NumeroAutorizacao: null
+      }
+    ]
+  : venda.pagamentos.map((pag) => {
+      let tPag;
+      switch (pag.tipoRecebimento) {
+        case 'DINHEIRO': tPag = "01"; break;
+        case 'CHEQUE': tPag = "02"; break;
+        case 'CREDITO': tPag = "03"; break;
+        case 'DEBITO': tPag = "04"; break;
+        case 'CREDITO_LOJA': tPag = "05"; break;
+        case 'VALE_ALIMENTACAO': tPag = "10"; break;
+        case 'VALE_REFEICAO': tPag = "11"; break;
+        case 'VALE_PRESENTE': tPag = "12"; break;
+        case 'VALE_COMBUSTIVEL': tPag = "13"; break;
+        case 'DUPLICATA': tPag = "14"; break;
+        case 'BOLETO': tPag = "15"; break;
+        case 'DEPOSITO_BANCARIO': tPag = "16"; break;
+        case 'PIX': tPag = "17"; break;
+        case 'TRANSFERENCIA_BANCARIA': tPag = "18"; break;
+        case 'FIDELIDADE_CASHBACK': tPag = "19"; break;
+        case 'SEM_PAGAMENTO': tPag = "90"; break;
+        case 'OUTROS': default: tPag = "99"; break;
+      }
+
+      // Define indPag (à vista = 0, a prazo = 1, outros = 2)
+      let indPag = 2;
+      if (pag.parcela && pag.parcela > 1) {
+        indPag = 1; // pagamento a prazo
+      } else if (!pag.parcela || pag.parcela === 1) {
+        indPag = 0; // pagamento à vista
+      }
+
+      return {
+        IndicadorPagamento: indPag,
+        FormaPagamento: tPag,
+        VlPago: Number(pag.valor),
+        VlTroco: 0,
+        TipoIntegracao: 0,
+        CNPJCredenciadora: null,
+        BandeiraOperadora: 0,
+        NumeroAutorizacao: null
+      };
+    });
+
   // Mensagem em Dados Adicionais
   const infCpl = `
-    Inf. Contribuinte: DOCUMENTO EMITIDO POR ME OU EPP OPTANTE PELO SIMPLES NACIONAL.
+    DOCUMENTO EMITIDO POR ME OU EPP OPTANTE PELO SIMPLES NACIONAL.
     NAO GERA DIREITO A CREDITO FISCAL DE IPI.
-    Valor aprox. dos tributos: R$ ${totalTributos.toFixed(2)} (Federal: R$ ${totalTributosFederal.toFixed(2)} e Estadual: ${totalTributosEstadual.toFixed(2)}). Fonte: IBPT
-    `;
+    Valor aprox. dos tributos: R$ ${totalTributos.toFixed(2)} (Federal: R$ ${totalTributosFederal.toFixed(2)} e Estadual: R$ ${totalTributosEstadual.toFixed(2)}). Fonte: IBPT
+  `;
 
-  return {
-    ambiente: "homologacao", 
-    infNFe: {
-      versao: "4.00",
-      ide: {
-        cUF: parseInt(empresa.codUF),
-        natOp: "VENDA DE MERCADORIA",
-        mod: modelo,
-        serie: 1,
-        nNF: 10,
-        tpNF: 1,
-        idDest: 1,
-        cMunFG: parseInt(empresa.codCidade),
-        tpImp: 1,
-        tpEmis: 1,
-        cDV: 0,
-        tpAmb: 2,
-        finNFe: 1,
-        indFinal: 1,
-        indPres: modelo === 55 ? 1 : 0,
-        procEmi: 0,
-        verProc: "1.0",
-        dhEmi
-      },
-      emit: {
-        CNPJ: empresa.cnpj,
-        xNome: empresa.razaoSocial,
-        xFant: empresa.nomeFantasia,
-        enderEmit: {
-          xLgr: empresa.logradouro,
-          nro: empresa.numero,
-          xBairro: empresa.bairro,
-          cMun: empresa.codCidade,
-          xMun: empresa.cidade,
-          UF: empresa.uf,
-          CEP: empresa.cep.replace(/\D/g, '')
-        },
-        IE: empresa.ie || "ISENTO",
-      },
-      dest: {
-        CPF: cliente.cpf,
-        xNome: cliente.nomeCompleto,
-        enderDest: {
-          xLgr: cliente.logradouro,
-          nro: cliente.numero,
-          xBairro: cliente.bairro,
-          cMun: cliente.codCidade,
-          xMun: cliente.cidade,
-          UF: cliente.estado,
-          CEP: cliente.cep.replace(/\D/g, ''),
-          cPais: "1058",
-          xPais: "BRASIL",
-          fone: cliente.celular
-        },
-        indIEDest: 9,
-        email: cliente.email
-      },
-      det: venda.produtos.map((p, index) => ({
-        nItem: index + 1,
-        prod: {
-          cProd: p.referencia,
-          cEAN: p.codigoBarras || "SEM GTIN",
-          xProd: p.descricao,
-          NCM: p.ncm.replace(/\D/g, ''),
-          CFOP: "5102",
-          uCom: p.unidadeMedida || "UN",
-          qCom: Number(p.quantidade),
-          vUnCom: Number(p.preco),
-          vProd: +(p.quantidade * p.preco).toFixed(2),
-          cEANTrib: p.codigoBarras || "SEM GTIN",
-          uTrib: "UN",
-          qTrib: Number(p.quantidade),
-          vUnTrib: Number(p.preco),
-          indTot: 1
-        },
-        imposto: {
-          ICMS: {
-            ICMSSN102: {
-              orig: 0,
-              CSOSN: "102"
-            }
-          },
-          PIS: {
-            PISOutr: {
-              CST: "99",
-              vBC: 0.00,
-              pPIS: 0.00,
-              vPIS: 0.00
-            }
-          },
-          COFINS: {
-            COFINSOutr: {
-              CST: "99",
-              vBC: 0.00,
-              pCOFINS: 0.00,
-              vCOFINS: 0.00
-            }
-          }
-        }
-      })),
-      total: {
-        ICMSTot: {
-          vBC: 0.00,
-          vICMS: 0.00,
-          vICMSDeson: 0.00,
-          vFCP: 0.00,
-          vBCST: 0.00,
-          vST: 0.00,
-          vFCPST: 0.00,
-          vFCPSTRet: 0.00,
-          vProd: Number(venda.totais.totalProdutos),
-          vFrete: Number(venda.totais.frete) || 0.00,
-          vSeg: 0.00,
-          vDesc: Number(venda.totais.desconto) || 0.00,
-          vII: 0.00,
-          vIPI: 0.00,
-          vIPIDevol: 0.00,
-          vPIS: 0.00,
-          vCOFINS: 0.00,
-          vOutro: 0.00,
-          vNF: Number(venda.totais.total)
-        }
-      },
-      transp: {
-        modFrete: 9
-      },
-      pag: {
-        detPag: venda.pagamentos.map((pag) => {
-          let tPag;
-          switch (pag.tipoRecebimento) {
-            case 'DINHEIRO': tPag = "01"; break;
-            case 'CHEQUE': tPag = "02"; break;
-            case 'CREDITO': tPag = "03"; break;
-            case 'DEBITO': tPag = "04"; break;
-            case 'CREDITO_LOJA': tPag = "05"; break;
-            case 'VALE_ALIMENTACAO': tPag = "10"; break;
-            case 'VALE_REFEICAO': tPag = "11"; break;
-            case 'VALE_PRESENTE': tPag = "12"; break;
-            case 'VALE_COMBUSTIVEL': tPag = "13"; break;
-            case 'DUPLICATA': tPag = "14"; break;
-            case 'BOLETO': tPag = "15"; break;
-            case 'DEPOSITO_BANCARIO': tPag = "16"; break;
-            case 'PIX': tPag = "17"; break;
-            case 'TRANSFERENCIA_BANCARIA': tPag = "18"; break;
-            case 'FIDELIDADE_CASHBACK': tPag = "19"; break;
-            case 'SEM_PAGAMENTO': tPag = "90"; break;
-            case 'OUTROS': default: tPag = "99"; break;
-          }
-
-          let indPag = 2; 
-          if (pag.parcela && pag.parcela > 1) {
-            indPag = 1; 
-          } else if (!pag.parcela || pag.parcela === 1) {
-            indPag = 0; 
-          }
-
-          return {
-            indPag,
-            tPag,
-            vPag: Number(pag.valor)
-          };
-        })
-      },
-      infAdic: {
-        infCpl: infCpl.trim()
-      }
-    }
+  const json = {
+    // Codigo: `${venda.id}`,
+    Numero: `${venda.id}`,
+    Serie: 1,
+    Modalidade: 1,
+    TipoEmissao: 1,
+    IndicadorPresenca: 1,
+    ConsumidorFinal: true,
+    NaturezaOperacao: venda.natureza || "VENDA",
+    ModeloDocumento: empresa.tipoNF || 55,
+    Finalidade: 1,
+    TipoAmbiente: empresa.ambienteSefaz,
+    CalcularIBPT: false,
+    Observacao: infCpl.trim(),
+    IdentificadorInterno: `${venda.id}`,
+    EnviarEmail: false,
+    Cliente: {
+      CPFCNPJ: venda.cliente.cnpj || venda.cliente.cpf,
+      NmCliente: venda.cliente.nomeCompleto,
+      CEP: venda.cliente.cep,
+      Logradouro: venda.cliente.logradouro,
+      Complemento: venda.cliente.complemento || "",
+      Numero: venda.cliente.numero,
+      Bairro: venda.cliente.bairro,
+      CodMunicipio: venda.cliente.codCidade,
+      NmMunicipio: venda.cliente.cidade,
+      UF: venda.cliente.estado,
+      CodPais: 1058,
+      NmPais: "Brasil",
+      Email: venda.cliente.email || "",
+      IndicadoIE: 9,
+      IE: venda.cliente.ie || "",
+      Telefone: venda.cliente.telefone || ""
+    },
+    // Produtos: venda.produtos.map((p) => ({
+    //   CodProdutoServico: p.referencia,
+    //   NmProduto: p.descricao,
+    //   EAN: p.codigoBarras || "SEM GTIN",
+    //   NCM: p.ncm.replace(/\D/g, ''),
+    //   CEST: p.cest || "",
+    //   Quantidade: Number(p.quantidade),
+    //   UnidadeComercial: p.unidadeMedida || "UN",
+    //   ValorDesconto: p.desconto || 0,
+    //   ValorFrete: p.valorFrete || 0,
+    //   ValorUnitario: Number(p.preco),
+    //   ValorTotal: +(p.quantidade * p.preco).toFixed(2),
+    //   CFOP: p.cfop,
+    //   Imposto: {
+    //     ICMS: {
+    //       CodSituacaoTributaria: p.csosn, // CSOSN 102 Simples Nacional
+    //       AliquotaICMS: 0,
+    //       AliquotaMVA: 0,
+    //       AliquotaICMSST: 0
+    //     },
+    //     PIS: {
+    //       CodSituacaoTributaria: "99",
+    //       Aliquota: 0
+    //     },
+    //     COFINS: {
+    //       CodSituacaoTributaria: "99",
+    //       Aliquota: 0
+    //     },
+    //     IPI: {
+    //       CodSituacaoTributaria: 99,
+    //       CodEnquadramento: 999,
+    //       Aliquota: 0
+    //     }
+    //   }
+    // })),
+    Produtos: produtosComRateio,
+    Pagamentos: pagamentos
   };
+  // Log do JSON
+  // console.log("JSON gerado para envio à BrasilNFe:\n", JSON.stringify(json, null, 2));
+
+  return json;
 }
 
 module.exports = montarJsonNFe;

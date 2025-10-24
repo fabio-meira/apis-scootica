@@ -44,6 +44,8 @@ const upload = require('./middleware/uploadCertificado')
 const { salvarCertificado } = require('./controllers/certificadoController')
 const notaFiscalController = require('./controllers/notaFiscalController')
 const parametroJuros = require('./controllers/parametrosJurosController')
+const danfeController = require('./controllers/danfeController')
+const notaFiscalAvulsaController = require('./controllers/notaFiscalAvulsaController')
 
 // jwt-authorization
 router.post('/api/oticas/token', authorization.auth);
@@ -164,9 +166,11 @@ router.delete('/api/oticas/empresas/:idEmpresa/ordemServico/:id', IsAuthApiKey, 
 // rotas de vendas
 router.post('/api/oticas/empresas/:idEmpresa/vendas', IsAuthApiKey, uploadImage.array('imagens', 10), vendaController.postVenda);
 router.get('/api/oticas/empresas/:idEmpresa/vendas', IsAuthApiKey, vendaController.getVenda);
+router.get('/api/oticas/empresas/:idEmpresa/vendas/NFEmitida', IsAuthApiKey, vendaController.getNotaFiscalEmitida);
 router.get('/api/oticas/empresas/:idEmpresa/vendas/:id', IsAuthApiKey, vendaController.getIdVenda);
 router.get('/api/oticas/empresas/:idEmpresa/vendas/caixa/:id', IsAuthApiKey, vendaController.getCaixaIdVenda);
 router.put('/api/oticas/empresas/:idEmpresa/vendas/:id', IsAuthApiKey, vendaController.putVenda);
+router.patch('/api/oticas/empresas/:idEmpresa/vendas/:id', IsAuthApiKey, vendaController.patchVenda);
 router.delete('/api/oticas/empresas/:idEmpresa/vendas/:id', IsAuthApiKey, vendaController.deleteVenda);
 
 // rotas de caixa
@@ -303,10 +307,17 @@ router.post('/api/oticas/empresas/:idEmpresa/:cnpj/certificado', upload.single('
 // router.get('/api/oticas/empresas/:idEmpresa/vendedores', IsAuthApiKey, vendedorController.listVendedores);
 
 // rotas de criar notas fiscais
-// router.post('/api/oticas/empresas/:idEmpresa/nfce', IsAuthApiKey, nfceController.emitirNfceCompleta);
-// router.get('/api/oticas/empresas/:idEmpresa/vendedores', IsAuthApiKey, vendedorController.listVendedores);
 router.post('/api/oticas/empresas/:idEmpresa/notaFiscal', IsAuthApiKey, notaFiscalController.emitirNotaFiscal);
+router.post('/api/oticas/empresas/:idEmpresa/notaFiscal/notaAvulsa', IsAuthApiKey, notaFiscalController.emitirNotaFiscalAvulsa);
+router.get('/api/oticas/empresas/:idEmpresa/notaFiscal', IsAuthApiKey, notaFiscalController.listaNotaFiscal);
+router.get('/api/oticas/empresas/:idEmpresa/notaFiscal/:idNotaFiscal', IsAuthApiKey, notaFiscalController.getNotaFiscal);
+router.post('/api/oticas/empresas/:idEmpresa/notaFiscal/cancelar', IsAuthApiKey, notaFiscalController.cancelarNotaFiscal);
 
+// rotas de criar notas fiscais avulsas
+router.post('/api/oticas/empresas/:idEmpresa/notaAvulsa', IsAuthApiKey, notaFiscalAvulsaController.postNotaAvulsa);
+router.get('/api/oticas/empresas/:idEmpresa/notaAvulsa', IsAuthApiKey, notaFiscalAvulsaController.getNotaAvulsa);
+router.get('/api/oticas/empresas/:idEmpresa/notaFiscal/:idNotaAvulsa', IsAuthApiKey, notaFiscalAvulsaController.getIdNotaAvulsa);
+router.post('/api/oticas/empresas/:idEmpresa/notaFiscal/:idNotaAvulsa', IsAuthApiKey, notaFiscalAvulsaController.deleteNotaAvulsa);
 
 // Localizar CEPs
 router.get('/api/oticas/cep/:cep', IsAuthApiKey, cepController.getCep);
@@ -320,5 +331,8 @@ router.get('/api/oticas/ncm', IsAuthApiKey, ncmController.getNcm);
 
 // Importar Produto por nfe
 router.post('/api/oticas/empresas/:idEmpresa/produtos/nfe', IsAuthApiKey, uploadXml.single('xml'), nfeController.uploadAndImportNFe);
+
+// Localizar Danfe por venda
+router.get('/api/oticas/empresas/:idEmpresa/danfe/:idVenda', IsAuthApiKey, danfeController.getDanfe);
 
 module.exports = router
