@@ -35,12 +35,12 @@ async function emitirNFe(venda, empresa) {
 
   const jsonNFe = await montarJsonNFe(venda, empresa);
 
-  console.log('JSON da NFe/NFCe montado:', JSON.stringify(jsonNFe, null, 2));
+  // console.log('JSON da NFe/NFCe montado:', JSON.stringify(jsonNFe, null, 2));
 
   try {
     const { baseUrl, token } = await getNFIntegracao(empresa.idEmpresa);
-    console.log('url', baseUrl);
-    console.log('token: ', token);
+    // console.log('url', baseUrl);
+    // console.log('token: ', token);
     const response = await axios.post(
       // `${NF_BASE_URL}/nfe`,
       `${baseUrl}/EnviarNotaFiscal`,
@@ -64,13 +64,13 @@ async function emitirNFe(venda, empresa) {
       tipo: "NF-e",
       DsEvento: "Envio",
       numero: data.ReturnNF.Numero || null,
-      serie: data.ReturnNF.Serie || null,
+      serie: data.ReturnNF.Serie || 1,
       chave: data.ReturnNF.ChaveNF || null,
       protocolo: data.ReturnNF?.Protocolo || null,
       CodStatusRespostaSefaz: data.ReturnNF.CodStatusRespostaSefaz || null,
-      CodStatusRespostaSefaz: 100,
-      // DsStatusRespostaSefaz: data.ReturnNF.DsStatusRespostaSefaz || null,
-      DsStatusRespostaSefaz: 'Autorizado uso da NF-e',
+      // CodStatusRespostaSefaz: 100,
+      DsStatusRespostaSefaz: data.ReturnNF.DsStatusRespostaSefaz || null,
+      // DsStatusRespostaSefaz: 'Autorizado uso da NF-e',
       CodAmbiente: jsonNFe.TipoAmbiente || null,
       DsTipoAmbiente: jsonNFe.TipoAmbiente === 1 ? "Produção" : "Homologação",
       valorNf: data.ReturnNF.Detalhes.valorNf || null,
@@ -85,6 +85,7 @@ async function emitirNFe(venda, empresa) {
     });
 
     const CodStatusRespostaSefaz = notaFiscal.CodStatusRespostaSefaz;
+    //  console.log('CodStatusRespostaSefaz: ', CodStatusRespostaSefaz);
 
     // Verifica se nota foi aprovada para atualizar venda
       if (CodStatusRespostaSefaz === 100) {
@@ -102,7 +103,7 @@ async function emitirNFe(venda, empresa) {
 
         // ----- ENVIA E-MAIL -----
         if (empresa.emailXML) {
-          console.log(`Enviando e-mail do XML para ${empresa.emailXML}...`);
+          // console.log(`Enviando e-mail do XML para ${empresa.emailXML}...`);
 
           let transporter = nodemailer.createTransport({
               host: 'smtp.hostinger.com',    // Servidor SMTP da Locaweb
@@ -144,7 +145,7 @@ async function emitirNFe(venda, empresa) {
             attachments
           });
 
-          console.log("E-mail enviado com sucesso para o contador!");
+          // console.log("E-mail enviado com sucesso para o contador!");
       }
     };
 
@@ -181,12 +182,12 @@ async function emitirNFeAvulsa(notaAvulsa, empresa) {
 
   const jsonNFe = await montarJsonNFeAvulsa(notaAvulsa, empresa);
 
-  console.log('JSON da NFe/NFCe Avulsa montado:', JSON.stringify(jsonNFe, null, 2));
+  // console.log('JSON da NFe/NFCe Avulsa montado:', JSON.stringify(jsonNFe, null, 2));
 
   try {
     const { baseUrl, token } = await getNFIntegracao(empresa.idEmpresa);
-    console.log('url', baseUrl);
-    console.log('token: ', token);
+    // console.log('url', baseUrl);
+    // console.log('token: ', token);
     const response = await axios.post(
       // `${NF_BASE_URL}/nfe`,
       `${baseUrl}/EnviarNotaFiscal`,
@@ -215,9 +216,9 @@ async function emitirNFeAvulsa(notaAvulsa, empresa) {
       chave: data.ReturnNF.ChaveNF || null,
       protocolo: data.ReturnNF?.Protocolo || null,
       CodStatusRespostaSefaz: data.ReturnNF.CodStatusRespostaSefaz || null,
-      CodStatusRespostaSefaz: 100,
-      // DsStatusRespostaSefaz: data.ReturnNF.DsStatusRespostaSefaz || null,
-      DsStatusRespostaSefaz: 'Autorizado uso da NF-e',
+      // CodStatusRespostaSefaz: 100,
+      DsStatusRespostaSefaz: data.ReturnNF.DsStatusRespostaSefaz || null,
+      // DsStatusRespostaSefaz: 'Autorizado uso da NF-e',
       CodAmbiente: jsonNFe.TipoAmbiente || null,
       DsTipoAmbiente: jsonNFe.TipoAmbiente === 1 ? "Produção" : "Homologação",
       valorNf: data.ReturnNF.Detalhes.valorNf || null,
@@ -250,7 +251,7 @@ async function emitirNFeAvulsa(notaAvulsa, empresa) {
 
         // ----- ENVIA E-MAIL -----
         if (empresa.emailXML) {
-          console.log(`Enviando e-mail do XML para ${empresa.emailXML}...`);
+          // console.log(`Enviando e-mail do XML para ${empresa.emailXML}...`);
 
           let transporter = nodemailer.createTransport({
               host: 'smtp.hostinger.com',    // Servidor SMTP da Locaweb
@@ -292,7 +293,7 @@ async function emitirNFeAvulsa(notaAvulsa, empresa) {
             attachments
           });
 
-          console.log("E-mail enviado com sucesso para o contador!");
+          // console.log("E-mail enviado com sucesso para o contador!");
       }
     };
 
