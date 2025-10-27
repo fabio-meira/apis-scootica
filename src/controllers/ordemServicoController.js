@@ -430,8 +430,20 @@ async function getOrdemServico(req, res) {
 async function getOrdemServicoSV(req, res) {
     try {
         const { idEmpresa } = req.params;
+        const { idFilial } = req.query; 
+
+        // Construa o objeto de filtro
+        const whereConditions = {
+            idEmpresa: idEmpresa
+        };
+        
+        // Adicione filtro por filial, se fornecido
+        if (idFilial) {
+            whereConditions.idFilial = idFilial;
+        }
+        
         const ordemServico = await OrdemServico.findAll({
-            where: { idEmpresa: idEmpresa,
+            where: { ...whereConditions,
                 idVenda: null,
                 situacao: {
                     [Op.ne]: 4  // Situação diferente de 4 (OS cancelada)

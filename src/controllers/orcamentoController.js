@@ -231,6 +231,17 @@ async function getOrcamentos(req, res) {
 async function getOrcamentosSO(req, res) {
     try {
         const { idEmpresa } = req.params;
+        const { idFilial } = req.query; 
+
+        // Construa o objeto de filtro
+        const whereConditions = {
+            idEmpresa: idEmpresa
+        };
+        
+        // Adicione filtro por filial, se fornecido
+        if (idFilial) {
+            whereConditions.idFilial = idFilial;
+        }
 
         // Subconsulta para encontrar IDs que devem ser excluídos
         const excludedIdsRecords = await OrdemServico.findAll({
@@ -249,7 +260,7 @@ async function getOrcamentosSO(req, res) {
         // Consulta principal com exclusão
         const orcamentos = await Orcamento.findAll({
             where: { 
-                idEmpresa: idEmpresa,
+                ...whereConditions,
                 id: {
                     [Op.notIn]: excludedIds // Excluir orçamentos que têm ID em excludedIds
                 }
