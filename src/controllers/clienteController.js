@@ -141,7 +141,8 @@ async function getClientes(req, res) {
 
         const cliente = await Cliente.findAll({
             where: whereClause,
-            attributes: ['id', 'nomeCompleto']
+            attributes: ['id', 'nomeCompleto'],
+            limit: 500 
         });
 
         if (!cliente) {
