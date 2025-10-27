@@ -93,7 +93,8 @@ async function listCliente(req, res) {
             where: whereClause,
             order: [
                 ['id', 'DESC']
-            ]
+            ],
+            limit: 500 
         },);
 
         res.status(200).json(cliente);
@@ -141,8 +142,7 @@ async function getClientes(req, res) {
 
         const cliente = await Cliente.findAll({
             where: whereClause,
-            attributes: ['id', 'nomeCompleto'],
-            limit: 500 
+            attributes: ['id', 'nomeCompleto']
         });
 
         if (!cliente) {
