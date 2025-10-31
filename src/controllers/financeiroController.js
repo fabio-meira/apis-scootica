@@ -372,7 +372,8 @@ async function getFinanceiroMes(req, res) {
         // Obter os detalhes das contas a pagar
         const contasAPagarDetalhadas = await Conta.findAll({
             where: {
-                idEmpresa: idEmpresa,
+                // idEmpresa: idEmpresa,
+                ...whereConditions,
                 tipo: 'Pagar',
                 statusRecebimento: 'Pendente',
                 dataVencimento: {
@@ -385,7 +386,8 @@ async function getFinanceiroMes(req, res) {
         // Obter os detalhes das contas a receber
         const contasAReceberDetalhadas = await Conta.findAll({
             where: {
-                idEmpresa: idEmpresa,
+                // idEmpresa: idEmpresa,
+                ...whereConditions,
                 tipo: 'Receber',
                 statusRecebimento: 'Pendente',
                 dataVencimento: {
