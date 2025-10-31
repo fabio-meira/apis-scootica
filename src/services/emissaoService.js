@@ -336,7 +336,7 @@ async function emitirNFCe(venda, empresa) {
       jsonNFCe,
       {
         headers: {
-          Authorization: `Bearer ${token}`,
+          Token: `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       }
@@ -357,21 +357,28 @@ async function emitirNFCe(venda, empresa) {
   }
 }
 
-async function cancelarNFe(chave, empresa, justificativa) {
+async function cancelarNFe(chave, empresa, justificativa, numero, serie) {
 
   const { baseUrl, token } = await getNFIntegracao(empresa);
   console.log('url', baseUrl);
   console.log('token: ', token);
 
-  const jsonCancelamtento = montarJsonCancelNFe(chave, empresa, justificativa); 
+  // const jsonCancelamtento = montarJsonCancelNFe(chave, empresa, justificativa); 
+  // console.log('json para enviar a sefaz: ', jsonCancelamtento);
+
+  const jsonCanc = {
+    ChaveNF: chave,
+    Justificativa: justificativa,
+    NumeroSequencial: 1
+  };
 
   try {
     const response = await axios.post(
       `${baseUrl}/CancelNF`,
-      jsonCancelamtento,
+      jsonCanc,
       {
         headers: {
-          Authorization: `Bearer ${token}`,
+          Token: `${token}`,
           'Content-Type': 'application/json'
         }
       }
@@ -379,31 +386,34 @@ async function cancelarNFe(chave, empresa, justificativa) {
 
     // const { chave, protocolo } = response.data;
     const data = response.data;
-    console.log("data:", data);
+    // console.log("data:", data);
 
     // grava no banco com Sequelize
     const notaFiscal = await NotaFiscal.create({
-      idEmpresa: empresa.idEmpresa,
+      idEmpresa: empresa,
       tipo: "NF-e",
+      numero: numero || null,
+      serie: serie || null,
       DsEvento: data.DsEvento,
       DsMotivo:data.DsMotivo,
-      chave: data.ReturnNF.ChaveNF || null,
+      chave: chave || null,
       protocolo: data.NuProtocolo || null,
       CodStatusRespostaSefaz: data.CodStatusRespostaSefaz || null,
-      DsStatusRespostaSefaz: data.ReturnNF.DsStatusRespostaSefaz || null,
-      CodAmbiente: jsonNFe.TipoAmbiente || null,
-      DsTipoAmbiente: data.DsAmbiente === 1 ? "Produção" : "Homologação",
+      DsStatusRespostaSefaz:  null,
+      CodAmbiente: data.DsAmbiente === "Produção" ? 1 : 2,
+      DsTipoAmbiente: data.DsAmbiente || null,
       NumeroSequencial: data.NumeroSequencial || null,
       erroProcessamento: data.Error,
-      status: data.ReturnNF.Ok || false,
+      status: data.status || false,
     });
 
     const CodStatusRespostaSefaz = notaFiscal.CodStatusRespostaSefaz;
 
     return {
       sucesso: true,
-      chaveAcesso: chave,
-      protocolo: protocolo
+      evento: data.DsEvento,
+      motivo: data.DsMotivo,
+      protocolo: data.NuProtocolo
     };
 
   } catch (error) {

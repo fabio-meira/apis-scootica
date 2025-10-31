@@ -115,7 +115,7 @@ async function emitirNotaFiscalAvulsa(req, res) {
     let resultado;
 
     if (empresa.tipoNF === 55) {
-      console.log('entrou emiirNFeAvulsa');
+      // console.log('entrou emiirNFeAvulsa');
       resultado = await emitirNFeAvulsa(notaAvulsa, empresa);
     } else if (empresa.tipoNF === 65) {
       resultado = await emitirNFCeAvulsa(notaAvulsa, empresa);
@@ -246,12 +246,8 @@ async function getNotaFiscal(req, res) {
 
 async function cancelarNotaFiscal(req, res) {
   const { chave } = req.body;
-  const { justificativa } = req.body;
+  const { justificativa, numero, serie } = req.body;
   const { idEmpresa } = req.params;
-
-  console.log('chave: ', chave);
-  console.log('emrpesa: ', idEmpresa);
-  console.log('justificativa: ', justificativa);
 
   try {
     // Consulta a nota fiscal
@@ -266,11 +262,10 @@ async function cancelarNotaFiscal(req, res) {
     };
 
     const empresa = idEmpresa;
-    console.log('empresa-updt: ', empresa);
 
     let resultado;
 
-    resultado = await cancelarNFe(chave, empresa, justificativa);
+    resultado = await cancelarNFe(chave, empresa, justificativa, numero, serie);
     
     // Verifica sucesso
     if (!resultado.sucesso) {
