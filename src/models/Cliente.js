@@ -26,6 +26,10 @@ Cliente.init({
     type: DataTypes.STRING(10),
     allowNull: true,
  },
+ ie: {
+    type: DataTypes.STRING(20),
+    allowNull: true,
+ },
  nomeCompleto: {
     type: DataTypes.STRING(500),
     allowNull: true,
