@@ -11,7 +11,7 @@ async function postProduto(req, res) {
     try {
         const produtoData = req.body;
         const { idEmpresa } = req.params; 
-        const { referencia, codigoBarras } = req.body;
+        const { referencia, codigoBarras } = req.body; 
 
         const produtoExists = await Produto.findOne({ 
             where: { 
