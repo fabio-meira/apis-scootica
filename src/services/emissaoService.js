@@ -61,6 +61,7 @@ async function emitirNFe(venda, empresa) {
     const notaFiscal = await NotaFiscal.create({
       idEmpresa: empresa.idEmpresa,
       idVenda: venda.id,
+      numeroVenda: venda.numeroVenda,
       tipo: "NF-e",
       DsEvento: "Envio",
       numero: data.ReturnNF.Numero || null,
