@@ -14,7 +14,7 @@ exports.importarIbpt = (req, res) => {
   const results = [];
 
   // Lê o arquivo CSV do diretório 'files'
-  fs.createReadStream("./files/TabelaIBPT-MG.csv")
+  fs.createReadStream("./files/TabelaIBPT-SP.csv")
     .pipe(csv({ separator: ";" })) // CSV separado por ";"
     .on("data", (row) => results.push(row)) // Armazena cada linha
     .on("end", async () => {
@@ -29,8 +29,8 @@ exports.importarIbpt = (req, res) => {
           vigenciafim: formatDate(item.vigenciafim),
           chave: item.chave,
           versao: item.versao,
-          uf: 'MG',
-          cUf: 31,
+          uf: 'SP',
+          cUf: 35,
         }));
 
         // Insere os dados no banco
