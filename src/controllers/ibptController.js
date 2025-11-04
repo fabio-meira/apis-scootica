@@ -30,7 +30,7 @@ exports.importarIbpt = (req, res) => {
           chave: item.chave,
           versao: item.versao,
           uf: 'ES',
-          cUf: 31,
+          cUf: 32,
         }));
 
         // Insere os dados no banco
