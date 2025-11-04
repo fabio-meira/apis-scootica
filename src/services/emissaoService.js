@@ -35,7 +35,7 @@ async function emitirNFe(venda, empresa) {
 
   const jsonNFe = await montarJsonNFe(venda, empresa);
 
-  // console.log('JSON da NFe/NFCe montado:', JSON.stringify(jsonNFe, null, 2));
+  //  console.log('JSON da NFe/NFCe montado:', JSON.stringify(jsonNFe, null, 2));
 
   try {
     const { baseUrl, token } = await getNFIntegracao(empresa.idEmpresa);
@@ -142,7 +142,7 @@ async function emitirNFe(venda, empresa) {
             from: `contato@optware.com.br`,
             to: empresa.emailXML,
             subject: `NF-e nº ${notaFiscal.numero} - Autorizada pela SEFAZ`,
-            text: `Segue em anexo o XML e o DANFE da NF-e nº ${notaFiscal.numero}, série ${notaFiscal.serie}.`,
+            text: `Segue em anexo o XML da NF-e nº ${notaFiscal.numero}, série ${notaFiscal.serie}.`,
             attachments
           });
 
@@ -290,7 +290,7 @@ async function emitirNFeAvulsa(notaAvulsa, empresa) {
             from: `contato@optware.com.br`,
             to: empresa.emailXML,
             subject: `NF-e nº ${notaFiscal.numero} - Autorizada pela SEFAZ`,
-            text: `Segue em anexo o XML e o DANFE da NF-e nº ${notaFiscal.numero}, série ${notaFiscal.serie}.`,
+            text: `Segue em anexo o XML da NF-e nº ${notaFiscal.numero}, série ${notaFiscal.serie}.`,
             attachments
           });
 
