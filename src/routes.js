@@ -46,6 +46,7 @@ const notaFiscalController = require('./controllers/notaFiscalController')
 const parametroJuros = require('./controllers/parametrosJurosController')
 const danfeController = require('./controllers/danfeController')
 const notaFiscalAvulsaController = require('./controllers/notaFiscalAvulsaController')
+const ibptController = require("./controllers/ibptController")
 
 // jwt-authorization
 router.post('/api/oticas/token', authorization.auth);
@@ -331,6 +332,9 @@ router.get('/api/oticas/ncm', IsAuthApiKey, ncmController.getNcm);
 
 // Importar Produto por nfe
 router.post('/api/oticas/empresas/:idEmpresa/produtos/nfe', IsAuthApiKey, uploadXml.single('xml'), nfeController.uploadAndImportNFe);
+
+// Importação do CSV
+router.get('/api/oticas/importar-ibpt', IsAuthApiKey, ibptController.importarIbpt); // Nova rota
 
 // Localizar Danfe por venda
 router.get('/api/oticas/empresas/:idEmpresa/danfe/:idVenda', IsAuthApiKey, danfeController.getDanfe);
