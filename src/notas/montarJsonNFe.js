@@ -226,28 +226,28 @@ async function montarJsonNFe(venda, empresa) {
   const now = new Date();
   const dhEmi = now.toISOString();
 
-  // let totalTributosFederal = 0;
-  // let totalTributosEstadual = 0;
+  let totalTributosFederal = 0;
+  let totalTributosEstadual = 0;
 
   // percorre os produtos e consulta o IBPT para cada NCM
-  // for (const p of venda.produtos) {
-  //   const valorItem = p.quantidade * p.preco;
+  for (const p of venda.produtos) {
+    const valorItem = p.quantidade * p.preco;
 
-  //   // busca os percentuais no IBPT pela NCM do produto
-  //   const ibpt = await Ibpt.findOne({
-  //     where: { Codigo: p.ncm.replace(/\D/g, ''), uf: empresa.uf }
-  //   });
+    // busca os percentuais no IBPT pela NCM do produto
+    const ibpt = await Ibpt.findOne({
+      where: { Codigo: p.ncm.replace(/\D/g, ''), uf: empresa.uf }
+    });
 
-  //   if (ibpt) {
-  //     const aliqFederal = parseFloat(ibpt.nacionalFederal) || 0;
-  //     const aliqEstadual = parseFloat(ibpt.estadual) || 0;
+    if (ibpt) {
+      const aliqFederal = parseFloat(ibpt.nacionalFederal) || 0;
+      const aliqEstadual = parseFloat(ibpt.estadual) || 0;
 
-  //     totalTributosFederal += (valorItem * aliqFederal) / 100;
-  //     totalTributosEstadual += (valorItem * aliqEstadual) / 100;
-  //   }
-  // };
+      totalTributosFederal += (valorItem * aliqFederal) / 100;
+      totalTributosEstadual += (valorItem * aliqEstadual) / 100;
+    }
+  };
 
-  // const totalTributos = totalTributosFederal + totalTributosEstadual;
+  const totalTributos = totalTributosFederal + totalTributosEstadual;
 
   // RATEIO DOS VALORES GERAIS (desconto, frete, acréscimo)
   const descontoTotal = parseFloat(venda?.totais?.desconto || 0);
@@ -365,12 +365,12 @@ async function montarJsonNFe(venda, empresa) {
     });
 
   // Mensagem em Dados Adicionais
-  // const infCpl = `
-  //   DOCUMENTO EMITIDO POR ME OU EPP OPTANTE PELO SIMPLES NACIONAL.
-  //   NAO GERA DIREITO A CREDITO FISCAL DE IPI.
-  //   Valor aprox. dos tributos: R$ ${totalTributos.toFixed(2)} (Federal: R$ ${totalTributosFederal.toFixed(2)} e Estadual: R$ ${totalTributosEstadual.toFixed(2)}). Fonte: IBPT
-  // `;
-  const infCpl = '';
+  const infCpl = `
+    DOCUMENTO EMITIDO POR ME OU EPP OPTANTE PELO SIMPLES NACIONAL.
+    NAO GERA DIREITO A CREDITO FISCAL DE IPI.
+    Valor aprox. dos tributos: R$ ${totalTributos.toFixed(2)} (Federal: R$ ${totalTributosFederal.toFixed(2)} e Estadual: R$ ${totalTributosEstadual.toFixed(2)}). Fonte: IBPT
+  `;
+  // const infCpl = '';
 
   const json = {
     // Codigo: `${venda.id}`,
@@ -384,7 +384,7 @@ async function montarJsonNFe(venda, empresa) {
     ModeloDocumento: empresa.tipoNF || 55,
     Finalidade: 1,
     TipoAmbiente: empresa.ambienteSefaz,
-    CalcularIBPT: true,
+    CalcularIBPT: false,
     Observacao: infCpl.trim(),
     IdentificadorInterno: `${venda.id}`,
     EnviarEmail: false,
