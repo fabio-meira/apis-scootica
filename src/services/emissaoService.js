@@ -140,8 +140,8 @@ async function emitirNFe(venda, empresa) {
 
           const destinatarios = [
             empresa.emailXML,
-            venda.cliente.email
-          ];
+            venda?.cliente?.email
+          ].filter(email => email && email.trim() !== ""); // 🔹 mantém apenas e-mails válidos e não vazios
 
           for (const email of destinatarios) {
             await transporter.sendMail({
@@ -295,8 +295,8 @@ async function emitirNFeAvulsa(notaAvulsa, empresa) {
 
           const destinatarios = [
             empresa.emailXML,
-            notaAvulsa.cliente.email
-          ];
+            notaAvulsa?.cliente?.email
+          ].filter(email => email && email.trim() !== ""); // 🔹 mantém apenas e-mails válidos e não vazios
 
           for (const email of destinatarios) {
             await transporter.sendMail({
