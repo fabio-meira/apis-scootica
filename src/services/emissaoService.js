@@ -138,13 +138,20 @@ async function emitirNFe(venda, empresa) {
           //   });
           // }
 
-          await transporter.sendMail({
-            from: `contato@optware.com.br`,
-            to: empresa.emailXML,
-            subject: `NF-e nº ${notaFiscal.numero} - Autorizada pela SEFAZ`,
-            text: `Segue em anexo o XML da NF-e nº ${notaFiscal.numero}, série ${notaFiscal.serie}.`,
-            attachments
-          });
+          const destinatarios = [
+            empresa.emailXML,
+            venda.cliente.email
+          ];
+
+          for (const email of destinatarios) {
+            await transporter.sendMail({
+              from: `contato@optware.com.br`,
+              to: email,  // envia individualmente
+              subject: `[${empresa.nome}] - NF-e nº ${notaFiscal.numero} - Autorizada pela SEFAZ`,
+              text: `Segue em anexo o XML da NF-e nº ${notaFiscal.numero}, série ${notaFiscal.serie}, emitida por ${empresa.nomeFantasia}.`,
+              attachments
+            });
+          }
 
           // console.log("E-mail enviado com sucesso para o contador!");
       }
@@ -286,13 +293,20 @@ async function emitirNFeAvulsa(notaAvulsa, empresa) {
           //   });
           // }
 
-          await transporter.sendMail({
-            from: `contato@optware.com.br`,
-            to: empresa.emailXML,
-            subject: `NF-e nº ${notaFiscal.numero} - Autorizada pela SEFAZ`,
-            text: `Segue em anexo o XML da NF-e nº ${notaFiscal.numero}, série ${notaFiscal.serie}.`,
-            attachments
-          });
+          const destinatarios = [
+            empresa.emailXML,
+            notaAvulsa.cliente.email
+          ];
+
+          for (const email of destinatarios) {
+            await transporter.sendMail({
+              from: `contato@optware.com.br`,
+              to: email,  // envia individualmente
+              subject: `[${empresa.nome}] - NF-e nº ${notaFiscal.numero} - Autorizada pela SEFAZ`,
+              text: `Segue em anexo o XML da NF-e nº ${notaFiscal.numero}, série ${notaFiscal.serie}, emitida por ${empresa.nomeFantasia}.`,
+              attachments
+            });
+          }
 
           // console.log("E-mail enviado com sucesso para o contador!");
       }
