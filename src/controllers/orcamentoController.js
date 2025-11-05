@@ -10,7 +10,7 @@ const Empresa = require('../models/Empresa');
 const OrdemServico = require('../models/OrdemServico');
 const { Op } = require('sequelize')
 const sequelize = require('../database/connection');
-const { criarOrcamentoNoKommo } = require("../services/kommoService");
+const { criarContatoNoKommo, criarOrcamentoNoKommo } = require("../services/kommoService");
 
 // Função para criar um novo orçamentos e seus relacionamentos
 async function postOrcamento(req, res) {
@@ -78,6 +78,30 @@ async function postOrcamento(req, res) {
             if (empresa.integracaoCRM === true) {
 
                 const idFilial = orcamentoData.idFilial; 
+
+                if (cliente.exportado === false || !cliente.idCRM) {
+                    // console.log("Cliente ainda não exportado. Criando contato no Kommo...");
+                    const contatoKommo = await criarContatoNoKommo(idEmpresa, idFilial, cliente, empresa);
+
+                    // Extrai o id retornado pelo Kommo
+                    const idCRM = contatoKommo?._embedded?.contacts?.[0]?.id;
+
+                    if (idCRM) {
+                        // Atualiza cliente com idCRM e marca exportado = true
+                        await cliente.update(
+                        { idCRM, exportado: true },
+                        { transaction }
+                        );
+
+                        cliente.dataValues.kommoResponse = contatoKommo;
+
+                        // console.log(`Cliente ${cliente.nome} exportado com sucesso para o Kommo (idCRM: ${idCRM})`);
+                    } else {
+                        console.warn("Falha ao obter idCRM ao criar o contato no Kommo");
+                    }
+                } else {
+                    console.log("Cliente já exportado, prosseguindo com a criação do orçamento...");
+                }
                 
                 const orcamentoKommo = await criarOrcamentoNoKommo(
                     idEmpresa,

@@ -18,7 +18,7 @@ const Mensagem = require('../models/Mensagem');
 const { uploadToS3 } = require('../middleware/s3');
 const { BUCKET_IMAGES } = require('../../config/s3Client');
 const OrdemServicoArquivo = require('../models/OrdemServicoArquivo');
-const { criarVendaNoKommo, avancarKanbanKommo } = require("../services/kommoService");
+const { criarContatoNoKommo, criarVendaNoKommo, avancarKanbanKommo } = require("../services/kommoService");
 
 // Função para sanear os campos
 function sanitizeVendaData(data) {
@@ -342,6 +342,30 @@ async function postVenda(req, res) {
             if (empresa.integracaoCRM === true) {    
                 
                 const idFilial = vendaData.idFilial;
+
+                if (cliente.exportado === false || !cliente.idCRM) {
+                    // console.log("Cliente ainda não exportado. Criando contato no Kommo...");
+                    const contatoKommo = await criarContatoNoKommo(idEmpresa, idFilial, cliente, empresa);
+
+                    // Extrai o id retornado pelo Kommo
+                    const idCRM = contatoKommo?._embedded?.contacts?.[0]?.id;
+
+                    if (idCRM) {
+                        // Atualiza cliente com idCRM e marca exportado = true
+                        await cliente.update(
+                        { idCRM, exportado: true },
+                        { transaction }
+                        );
+
+                        cliente.dataValues.kommoResponse = contatoKommo;
+
+                        // console.log(`Cliente ${cliente.nome} exportado com sucesso para o Kommo (idCRM: ${idCRM})`);
+                    } else {
+                        console.warn("Falha ao obter idCRM ao criar o contato no Kommo");
+                    }
+                } else {
+                    console.log("Cliente já exportado, prosseguindo com a criação da venda...");
+                }
 
                 if (!venda.idOrdemServico) {
                     // Criar venda no Kommo (não tem ordem de serviço vinculada)

@@ -5,7 +5,7 @@ const Mensagem = require('../models/Mensagem');
 const { Op, fn, col, literal } = require('sequelize');
 const sequelize = require('../database/connection');
 const moment = require('moment');
-const { criarExameVistaNoKommo } = require("../services/kommoService");
+const { criarContatoNoKommo, criarExameVistaNoKommo } = require("../services/kommoService");
 
 // Função para cadastrar um nova receita
 async function postReceita(req, res) {
@@ -72,6 +72,31 @@ async function postReceita(req, res) {
             if (empresa.integracaoCRM === true) {
 
                 const idFilial = receitaData.idFilial; 
+
+                // Verificar se o cliente já foi exportado para o Kommo
+                if (cliente.exportado === false || !cliente.idCRM) {
+                    // console.log("Cliente ainda não exportado. Criando contato no Kommo...");
+                    const contatoKommo = await criarContatoNoKommo(idEmpresa, idFilial, cliente, empresa);
+
+                    // Extrai o id retornado pelo Kommo
+                    const idCRM = contatoKommo?._embedded?.contacts?.[0]?.id;
+
+                    if (idCRM) {
+                        // Atualiza cliente com idCRM e marca exportado = true
+                        await cliente.update(
+                        { idCRM, exportado: true },
+                        { transaction }
+                        );
+
+                        cliente.dataValues.kommoResponse = contatoKommo;
+
+                        // console.log(`Cliente ${cliente.nome} exportado com sucesso para o Kommo (idCRM: ${idCRM})`);
+                    } else {
+                        console.warn("Falha ao obter idCRM ao criar o contato no Kommo");
+                    }
+                } else {
+                    console.log("Cliente já exportado, prosseguindo com a criação da receita...");
+                }
                 
                 const exameVistaKommo = await criarExameVistaNoKommo(
                     idEmpresa,
