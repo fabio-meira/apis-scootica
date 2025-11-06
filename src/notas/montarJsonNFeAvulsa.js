@@ -166,7 +166,7 @@ async function montarJsonNFeAvulsa(notaAvulsa, empresa) {
     TipoAmbiente: empresa.ambienteSefaz,
     CalcularIBPT: false,
     Observacao: infCpl.trim(),
-    IdentificadorInterno: `99${notaAvulsa.id}`,
+    IdentificadorInterno: `999${notaAvulsa.id}`,
     EnviarEmail: false,
     Cliente: {
       CPFCNPJ: notaAvulsa.cliente.cnpj || notaAvulsa.cliente.cpf,
