@@ -18,6 +18,22 @@ async function postNotaAvulsa(req, res) {
         // Adiciona idEmpresa aos dados de nota fiscal avulsa
         notaData.idEmpresa = idEmpresa;
 
+        // Identificar o idFilial para consulta do próximo número venda
+        const idFilial = notaData.idFilial;
+
+        // Obter o próximo número de orçamento por idEmpresa
+        const maxNumero = await NotaFiscalAvulsa.max('numeroAvulsa', {
+            where: { 
+                idEmpresa,
+                idFilial, 
+            },
+            transaction
+        });
+
+        // Se não houver nenhuma venda ainda para essa filial, começa em 1
+        notaData.numeroAvulsa = (maxNumero || 0) + 1;
+
+
         // Cria uma nota fiscal avulsa
         const notaAvulsa = await NotaFiscalAvulsa.create(notaData, { transaction });
 
@@ -65,7 +81,8 @@ async function getNotaAvulsa(req, res) {
 
         // Construa o objeto de filtro
         const whereConditions = {
-            idEmpresa: idEmpresa
+            idEmpresa: idEmpresa,
+            notaFiscalEmitida: 0
         };
 
         // Adicione filtro por data de início e data de fim, se fornecidos
@@ -234,13 +251,150 @@ async function getIdNotaAvulsa(req, res) {
         //     valorPagoVenda
         // };
       
-        return res.status(200).json(output);
+        return res.status(200).json(notaAvulsa);
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Erro ao buscar uma nota fiscal avulsa', error });
     }
 }
 
+// Função para atualizar uma venda pelo Id
+async function patchNotaAvulsa(req, res) {
+    const transaction = await sequelize.transaction();
+    try {
+        const { id, idEmpresa } = req.params;
+        // const notaData = JSON.parse(req.body.body || '{}');
+        const notaData = req.body;
+        console.log('body: ', notaData);
+        console.log('totais: ', notaData.totais);
+
+        // Verifica se existe a venda
+        const consulta = await NotaFiscalAvulsa.findOne({
+            where: { id, idEmpresa },
+        });
+
+        console.log('consulta:' , consulta);
+
+        if (!consulta) {
+            // await transaction.rollback();
+            return res.status(404).json({ message: "Venda não encontrada" });
+        }
+
+        // Atualiza os dados principais da venda
+        const [updated] = await NotaFiscalAvulsa.update({
+            // idVendedor: notaData.idVendedor,
+            idCliente: notaData.idCliente,
+            valorTotal: Number(notaData.valorTotal),
+            vendaAlterada: Boolean(notaData.vendaAlterada)
+        }, {
+            where: { id, idEmpresa },
+            transaction
+        });
+
+        if (!updated) {
+            await transaction.rollback();
+            return res.status(404).json({ message: "Nota avulsa não encontrada" });
+        }
+
+        // Atualizar produtos
+        if (notaData.produtos && notaData.produtos.length > 0) {
+            for (const produto of notaData.produtos) {
+                if (produto.idProduto) {
+                    // Atualiza produto já existente
+                    await VendaProduto.update(
+                        {
+                            quantidade: Number(produto.quantidade),
+                            preco: Number(produto.preco),
+                            cfop: Number(produto.cfop),
+                            valorTotal: (produto.quantidade * produto.preco).toFixed(2),
+                        },
+                        { where: { idProduto: produto.idProduto, idNotaAvulsa: id }, transaction }
+                    );
+                } 
+                else {
+                    // Novo produto adicionado na venda
+                    await VendaProduto.create({ ...produto, idNotaAvulsa: id }, { transaction });
+                }
+            }
+        }
+
+        // Atualizar totais
+        if (notaData.totais) {
+            await OrdemProdutoTotal.update({
+                quantidadeTotal: Number(notaData.totais.quantidadeTotal),
+                totalProdutos:Number(notaData.totais.totalProdutos),
+                desconto: Number(notaData.totais.desconto),
+                Percdesconto: Number(notaData.totais.Percdesconto),
+                acrescimo: Number(notaData.totais.acrescimo),
+                percAcrescimo: Number(notaData.totais.percAcrescimo),
+                frete: Number(notaData.totais.frete),
+                total: Number(notaData.totais.total),
+                vlAlteradoNF: Boolean(notaData.totais.vlAlteradoNF)  
+             }, { where: { idNotaAvulsa: id},
+                transaction
+            });
+        }
+
+        // Atualizar pagamentos
+        // if (notaData.pagamentos && notaData.pagamentos.length > 0) {
+        //     for (const pagamento of notaData.pagamentos) {
+        //         if (pagamento.id) {
+        //             // Atualiza pagamento existente
+        //             await Pagamento.update(pagamento, {
+        //                 where: { id: pagamento.id, idNotaAvulsa: id },
+        //                 transaction
+        //             });
+        //         } else {
+        //             // Cria novo pagamento
+        //             const createdPayment = await Pagamento.create(
+        //                 { ...pagamento },
+        //                 { transaction }
+        //             );
+
+        //             // Se for crédito, recria as parcelas
+        //             if (pagamento.statusRecebimento === 'Credito' && pagamento.parcelas && pagamento.valor) {
+        //                 await Parcela.destroy({ where: { idPagamento: createdPayment.id }, transaction });
+
+        //                 for (let i = 0; i < pagamento.quantidadeParcelas; i++) {
+        //                     const vencimento = new Date(pagamento.dataVencimento);
+        //                     vencimento.setMonth(vencimento.getMonth() + i);
+
+        //                     await Parcela.create({
+        //                         idPagamento: createdPayment.id,
+        //                         idEmpresa,
+        //                         quantidade: pagamento.parcelas,
+        //                         dataVencimento: vencimento,
+        //                         outrasInformacoes: `Parcela ${i + 1} de ${pagamento.parcelas} - Valor: R$ ${pagamento.parcelas}`,
+        //                         tipoPagamento: 'Credito'
+        //                     }, { transaction });
+        //                 }
+        //             }
+        //         }
+        //     }
+        // }
+
+        await transaction.commit();
+
+        const notaAvulsa = await NotaFiscalAvulsa.findOne({
+            where: { id, idEmpresa },
+            include: [
+                { model: VendaProduto, as: 'produtos' },
+                { model: OrdemProdutoTotal, as: 'totais' } // se tiver alias
+                // { model: Pagamento, as: 'pagamentos' }      // se tiver alias
+            ]
+        });
+
+        res.status(200).json({ message: "Nota avulsa atualizada com sucesso", notaAvulsa })
+
+        } catch (error) {
+        if (transaction.finished !== 'commit' && transaction.finished !== 'rollback') {
+            await transaction.rollback();
+        }
+        console.error(error);
+        const statusCode = error.status || 500;
+        res.status(statusCode).json({ message: error.message });
+    }
+}
 
 // Função para deletar uma nota fiscal avulsa pelo id
 async function deleteNotaAvulsa(req, res) {
@@ -272,5 +426,6 @@ module.exports = {
     postNotaAvulsa,
     getNotaAvulsa,
     getIdNotaAvulsa,
+    patchNotaAvulsa,
     deleteNotaAvulsa 
 };

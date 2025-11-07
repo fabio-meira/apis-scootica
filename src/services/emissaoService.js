@@ -217,6 +217,7 @@ async function emitirNFeAvulsa(notaAvulsa, empresa) {
     const notaFiscal = await NotaFiscal.create({
       idEmpresa: empresa.idEmpresa,
       idNotaAvulsa: notaAvulsa.id,
+      numeroAvulsa: notaAvulsa.numeroAvulsa,
       tipo: "NF-e",
       DsEvento: "Envio",
       numero: data.ReturnNF.Numero || null,

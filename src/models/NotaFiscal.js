@@ -21,6 +21,10 @@ NotaFiscal.init({
    type: DataTypes.INTEGER,
    allowNull: true
 },
+ numeroAvulsa: {
+   type: DataTypes.INTEGER,
+   allowNull: true
+},
  idNotaAvulsa: {
    type: DataTypes.INTEGER,
    allowNull: true
