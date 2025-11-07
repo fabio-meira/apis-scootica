@@ -317,8 +317,9 @@ router.post('/api/oticas/empresas/:idEmpresa/notaFiscal/cancelar', IsAuthApiKey,
 // rotas de criar notas fiscais avulsas
 router.post('/api/oticas/empresas/:idEmpresa/notaAvulsa', IsAuthApiKey, notaFiscalAvulsaController.postNotaAvulsa);
 router.get('/api/oticas/empresas/:idEmpresa/notaAvulsa', IsAuthApiKey, notaFiscalAvulsaController.getNotaAvulsa);
-router.get('/api/oticas/empresas/:idEmpresa/notaFiscal/:idNotaAvulsa', IsAuthApiKey, notaFiscalAvulsaController.getIdNotaAvulsa);
-router.post('/api/oticas/empresas/:idEmpresa/notaFiscal/:idNotaAvulsa', IsAuthApiKey, notaFiscalAvulsaController.deleteNotaAvulsa);
+router.get('/api/oticas/empresas/:idEmpresa/notaAvulsa/:id', IsAuthApiKey, notaFiscalAvulsaController.getIdNotaAvulsa);
+router.patch('/api/oticas/empresas/:idEmpresa/notaAvulsa/:id', IsAuthApiKey, notaFiscalAvulsaController.patchNotaAvulsa);
+router.delete('/api/oticas/empresas/:idEmpresa/notaAvulsa/:id', IsAuthApiKey, notaFiscalAvulsaController.deleteNotaAvulsa);
 
 // Localizar CEPs
 router.get('/api/oticas/cep/:cep', IsAuthApiKey, cepController.getCep);
