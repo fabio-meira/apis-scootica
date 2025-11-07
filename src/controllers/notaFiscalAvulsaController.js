@@ -76,8 +76,8 @@ async function postNotaAvulsa(req, res) {
 async function getNotaAvulsa(req, res) {
     try {
         const { idEmpresa } = req.params;
-        const { startDate, endDate, dataEstimada, idVendedor, status, idOrdemServico, numeroOS, idVenda, 
-            numeroVenda, idFilial, idNotaFiscal, idNotaFiscalIsNull, idNotaFiscalNotNull } = req.query; 
+        const { startDate, endDate, dataEstimada, idVendedor, status, 
+            numeroAvulsa, idFilial, idNotaFiscal, idNotaFiscalIsNull, idNotaFiscalNotNull } = req.query; 
 
         // Construa o objeto de filtro
         const whereConditions = {
@@ -129,8 +129,8 @@ async function getNotaAvulsa(req, res) {
         }
 
         // Adicione filtro por id venda, se fornecido
-        if (idVenda) {
-            whereConditions.id = idVenda; 
+        if (numeroAvulsa) {
+            whereConditions.numeroAvulsa = numeroAvulsa; 
         }
 
         // Adicione filtro por filial, se fornecido
