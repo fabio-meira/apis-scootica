@@ -273,7 +273,7 @@ async function patchNotaAvulsa(req, res) {
             where: { id, idEmpresa },
         });
 
-        console.log('consulta:' , consulta);
+        // console.log('consulta:' , consulta);
 
         if (!consulta) {
             // await transaction.rollback();
