@@ -265,8 +265,8 @@ async function patchNotaAvulsa(req, res) {
         const { id, idEmpresa } = req.params;
         // const notaData = JSON.parse(req.body.body || '{}');
         const notaData = req.body;
-        console.log('body: ', notaData);
-        console.log('totais: ', notaData.totais);
+        // console.log('body: ', notaData);
+        // console.log('totais: ', notaData.totais);
 
         // Verifica se existe a venda
         const consulta = await NotaFiscalAvulsa.findOne({
@@ -303,6 +303,8 @@ async function patchNotaAvulsa(req, res) {
                     // Atualiza produto já existente
                     await VendaProduto.update(
                         {
+                            referencia: produto.referencua,
+                            ncm: produto.ncm,
                             quantidade: Number(produto.quantidade),
                             preco: Number(produto.preco),
                             cfop: Number(produto.cfop),
