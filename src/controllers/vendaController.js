@@ -901,8 +901,8 @@ async function patchVenda(req, res) {
         const { id, idEmpresa } = req.params;
         // const vendaData = JSON.parse(req.body.body || '{}');
         const vendaData = req.body;
-        console.log('body: ', vendaData);
-        console.log('totais: ', vendaData.totais);
+        // console.log('body: ', vendaData);
+        // console.log('totais: ', vendaData.totais);
 
         // Verifica se existe a venda
         const consulta = await Venda.findOne({
@@ -940,6 +940,7 @@ async function patchVenda(req, res) {
                     await VendaProduto.update(
                         {
                             quantidade: Number(produto.quantidade),
+                            ncm: Number(produto.ncm),
                             preco: Number(produto.preco),
                             cfop: Number(produto.cfop),
                             valorTotal: (produto.quantidade * produto.preco).toFixed(2),
