@@ -29,7 +29,7 @@ async function postCliente(req, res) {
         });
  
         if (clienteExists) {
-            return res.status(400).json({
+            return res.status(422).json({
                 error: "Cliente já cadastrado no sistema"
             });
         }
