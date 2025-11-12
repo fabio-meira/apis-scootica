@@ -81,12 +81,28 @@ async function postCliente(req, res) {
 async function listCliente(req, res) {
     try {
         const { idEmpresa } = req.params; 
-        const { search } = req.query; 
+        const { search, cpf } = req.query; 
 
         let whereClause = { idEmpresa }; // Condição padrão para filtrar pelo nome do cliente
+        // if (search) {
+        //     // Se 'search' estiver presente na consulta, adicionar condição para filtrar pelo nome
+        //     whereClause.nomeCompleto = { [Op.like]: `%${search}%` }; // Filtrar por nome que contém a substring 'search'
+        // }
         if (search) {
-            // Se 'search' estiver presente na consulta, adicionar condição para filtrar pelo nome
-            whereClause.nomeCompleto = { [Op.like]: `%${search}%` }; // Filtrar por nome que contém a substring 'search'
+            // Busca genérica por nome ou CPF (parcial)
+            whereClause = {
+                idEmpresa,
+                [Op.or]: [
+                    { nomeCompleto: { [Op.like]: `%${search}%` } },
+                    { cpf: { [Op.like]: `%${search}%` } }
+                ]
+            };
+        } else if (cpf) {
+            // Busca direta pelo CPF
+            whereClause = {
+                idEmpresa,
+                cpf: { [Op.like]: `%${cpf}%` } // pode usar Op.eq se quiser busca exata
+            };
         }
 
         const cliente = await Cliente.findAll({
