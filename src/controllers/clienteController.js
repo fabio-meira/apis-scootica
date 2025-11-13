@@ -20,18 +20,20 @@ async function postCliente(req, res) {
         const { cpf } = req.body; 
 
         // Verificar se cliente já está cadastrado
-        const clienteExists = await Cliente.findOne({ 
-            where: { 
-                cpf: cpf,
-                idEmpresa: idEmpresa 
-            }, 
-            transaction
-        });
- 
-        if (clienteExists) {
-            return res.status(422).json({
-                error: "Cliente já cadastrado no sistema"
+        if (cpf && cpf.trim() !== '') {
+            const clienteExists = await Cliente.findOne({ 
+                where: { 
+                    cpf: cpf,
+                    idEmpresa: idEmpresa 
+                }, 
+                transaction
             });
+    
+            if (clienteExists) {
+                return res.status(422).json({
+                    error: "Cliente já cadastrado no sistema"
+                });
+            }
         }
 
         // Adiciona o idEmpresa como idEmpresa no objeto clienteData
