@@ -318,6 +318,14 @@ async function postVenda(req, res) {
               transaction
         });
 
+        // Buscar vendedor antes de validar integracaoCRM
+        const vendedor = await Vendedor.findOne({
+            where: { idEmpresa: idEmpresa,
+                id: vendaData.idVendedor
+                },
+                transaction
+        });
+
         // Busca ordem de serviço para integrar idLead no avançar status
         let os = null;
         let idLead = null;
@@ -374,6 +382,7 @@ async function postVenda(req, res) {
                         idFilial,
                         vendaData,
                         cliente,
+                        vendedor,
                         produtos,
                         totais
                     );
