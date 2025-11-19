@@ -1,6 +1,8 @@
 // models/Authentication.js
 const { Model, DataTypes } = require('sequelize');
 const sequelize = require('../database/connection');
+const Empresa = require('../models/Empresa');
+const Usuario = require('../models/Usuario');
 
 class Authentication extends Model {}
 
@@ -60,6 +62,18 @@ Authentication.init({
     modelName: 'Authentications',
     tableName: 'authentication',
     timestamps: false 
-   });
+});
+
+// Authentication.belongsTo(Empresa, {
+//     foreignKey: 'idEmpresa',
+//     targetKey: 'idEmpresa',
+//     as: 'empresa'
+// });
+
+Authentication.hasMany(Usuario, {
+    foreignKey: 'idEmpresa',
+    sourceKey: 'idEmpresa',
+    as: 'usuarios'
+});
 
 module.exports = Authentication;

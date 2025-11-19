@@ -1,9 +1,9 @@
 // models/Usuario.js
 const { Model, DataTypes } = require('sequelize');
 const sequelize = require('../database/connection');
-const Empresa = require('../models/Empresa');
-const Auth = require('../models/Authentication');
-const Filial = require('../models/Filial');
+// const Empresa = require('../models/Empresa');
+// const Auth = require('../models/Authentication');
+// const Filial = require('../models/Filial');
 
 class Usuario extends Model {}
 
@@ -82,22 +82,22 @@ recovery_token_expiration: {
 });
 
 // Relacionamentos
-Usuario.belongsTo(Empresa, {
-   foreignKey: 'idEmpresa',
-   targetKey: 'idEmpresa', 
-   as: 'empresa'
- });
+// Usuario.belongsTo(Empresa, {
+//    foreignKey: 'idEmpresa',
+//    targetKey: 'idEmpresa', 
+//    as: 'empresa'
+//  });
 
-Usuario.belongsTo(Auth, {
-   foreignKey: 'idEmpresa',
-   targetKey: 'idEmpresa', 
-   as: 'token'
- });
+// Usuario.belongsTo(Auth, {
+//    foreignKey: 'idEmpresa',
+//    targetKey: 'idEmpresa', 
+//    as: 'token'
+//  });
 
- Usuario.belongsTo(Filial, {
-   foreignKey: 'idFilial',
-   targetKey: 'idFilial', 
-   as: 'filial'
- });
+//  Usuario.belongsTo(Filial, {
+//    foreignKey: 'idFilial',
+//    targetKey: 'idFilial', 
+//    as: 'filial'
+//  });
 
 module.exports = Usuario;
