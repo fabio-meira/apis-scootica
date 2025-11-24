@@ -495,7 +495,7 @@ async function criarVendaNoKommo(idEmpresa, idFilial, venda, cliente, vendedor, 
 }
 
 // Criar exame de vista no Kommo
-async function criarExameVistaNoKommo(idEmpresa, idFilial, orcamento, cliente, medico) {
+async function criarExameVistaNoKommo(idEmpresa, idFilial, receita, cliente, medico) {
   const { baseUrl, token } = await getKommoIntegracao(idEmpresa);
   const { pipeline_id, responsible_user_id, name } = await getPipilene(idEmpresa, idFilial);
   const type = 4; // name: Exame de vista - Receita
@@ -505,12 +505,10 @@ async function criarExameVistaNoKommo(idEmpresa, idFilial, orcamento, cliente, m
   const customFields = [];
 
   // Possui exame de vista
-  if (orcamento.idReceita !== null && orcamento.idReceita !== undefined) {
-    customFields.push({
-      field_id: 990586,
-      values: [{ value: "Sim" }]
-    });
-  }
+  customFields.push({
+    field_id: 990586,
+    values: [{ value: "Sim" }]
+  });
 
   // Loja (pela filial)
   customFields.push({
@@ -573,6 +571,7 @@ async function criarExameVistaNoKommo(idEmpresa, idFilial, orcamento, cliente, m
         tags: [
           {
             name: `Exame de vista de ${cliente.nomeCompleto} - Médico: ${medico.nomeCompleto}`
+            // observacoes: `${receita.observacoes}`
           }
         ]
       }
