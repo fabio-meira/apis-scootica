@@ -27,10 +27,10 @@ const connection = new Sequelize(database, username, password, {
         freezeTableName: true, // Evita Sequelize modificar nomes das tabelas
         timestamps: true // Se o banco não usa createdAt/updatedAt, desative
     },
-    dialectOptions: {
-        allowPublicKeyRetrieval: true, // Necessário para MySQL 8+ remoto
-        ssl: false                     // Desativa SSL se não estiver configurado
-    }
+    // dialectOptions: {
+    //     allowPublicKeyRetrieval: true, // Necessário para MySQL 8+ remoto
+    //     ssl: false                     // Desativa SSL se não estiver configurado
+    // }
 });
 
 // Teste a conexão ao iniciar o app
