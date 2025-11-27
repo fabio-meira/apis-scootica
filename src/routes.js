@@ -47,6 +47,7 @@ const parametroJuros = require('./controllers/parametrosJurosController')
 const danfeController = require('./controllers/danfeController')
 const notaFiscalAvulsaController = require('./controllers/notaFiscalAvulsaController')
 const ibptController = require("./controllers/ibptController")
+const exportarKommoController = require('./controllers/exportarKommoController')
 
 // jwt-authorization
 router.post('/api/oticas/token', authorization.auth);
@@ -250,6 +251,7 @@ router.delete('/api/oticas/empresas/:idEmpresa/planos/:id', IsAuthApiKey, planoC
 // rotas de forma de recebimento
 router.post('/api/oticas/empresas/:idEmpresa/formas', IsAuthApiKey, formaRecebimentoController.postFormaRecebimento);
 router.get('/api/oticas/empresas/:idEmpresa/formas', IsAuthApiKey, formaRecebimentoController.listFormaRecebimento);
+router.get('/api/oticas/empresas/:idEmpresa/formas/ativas', IsAuthApiKey, formaRecebimentoController.listFormaRecebimentoAtiva);
 router.get('/api/oticas/empresas/:idEmpresa/formas/:id', IsAuthApiKey, formaRecebimentoController.getFormaRecebimento);
 router.put('/api/oticas/empresas/:idEmpresa/formas/:id', IsAuthApiKey, formaRecebimentoController.putFormaRecebimento);
 router.delete('/api/oticas/empresas/:idEmpresa/formas/:id', IsAuthApiKey, formaRecebimentoController.deleteFormaRecebimento);
@@ -335,7 +337,10 @@ router.get('/api/oticas/ncm', IsAuthApiKey, ncmController.getNcm);
 router.post('/api/oticas/empresas/:idEmpresa/produtos/nfe', IsAuthApiKey, uploadXml.single('xml'), nfeController.uploadAndImportNFe);
 
 // Importação do CSV
-router.get('/api/oticas/importar-ibpt', IsAuthApiKey, ibptController.importarIbpt); // Nova rota
+router.get('/api/oticas/importar-ibpt', IsAuthApiKey, ibptController.importarIbpt); 
+
+// Exportar para CRM Kommo
+router.post('/api/oticas/empresas/:idEmpresa/exportar/vendaKommo', IsAuthApiKey, exportarKommoController.postVendaKommo); 
 
 // Localizar Danfe por venda
 router.get('/api/oticas/empresas/:idEmpresa/danfe/:idVenda', IsAuthApiKey, danfeController.getDanfe);

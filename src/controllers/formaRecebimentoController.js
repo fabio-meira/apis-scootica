@@ -87,6 +87,40 @@ async function listFormaRecebimento(req, res) {
     }
 }
 
+// função para consulta por todas as formas de recebimento da empresa
+async function listFormaRecebimentoAtiva(req, res) {
+    try {
+        const { idEmpresa } = req.params; 
+
+        const formaRecebimento = await FormaRecebimento.findAll({
+            where: { 
+                idEmpresa: idEmpresa,
+                situacao: 1 
+            },
+            include: [
+                { 
+                    model: Banco, 
+                    as: 'banco',
+                    attributes: ['codigoBanco', 'nomeBanco', 'nome'] 
+                },
+                {
+                    model: ParametrosJuros,
+                    as: 'parametrosJuros', 
+                    attributes: ['quantidadeParcelas', 'jurosMensal', 'ativo']
+                }
+            ],
+            order: [
+                ['id', 'DESC']
+            ]
+        });
+
+        res.status(200).json(formaRecebimento);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Erro ao buscar forma de recebimento', error });
+    }
+}
+
 // Função para consulta por id de forma de recebimento
 async function getFormaRecebimento(req, res) {
     try {
@@ -181,6 +215,7 @@ async function deleteFormaRecebimento(req, res) {
 module.exports = {
     postFormaRecebimento,
     listFormaRecebimento,
+    listFormaRecebimentoAtiva,
     getFormaRecebimento,
     putFormaRecebimento,
     deleteFormaRecebimento
