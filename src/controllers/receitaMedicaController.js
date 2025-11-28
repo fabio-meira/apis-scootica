@@ -143,7 +143,7 @@ async function postReceita(req, res) {
 async function listReceitas(req, res) {
     try {
         const { idEmpresa } = req.params;
-        const { startDate, endDate, status } = req.query; 
+        const { startDate, endDate, status, cpf } = req.query; 
 
         // Construa o objeto de filtro
         const whereConditions = {
@@ -172,10 +172,16 @@ async function listReceitas(req, res) {
         const receita = await Receita.findAll({
             where: whereConditions,
             include: [
+                // { 
+                //     model: Cliente, 
+                //     as: 'paciente',
+                //     attributes: ['nomeCompleto', 'cpf', 'dtNascimento', 'celular', 'email']  
+                // },
                 { 
                     model: Cliente, 
                     as: 'paciente',
-                    attributes: ['nomeCompleto', 'cpf', 'dtNascimento', 'celular', 'email']  
+                    attributes: ['nomeCompleto', 'cpf', 'dtNascimento', 'celular', 'email'],
+                    ...(cpf ? { where: { cpf: { [Op.like]: `%${cpf}%` } } } : {})
                 },
                 {
                     model: Medico,
