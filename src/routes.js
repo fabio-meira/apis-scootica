@@ -342,6 +342,7 @@ router.get('/api/oticas/importar-ibpt', IsAuthApiKey, ibptController.importarIbp
 // Exportar para CRM Kommo
 router.post('/api/oticas/empresas/:idEmpresa/exportar/vendaKommo', IsAuthApiKey, exportarKommoController.postVendaKommo); 
 router.post('/api/oticas/empresas/:idEmpresa/exportar/osKommo', IsAuthApiKey, exportarKommoController.postOSKommo); 
+router.post('/api/oticas/empresas/:idEmpresa/exportar/evKommo', IsAuthApiKey, exportarKommoController.postEVKommo); 
 
 // Localizar Danfe por venda
 router.get('/api/oticas/empresas/:idEmpresa/danfe/:idVenda', IsAuthApiKey, danfeController.getDanfe);
