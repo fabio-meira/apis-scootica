@@ -95,15 +95,15 @@ async function listCliente(req, res) {
             whereClause = {
                 idEmpresa,
                 [Op.or]: [
-                    { nomeCompleto: { [Op.like]: `%${search}%` } },
-                    { cpf: { [Op.like]: `%${search}%` } }
+                    { nomeCompleto: { [Op.like]: `${search}%` } },
+                    { cpf: { [Op.like]: `${search}%` } }
                 ]
             };
         } else if (cpf) {
             // Busca direta pelo CPF
             whereClause = {
                 idEmpresa,
-                cpf: { [Op.like]: `%${cpf}%` } // pode usar Op.eq se quiser busca exata
+                cpf: { [Op.like]: `${cpf}%` } // pode usar Op.eq se quiser busca exata
             };
         }
 
@@ -162,8 +162,8 @@ async function getClientes(req, res) {
             whereClause = {
                 idEmpresa,
                 [Op.or]: [
-                    { nomeCompleto: { [Op.like]: `%${search}%` } },
-                    { cpf: { [Op.like]: `%${search}%` } }
+                    { nomeCompleto: { [Op.like]: `${search}%` } },
+                    { cpf: { [Op.like]: `${search}%` } }
                 ]
             };
         } else if (cpf) {

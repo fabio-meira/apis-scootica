@@ -9,6 +9,8 @@ const { criarContatoNoKommo, criarVendaNoKommo, avancarKanbanKommo, criarOrdemSe
 const VendaProduto = require('../models/VendaProduto');
 const OrdemProduto = require('../models/OrdemProduto');
 const OrdemProdutoTotal = require('../models/OrdemProdutoTotal');
+const Receita = require('../models/Receita');
+const Medico = require('../models/Medico');
 
 async function postVendaKommo(req, res) {
     const transaction = await sequelize.transaction();
@@ -39,7 +41,6 @@ async function postVendaKommo(req, res) {
 
         if (!vendaData) {
             await transaction.commit();
-            console.log("Nenhuma venda pendente de integração");
             return res.status(404).json({ message: "Nenhuma venda pendente de integração" });
         }
 
@@ -369,7 +370,143 @@ async function postOSKommo(req, res) {
   }
 }
 
+async function postEVKommo(req, res) {
+  const transaction = await sequelize.transaction();
+
+  try {
+    const { idEmpresa } = req.params;
+
+    let idLead = null;
+    
+    // Buscar empresa
+    const empresa = await Empresa.findOne({
+      where: { idEmpresa },
+      transaction
+    });
+
+    if (!empresa) {
+        await transaction.rollback();
+        return res.status(404).json({ message: "Empresa não encontrado" });
+    }
+
+    // Pegar receita pendente
+    const receitaData = await Receita.findOne({
+      where: {
+        idEmpresa,
+        integradoCRM: 0,
+        idLead: null
+      },
+      transaction
+    });
+    
+    if (!receitaData) {
+        await transaction.commit();
+        return res.status(404).json({ message: "Nenhuma receita pendente de integração" });
+    }
+
+    // Buscar cliente
+    const cliente = await Cliente.findOne({
+      where: {
+        idEmpresa,
+        id: receitaData.idCliente
+      },
+      transaction
+    });
+
+    if (!cliente) {
+        await transaction.rollback();
+        return res.status(404).json({ message: "Cliente não encontrado" });
+    }
+
+    // Buscar médico antes de criar mensagem
+    const medico = await Medico.findOne({
+        where: { idEmpresa: idEmpresa,
+            id: receitaData.idMedico
+            },
+            transaction
+    });
+
+    if (!medico) {
+        await transaction.rollback();
+        return res.status(404).json({ message: "Médico não encontrado" });
+    }
+
+    // let idLead = null;
+
+    // Integração com Kommo
+    try {
+        // Exportar cliente se necessário
+        if (!cliente.exportado || !cliente.idCRM) {
+            const contatoKommo = await criarContatoNoKommo(
+                idEmpresa,
+                receitaData.idFilial,
+                cliente,
+                empresa
+            );
+
+            const idCRM = contatoKommo?._embedded?.contacts?.[0]?.id;
+
+            if (!idCRM) {
+                throw new Error("Kommo retornou contato sem idCRM");
+            }
+
+            await cliente.update(
+                { idCRM, exportado: true },
+                { transaction }
+            );
+        }
+
+        // Criar exame de vista no Kommo se não tiver orçamento
+        const exameVistaKommo = await criarExameVistaNoKommo(
+            idEmpresa,
+            receitaData.idFilial,                     
+            receitaData,                
+            cliente,   
+            medico
+        );
+        // Extrai o id retornado pelo Kommo
+        const idLead = exameVistaKommo?.[0]?.id;
+
+        if (idLead) {
+            // Atualiza receita com idCRM e marca exportado = true
+            await receitaData.update(
+                { idLead: idLead, integradoCRM: true },
+                { where: { id: receitaData.id, idEmpresa: idEmpresa },
+                    transaction 
+                }
+            );
+                    
+            receitaData.dataValues.kommoResponse = exameVistaKommo;
+        }
+    } catch (kommoErr) {
+      console.error("Kommo Error:", kommoErr.response?.data || kommoErr.message);
+      await transaction.rollback();
+      return res.status(500).json({
+        message: "Erro na integração da receita com o Kommo",
+        error: kommoErr.response?.data || kommoErr.message
+      });
+    }
+
+    await transaction.commit();
+
+    return res.status(200).json({
+      message: "Integração da receita concluída com sucesso",
+      idLead: receitaData.idLead || null
+    });
+
+  } catch (err) {
+    await transaction.rollback();
+    console.error("Erro geral:", err.message);
+
+    return res.status(500).json({
+      message: "Erro na integração da receita com Kommo",
+      error: err.message
+    });
+  }
+}
+
 module.exports = {
     postVendaKommo,
-    postOSKommo
+    postOSKommo,
+    postEVKommo
 };

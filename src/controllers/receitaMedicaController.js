@@ -172,16 +172,11 @@ async function listReceitas(req, res) {
         const receita = await Receita.findAll({
             where: whereConditions,
             include: [
-                // { 
-                //     model: Cliente, 
-                //     as: 'paciente',
-                //     attributes: ['nomeCompleto', 'cpf', 'dtNascimento', 'celular', 'email']  
-                // },
                 { 
                     model: Cliente, 
                     as: 'paciente',
                     attributes: ['nomeCompleto', 'cpf', 'dtNascimento', 'celular', 'email'],
-                    ...(cpf ? { where: { cpf: { [Op.like]: `%${cpf}%` } } } : {})
+                    ...(cpf ? { where: { cpf: { [Op.like]: `${cpf}%` } } } : {})
                 },
                 {
                     model: Medico,

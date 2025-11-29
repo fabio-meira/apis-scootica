@@ -18,7 +18,6 @@ const Mensagem = require('../models/Mensagem');
 const { uploadToS3 } = require('../middleware/s3');
 const { BUCKET_IMAGES } = require('../../config/s3Client');
 const OrdemServicoArquivo = require('../models/OrdemServicoArquivo');
-const { criarContatoNoKommo, criarVendaNoKommo, avancarKanbanKommo } = require("../services/kommoService");
 
 // Função para sanear os campos
 function sanitizeVendaData(data) {
@@ -302,124 +301,6 @@ async function postVenda(req, res) {
                 }
             );
         };
-
-        // Posteriormente colocar esse processo num integrador (NiFi)
-        // Buscar empresa antes de validar integracaoCRM
-        const empresa = await Empresa.findOne({
-            where: { idEmpresa: idEmpresa },
-            transaction
-        });
-
-        // Buscar cliente antes de validar integracaoCRM
-        const cliente = await Cliente.findOne({
-            where: { idEmpresa: idEmpresa,
-                id: vendaData.idCliente
-              },
-              transaction
-        });
-
-        // Buscar vendedor antes de validar integracaoCRM
-        const vendedor = await Vendedor.findOne({
-            where: { idEmpresa: idEmpresa,
-                id: vendaData.idVendedor
-                },
-                transaction
-        });
-
-        // Busca ordem de serviço para integrar idLead no avançar status
-        let os = null;
-        let idLead = null;
-        let type = 3;
-
-        if (vendaData?.idOrdemServico) {
-            os = await OrdemServico.findOne({
-                where: { 
-                    idEmpresa: idEmpresa,
-                    id: vendaData.idOrdemServico
-                },
-                transaction
-            });
-
-            if (os) {
-                idLead = os.idLead;
-            }
-        };
-
-        // Cria venda no Kommo somente se integração CRM estiver habilitada
-        try {
-            if (empresa.integracaoCRM === true) {    
-                
-                const idFilial = vendaData.idFilial;
-
-                if (cliente.exportado === false || !cliente.idCRM) {
-                    // console.log("Cliente ainda não exportado. Criando contato no Kommo...");
-                    const contatoKommo = await criarContatoNoKommo(idEmpresa, idFilial, cliente, empresa);
-
-                    // Extrai o id retornado pelo Kommo
-                    const idCRM = contatoKommo?._embedded?.contacts?.[0]?.id;
-
-                    if (idCRM) {
-                        // Atualiza cliente com idCRM e marca exportado = true
-                        await cliente.update(
-                        { idCRM, exportado: true },
-                        { transaction }
-                        );
-
-                        cliente.dataValues.kommoResponse = contatoKommo;
-
-                        // console.log(`Cliente ${cliente.nome} exportado com sucesso para o Kommo (idCRM: ${idCRM})`);
-                    } else {
-                        console.warn("Falha ao obter idCRM ao criar o contato no Kommo");
-                    }
-                } else {
-                    console.log("Cliente já exportado, prosseguindo com a criação da venda...");
-                }
-
-                if (!venda.idOrdemServico) {
-                    // Criar venda no Kommo (não tem ordem de serviço vinculada)
-                    const vendaKommo = await criarVendaNoKommo(
-                        idEmpresa,
-                        idFilial,
-                        vendaData,
-                        cliente,
-                        vendedor,
-                        produtos,
-                        totais
-                    );
-
-                    idLead = vendaKommo?.[0]?.id;
-                    console.log("Venda criada no Kommo, idLead:", idLead);
-                } 
-                else {
-                    // Atualizar Kanban no Kommo (tem ordem de serviço vinculada)
-                    const kanbanResponse = await avancarKanbanKommo(
-                        idEmpresa,
-                        idFilial,
-                        idLead,   
-                        type      
-                    );
-
-                    idLead = kanbanResponse?.id || venda.idLead;
-                    console.log("Venda atualizada no Kanban Kommo, idCRM:", idLead);
-                }
-
-                if (idLead) {
-                    await Venda.update(
-                        { idLead: idLead, integradoCRM: true },
-                        {
-                            where: { 
-                                id: venda.id,        
-                                idEmpresa: idEmpresa 
-                            },
-                            transaction
-                        }
-                    );
-                };
-            }
-
-        } catch (kommoErr) {
-            console.error("Erro ao criar venda no Kommo:", kommoErr.response?.data || kommoErr.message);
-        }
 
         await transaction.commit();
 
