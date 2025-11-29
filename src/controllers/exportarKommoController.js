@@ -153,7 +153,12 @@ async function postVendaKommo(req, res) {
             }
 
         } catch (kommoErr) {
-            console.error("Erro ao enviar venda ao Kommo:", kommoErr.response?.data || kommoErr.message);
+            console.error("Kommo Error:", kommoErr.response?.data || kommoErr.message);
+            await transaction.rollback();
+            return res.status(500).json({
+                message: "Erro na integração da venda com o Kommo",
+                error: kommoErr.response?.data || kommoErr.message
+        });
         }
 
         await transaction.commit();
