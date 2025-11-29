@@ -98,7 +98,6 @@ async function postVendaKommo(req, res) {
             });
             idLead = os?.idLead || null;
         }
-        console.log('idLead: ', idLead);
 
         // INTEGRAÇÃO CRM
         try {
