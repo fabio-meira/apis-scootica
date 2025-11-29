@@ -162,7 +162,7 @@ router.post('/api/oticas/empresas/:idEmpresa/ordemServico', IsAuthApiKey, upload
 router.get('/api/oticas/empresas/:idEmpresa/ordemServico', IsAuthApiKey, ordemServicoController.getOrdemServico);
 router.get('/api/oticas/empresas/:idEmpresa/ordemServico/sv', IsAuthApiKey, ordemServicoController.getOrdemServicoSV);
 router.get('/api/oticas/empresas/:idEmpresa/ordemServico/:id', IsAuthApiKey, ordemServicoController.getIdOrdemServico);
-router.put('/api/oticas/empresas/:idEmpresa/ordemServico/:id', IsAuthApiKey, ordemServicoController.putOrdemServico);
+router.put('/api/oticas/empresas/:idEmpresa/ordemServico/:id', IsAuthApiKey, uploadImage.array('imagens', 10), ordemServicoController.putOrdemServico);
 router.delete('/api/oticas/empresas/:idEmpresa/ordemServico/:id', IsAuthApiKey, ordemServicoController.deleteOrdemServico);
 
 // rotas de vendas
@@ -341,6 +341,7 @@ router.get('/api/oticas/importar-ibpt', IsAuthApiKey, ibptController.importarIbp
 
 // Exportar para CRM Kommo
 router.post('/api/oticas/empresas/:idEmpresa/exportar/vendaKommo', IsAuthApiKey, exportarKommoController.postVendaKommo); 
+router.post('/api/oticas/empresas/:idEmpresa/exportar/osKommo', IsAuthApiKey, exportarKommoController.postOSKommo); 
 
 // Localizar Danfe por venda
 router.get('/api/oticas/empresas/:idEmpresa/danfe/:idVenda', IsAuthApiKey, danfeController.getDanfe);
