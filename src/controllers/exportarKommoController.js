@@ -5,23 +5,31 @@ const Empresa = require('../models/Empresa');
 const OrdemServico = require('../models/OrdemServico');
 const { Op } = require('sequelize')
 const sequelize = require('../database/connection');
-const { criarContatoNoKommo, criarVendaNoKommo, avancarKanbanKommo } = require("../services/kommoService");
+const { criarContatoNoKommo, criarVendaNoKommo, avancarKanbanKommo, criarOrdemServicoNoKommo, criarOrcamentoNoKommo, criarExameVistaNoKommo } = require("../services/kommoService");
 const VendaProduto = require('../models/VendaProduto');
+const OrdemProduto = require('../models/OrdemProduto');
 const OrdemProdutoTotal = require('../models/OrdemProdutoTotal');
 
 async function postVendaKommo(req, res) {
     const transaction = await sequelize.transaction();
+
     try {
         const { idEmpresa } = req.params;
 
+        // Buscar empresa
         const empresa = await Empresa.findOne({
             where: { idEmpresa },
             transaction
         });
 
+        if (!empresa) {
+            await transaction.rollback();
+            return res.status(404).json({ message: "Empresa não encontrada" });
+        }
+
         // Buscar venda pendente de integração
         const vendaData = await Venda.findOne({
-            where: { 
+            where: {
                 idEmpresa,
                 integradoCRM: 3,
                 idLead: null
@@ -30,9 +38,9 @@ async function postVendaKommo(req, res) {
         });
 
         if (!vendaData) {
-            console.log("Nenhuma venda pendente de integração");
             await transaction.commit();
-            return;
+            console.log("Nenhuma venda pendente de integração");
+            return res.status(404).json({ message: "Nenhuma venda pendente de integração" });
         }
 
         // Buscar cliente
@@ -41,87 +49,125 @@ async function postVendaKommo(req, res) {
             transaction
         });
 
-        if (!cliente) throw new Error("Cliente não encontrado");
+        if (!cliente) {
+            await transaction.rollback();
+            return res.status(404).json({ message: "Cliente não encontrado" });
+        }
 
-        // Buscar vendedor antes de validar integracaoCRM
+        // Buscar vendedor
         const vendedor = await Vendedor.findOne({
-            where: { idEmpresa: idEmpresa,
-                id: vendaData.idVendedor
-                },
-                transaction
+            where: { idEmpresa, id: vendaData.idVendedor },
+            transaction
         });
 
-        if (!vendedor) throw new Error("Cliente não encontrado");
+        if (!vendedor) {
+            await transaction.rollback();
+            return res.status(404).json({ message: "Vendedor não encontrado" });
+        }
 
         // Buscar produtos
         const produtos = await VendaProduto.findAll({
             where: { idVenda: vendaData.id },
             transaction
-        })
+        });
+
+        if (!produtos || produtos.length === 0) {
+            await transaction.rollback();
+            return res.status(404).json({ message: "Produtos não encontrados" });
+        }
 
         // Buscar totais
         const totais = await OrdemProdutoTotal.findOne({
             where: { idVenda: vendaData.id },
             transaction
-        })
+        });
 
-        if (!produtos || produtos.length === 0) throw new Error("Produtos não encontrados");
-        if (!totais) throw new Error("Totais não encontrados");
+        if (!totais) {
+            await transaction.rollback();
+            return res.status(404).json({ message: "Totais não encontrados" });
+        }
 
-        console.log('total: ', totais.total);
-
-        // Ordem de serviço
-        let os = null;
+        // Ordem de serviço (opcional)
         let idLead = null;
         let type = 3;
 
         if (vendaData.idOrdemServico) {
-            os = await OrdemServico.findOne({
+            const os = await OrdemServico.findOne({
                 where: { idEmpresa, id: vendaData.idOrdemServico },
                 transaction
             });
             idLead = os?.idLead || null;
         }
+        console.log('idLead: ', idLead);
 
-        // Criar ou atualizar cliente no Kommo
-        if (!cliente.exportado || !cliente.idCRM) {
-            const contatoKommo = await criarContatoNoKommo(idEmpresa, vendaData.idFilial, cliente, empresa);
-            const idCRM = contatoKommo?._embedded?.contacts?.[0]?.id;
+        // INTEGRAÇÃO CRM
+        try {
+            // Criar contato no CRM
+            if (!cliente.exportado || !cliente.idCRM) {
+                const contatoKommo = await criarContatoNoKommo(
+                    idEmpresa,
+                    vendaData.idFilial,
+                    cliente,
+                    empresa
+                );
 
-            if (idCRM) {
-                await cliente.update({ idCRM, exportado: true }, { transaction });
+                const idCRM = contatoKommo?._embedded?.contacts?.[0]?.id;
+                if (idCRM) {
+                    await cliente.update({ idCRM, exportado: true }, { transaction });
+                }
             }
-        }
 
-        // Criar ou atualizar venda no Kommo
-        if (!vendaData.idOrdemServico) {
-            const vendaKommo = await criarVendaNoKommo(idEmpresa, vendaData.idFilial, vendaData, cliente, vendedor, produtos, totais);
-            idLead = vendaKommo?.[0]?.id || null;
-        } else {
-            const kanbanResponse = await avancarKanbanKommo(idEmpresa, vendaData.idFilial, idLead, type);
-            idLead = kanbanResponse?.id || idLead;
-        }
+            // Criar venda no CRM
+            if (!vendaData.idOrdemServico) {
+                // Criar lead
+                const vendaKommo = await criarVendaNoKommo(
+                    idEmpresa,
+                    vendaData.idFilial,
+                    vendaData,
+                    cliente,
+                    vendedor,
+                    produtos,
+                    totais
+                );
 
-        // Atualiza venda com idLead e marca como integrado
-        if (idLead) {
-            await Venda.update(
-                { idLead, integradoCRM: true },
-                { where: { id: vendaData.id, idEmpresa }, transaction }
-            );
+                idLead = vendaKommo?.[0]?.id || null;
+
+            } else {
+                // Avançar Kanban
+                const kanban = await avancarKanbanKommo(
+                    idEmpresa,
+                    vendaData.idFilial,
+                    idLead,
+                    type
+                );
+
+                idLead = kanban?.id || idLead;
+            }
+
+            // Atualizar venda no banco
+            if (idLead) {
+                await Venda.update(
+                    { idLead, integradoCRM: true },
+                    { where: { id: vendaData.id, idEmpresa }, transaction }
+                );
+            }
+
+        } catch (kommoErr) {
+            console.error("Erro ao enviar venda ao Kommo:", kommoErr.response?.data || kommoErr.message);
         }
 
         await transaction.commit();
-        console.log("Integração com Kommo finalizada com sucesso");
-        
+
         return res.status(200).json({
-            message: "Integração com Kommo finalizada com sucesso",
+            message: "Integração de venda com o Kommo concluída",
             idLead: idLead || null
         });
 
     } catch (err) {
         await transaction.rollback();
+
         console.error("Erro na integração com Kommo:", err.message);
-                
+
         return res.status(500).json({
             message: "Erro na integração com Kommo",
             error: err.message
@@ -129,6 +175,197 @@ async function postVendaKommo(req, res) {
     }
 }
 
+async function postOSKommo(req, res) {
+  const transaction = await sequelize.transaction();
+
+  try {
+    const { idEmpresa } = req.params;
+    
+    // Buscar empresa
+    const empresa = await Empresa.findOne({
+      where: { idEmpresa },
+      transaction
+    });
+
+    if (!empresa) {
+      throw new Error("Empresa não encontrada");
+    }
+
+    // Pegar OS pendente
+    const ordemServicoData = await OrdemServico.findOne({
+      where: {
+        idEmpresa,
+        integradoCRM: 3,
+        idLead: null
+      },
+      transaction
+    });
+
+    if (!ordemServicoData) {
+      await transaction.commit();
+      return res.status(404).json({
+        message: "Nenhuma ordem de serviço pendente de integração"
+      });
+    }
+
+    // Buscar cliente
+    const cliente = await Cliente.findOne({
+      where: {
+        idEmpresa,
+        id: ordemServicoData.idCliente
+      },
+      transaction
+    });
+
+    if (!cliente) throw new Error("Cliente da O.S. não encontrado");
+
+    // Buscar vendedor
+    const vendedor = await Vendedor.findOne({
+      where: {
+        idEmpresa,
+        id: ordemServicoData.idVendedor
+      },
+      transaction
+    });
+
+    if (!vendedor) throw new Error("Vendedor da O.S. não encontrado");
+
+    // Buscar produtos
+    const produtos = await OrdemProduto.findAll({
+      where: { idOrdemServico: ordemServicoData.id },
+      transaction
+    });
+
+    if (!produtos || produtos.length === 0) {
+      throw new Error("Nenhum produto vinculado à O.S.");
+    }
+
+    // Buscar totais
+    const totais = await OrdemProdutoTotal.findOne({
+      where: { idOrdemServico: ordemServicoData.id },
+      transaction
+    });
+
+    if (!totais) {
+      throw new Error("Totais da O.S. não encontrados");
+    }
+
+    // console.log("PRODUTOS:", produtos.map(p => p.descricao));
+    // console.log("TOTAL:", totais.total ?? "sem total");
+
+    // Buscar orçamento
+    let or = null;
+    let idLead = null;
+    const type = 2;
+
+    if (ordemServicoData.idOrcamento) {
+      or = await Orcamento.findOne({
+        where: {
+          idEmpresa,
+          id: ordemServicoData.idOrcamento
+        },
+        transaction
+      });
+
+      if (or?.idLead) {
+        idLead = or.idLead;
+      }
+    }
+
+    // Integração com Kommo
+    try {
+      // Exportar cliente se necessário
+      if (!cliente.exportado || !cliente.idCRM) {
+        const contatoKommo = await criarContatoNoKommo(
+          idEmpresa,
+          ordemServicoData.idFilial,
+          cliente,
+          empresa
+        );
+
+        const idCRM = contatoKommo?._embedded?.contacts?.[0]?.id;
+
+        if (!idCRM) {
+          throw new Error("Kommo retornou contato sem idCRM");
+        }
+
+        await cliente.update(
+          { idCRM, exportado: true },
+          { transaction }
+        );
+      }
+
+      // Criar OS no Kommo se não tiver orçamento
+      if (!ordemServicoData.idOrcamento) {
+        const osKommo = await criarOrdemServicoNoKommo(
+          idEmpresa,
+          ordemServicoData.idFilial,
+          ordemServicoData,
+          cliente,
+          vendedor,
+          produtos,
+          totais
+        );
+
+        if (!osKommo || !Array.isArray(osKommo) || !osKommo[0]?.id) {
+          throw new Error("Kommo não retornou ID válido ao criar a O.S.");
+        }
+
+        idLead = osKommo[0].id;
+      }
+      // Ou só avança kanban
+      else {
+        const kanbanResponse = await avancarKanbanKommo(
+          idEmpresa,
+          ordemServicoData.idFilial,
+          idLead,
+          type
+        );
+
+        idLead = kanbanResponse?.id || idLead;
+
+        if (!idLead) {
+          throw new Error("Kommo falhou ao avançar Kanban — idLead indefinido");
+        }
+      }
+
+      // Atualizar OS com idLead
+      await OrdemServico.update(
+        { idLead, integradoCRM: true },
+        {
+          where: { id: ordemServicoData.id, idEmpresa: idEmpresa },
+          transaction
+        }
+      );
+
+    } catch (kommoErr) {
+      console.error("Kommo Error:", kommoErr.response?.data || kommoErr.message);
+      await transaction.rollback();
+      return res.status(500).json({
+        message: "Erro na integração de ordem de seviço com o Kommo",
+        error: kommoErr.response?.data || kommoErr.message
+      });
+    }
+
+    await transaction.commit();
+
+    return res.status(200).json({
+      message: "Integração de ordem de serviço concluída com sucesso",
+      idLead: idLead || null
+    });
+
+  } catch (err) {
+    await transaction.rollback();
+    console.error("Erro geral:", err.message);
+
+    return res.status(500).json({
+      message: "Erro na integração de O.S. com Kommo",
+      error: err.message
+    });
+  }
+}
+
 module.exports = {
-    postVendaKommo
+    postVendaKommo,
+    postOSKommo
 };
