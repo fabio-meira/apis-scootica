@@ -31,7 +31,7 @@ async function postVendaKommo(req, res) {
         const vendaData = await Venda.findOne({
             where: {
                 idEmpresa,
-                integradoCRM: 3,
+                integradoCRM: 0,
                 idLead: null
             },
             transaction
@@ -195,7 +195,7 @@ async function postOSKommo(req, res) {
     const ordemServicoData = await OrdemServico.findOne({
       where: {
         idEmpresa,
-        integradoCRM: 3,
+        integradoCRM: 0,
         idLead: null
       },
       transaction
