@@ -17,7 +17,6 @@ const Mensagem = require('../models/Mensagem');
 const { uploadToS3 } = require('../middleware/s3');
 const { BUCKET_IMAGES } = require('../../config/s3Client');
 const OrdemServicoArquivo = require('../models/OrdemServicoArquivo');
-const { criarContatoNoKommo, criarOrdemServicoNoKommo, avancarKanbanKommo } = require("../services/kommoService");
 
 // Função para criar uma nova Ordem de Serviço e seus pagamentos relacionados
 async function postOrdemServico(req, res) {
@@ -174,124 +173,6 @@ async function postOrdemServico(req, res) {
             }, { transaction })
             )
         );
-    }
-
-    // Buscar empresa antes de validar integracaoCRM
-    const empresa = await Empresa.findOne({
-        where: { idEmpresa: idEmpresa },
-        transaction
-    });
-
-    // Buscar cliente antes de validar integracaoCRM
-    const cliente = await Cliente.findOne({
-        where: { idEmpresa: idEmpresa,
-            id: ordemServicoData.idCliente
-            },
-            transaction
-    });
-
-    // Buscar vendedor antes de validar integracaoCRM
-    const vendedor = await Vendedor.findOne({
-        where: { idEmpresa: idEmpresa,
-            id: ordemServico.idVendedor
-            },
-            transaction
-    });
-
-    // Busca orçamento para integrar idLead e status
-    let or = null;
-    let idLead = null;
-    let type = 2;
-
-    if (ordemServicoData?.idOrcamento) {
-        or = await Orcamento.findOne({
-            where: { 
-                idEmpresa: idEmpresa,
-                id: ordemServicoData.idOrcamento
-            },
-            transaction
-        });
-
-        if (or) {
-            idLead = or.idLead;
-        }
-    };
-
-    // Cria ordem de serviço no Kommo somente se integração CRM estiver habilitada
-    try {
-        if (empresa.integracaoCRM === true) {    
-            
-            const idFilial = ordemServicoData.idFilial; 
-
-            if (cliente.exportado === false || !cliente.idCRM) {
-                // console.log("Cliente ainda não exportado. Criando contato no Kommo...");
-                const contatoKommo = await criarContatoNoKommo(idEmpresa, idFilial, cliente, empresa);
-
-                // Extrai o id retornado pelo Kommo
-                const idCRM = contatoKommo?._embedded?.contacts?.[0]?.id;
-
-                if (idCRM) {
-                    // Atualiza cliente com idCRM e marca exportado = true
-                    await cliente.update(
-                    { idCRM, exportado: true },
-                    { transaction }
-                    );
-
-                    cliente.dataValues.kommoResponse = contatoKommo;
-
-                    // console.log(`Cliente ${cliente.nome} exportado com sucesso para o Kommo (idCRM: ${idCRM})`);
-                } else {
-                    console.warn("Falha ao obter idCRM ao criar o contato no Kommo");
-                }
-            } else {
-                console.log("Cliente já exportado, prosseguindo com a criação da ordem de serviço...");
-            }
-            
-            if (!ordemServico.idOrcamento) {
-                // Criar venda no Kommo (não tem ordem de serviço vinculada)
-                const osKommo = await criarOrdemServicoNoKommo(
-                    idEmpresa,
-                    idFilial,
-                    ordemServicoData,
-                    cliente,
-                    vendedor,
-                    produtos,
-                    totais
-                );
-
-                idLead = osKommo?.[0]?.id;
-                console.log("Ordem de serviço criada no Kommo, idLead:", idLead);
-            } 
-            else {
-                // Atualizar Kanban no Kommo (tem ordem de serviço vinculada)
-                const kanbanResponse = await avancarKanbanKommo(
-                    idEmpresa,
-                    idFilial,
-                    idLead,          
-                    type             
-                );
-
-                // idCRM = kanbanResponse?.id || ordemServico.idLead;
-                idLead =  kanbanResponse?.id || ordemServico.idLead;
-                console.log("Ordem de serviço atualizada no Kanban Kommo, idCRM:", idLead);
-            }
-
-            if (idLead) {
-                await OrdemServico.update(
-                    { idLead: idLead, integradoCRM: true },
-                    {
-                        where: { 
-                            id: ordemServico.id,        
-                            idEmpresa: idEmpresa 
-                        },
-                        transaction
-                    }
-                );
-            };
-        }
-
-    } catch (kommoErr) {
-        console.error("Erro ao criar ordem de serviço no Kommo:", kommoErr.response?.data || kommoErr.message);
     }
 
     await transaction.commit(); 
@@ -629,33 +510,234 @@ async function getIdOrdemServico(req, res) {
     }
 }
 
-// Função para atualizar uma ordem de serviço
+// // Função para atualizar uma ordem de serviço
+// async function putOrdemServico(req, res) {
+//     try {
+//         const { id } = req.params; 
+//         const { idEmpresa } = req.params; 
+//         const ordemServicoData = req.body; 
+
+//         // Atualiza a ordem de serviço no banco de dados
+//         const [updated] = await OrdemServico.update(ordemServicoData, {
+//             where: { 
+//                 id: id,
+//                 idEmpresa: idEmpresa
+//             }
+//         });
+
+//         if (updated) {
+//             // Busca a ordem de serviço atualizada para retornar na resposta
+//             const ordemServico = await OrdemServico.findOne({ where: { id: id, idEmpresa: idEmpresa } });
+//             res.status(200).json({ message: 'Ordem de serviço atualizada com sucesso', ordemServico });
+//         } else {
+//             // Se nenhum registro foi atualizado, retorna um erro 404
+//             res.status(404).json({ message: 'Ordem de serviço não encontrada' });
+//         }
+//     } catch (error) {
+//         console.error(error);
+//         res.status(500).json({ message: 'Erro ao atualizar ordem de serviço', error });
+//     }
+// }
+
 async function putOrdemServico(req, res) {
-    try {
-        const { id } = req.params; 
-        const { idEmpresa } = req.params; 
-        const ordemServicoData = req.body; 
+  const transaction = await sequelize.transaction();
 
-        // Atualiza a ordem de serviço no banco de dados
-        const [updated] = await OrdemServico.update(ordemServicoData, {
-            where: { 
-                id: id,
-                idEmpresa: idEmpresa
-            }
-        });
+  try {
+    const { idEmpresa, id } = req.params;
 
-        if (updated) {
-            // Busca a ordem de serviço atualizada para retornar na resposta
-            const ordemServico = await OrdemServico.findOne({ where: { id: id, idEmpresa: idEmpresa } });
-            res.status(200).json({ message: 'Ordem de serviço atualizada com sucesso', ordemServico });
-        } else {
-            // Se nenhum registro foi atualizado, retorna um erro 404
-            res.status(404).json({ message: 'Ordem de serviço não encontrada' });
-        }
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Erro ao atualizar ordem de serviço', error });
+    const body = JSON.parse(req.body.body || '{}');
+
+    body.idEmpresa = idEmpresa;
+
+    // Buscar OS existente
+    const ordemServico = await OrdemServico.findOne({
+      where: { id, idEmpresa },
+      transaction
+    });
+
+    if (!ordemServico) {
+      return res.status(404).json({ message: "Ordem de serviço não encontrada" });
     }
+
+    
+    // * 1) ATUALIZAR CAMPOS DA ORDEM DE SERVIÇO
+    await ordemServico.update(body, { transaction });
+
+    
+    // * 2) ATUALIZAÇÃO DOS PRODUTOS
+    const produtosEnviados = body.produtos || [];
+
+    // Buscar produtos atuais no banco
+    const produtosAtuais = await OrdemProduto.findAll({
+      where: { idOrdemServico: id },
+      transaction
+    });
+
+    const idsEnviados = produtosEnviados.map(p => p.id);
+
+    /** 2.1 → Remover produtos que saíram */
+    const produtosParaExcluir = produtosAtuais.filter(p => !idsEnviados.includes(p.id));
+
+    for (const p of produtosParaExcluir) {
+      const produtoDB = await Produto.findByPk(p.idProduto, { transaction });
+
+      if (produtoDB && produtoDB.movimentaEstoque) {
+        await Produto.update(
+          {
+            estoqueReservado: produtoDB.estoqueReservado - p.quantidade,
+            estoqueDisponivel: produtoDB.estoqueDisponivel + p.quantidade
+          },
+          { where: { id: produtoDB.id }, transaction }
+        );
+      }
+
+      await Reserva.destroy({
+        where: {
+          idOrdemServico: id,
+          idProduto: p.idProduto
+        },
+        transaction
+      });
+
+      await p.destroy({ transaction });
+    }
+
+    /** 2.2 → Atualizar ou inserir */
+    for (const produto of produtosEnviados) {
+      const existente = produtosAtuais.find(p => p.id === produto.id);
+
+      const produtoDB = await Produto.findByPk(produto.idProduto, { transaction });
+
+      if (!existente) {
+        /**** → INSERIR NOVO PRODUTO */
+        if (produtoDB.movimentaEstoque) {
+          if (produto.quantidade > produtoDB.estoqueDisponivel) {
+            throw new Error(`Estoque insuficiente para ${produtoDB.descricao}`);
+          }
+
+          await Produto.update(
+            {
+              estoqueReservado: produtoDB.estoqueReservado + produto.quantidade,
+              estoqueDisponivel: produtoDB.estoque - (produtoDB.estoqueReservado + produto.quantidade)
+            },
+            { where: { id: produto.idProduto }, transaction }
+          );
+
+          await Reserva.create({
+            idEmpresa,
+            idOrdemServico: id,
+            idProduto: produto.idProduto,
+            quantidade: produto.quantidade,
+            situacao: 1
+          }, { transaction });
+        }
+
+        await OrdemProduto.create({
+          idOrdemServico: id,
+          ...produto
+        }, { transaction });
+      } else {
+        /**** → ATUALIZAR PRODUTO EXISTENTE */
+        const diferenca = produto.quantidade - existente.quantidade;
+
+        if (produtoDB.movimentaEstoque && diferenca !== 0) {
+          if (diferenca > 0 && diferenca > produtoDB.estoqueDisponivel) {
+            throw new Error(`Estoque insuficiente para ${produtoDB.descricao}`);
+          }
+
+          await Produto.update(
+            {
+              estoqueReservado: produtoDB.estoqueReservado + diferenca,
+              estoqueDisponivel: produtoDB.estoqueDisponivel - diferenca
+            },
+            { where: { id: produto.idProduto }, transaction }
+          );
+
+          // Atualizar reserva
+          await Reserva.update(
+            { quantidade: produto.quantidade },
+            {
+              where: {
+                idOrdemServico: id,
+                idProduto: produto.idProduto
+              },
+              transaction
+            }
+          );
+        }
+
+        await existente.update(produto, { transaction });
+      }
+    }
+
+    
+    // * 3) ATUALIZAR TOTAIS
+    await OrdemProdutoTotal.update(body.totais, {
+      where: { idOrdemServico: id },
+      transaction
+    });
+
+    // * 4) ATUALIZAR PAGAMENTOS
+    const pagamentosEnviados = body.pagamentos || [];
+    const pagamentosAtuais = await Pagamento.findAll({ where: { idOrdemServico: id }, transaction });
+
+    const idsPagEnviados = pagamentosEnviados.map(p => p.id);
+
+    const pagamentosParaExcluir = pagamentosAtuais.filter(p => !idsPagEnviados.includes(p.id));
+
+    for (const p of pagamentosParaExcluir) {
+      await p.destroy({ transaction });
+    }
+
+    for (const pg of pagamentosEnviados) {
+      if (!pg.id) {
+        await Pagamento.create({ ...pg, idOrdemServico: id, idEmpresa }, { transaction });
+      } else {
+        const pExist = pagamentosAtuais.find(p => p.id === pg.id);
+        await pExist.update(pg, { transaction });
+      }
+    }
+
+    
+    // * 5) ARQUIVOS (ANEXOS)
+    if (req.files && req.files.length > 0) {
+      const uploads = await Promise.all(
+        req.files.map(async (file) => {
+          const { key } = await uploadToS3(file, BUCKET_IMAGES, 'OS/');
+          return {
+            originalname: file.originalname,
+            mimetype: file.mimetype,
+            key
+          };
+        })
+      );
+
+      for (const upload of uploads) {
+        await OrdemServicoArquivo.create(
+          {
+            idEmpresa,
+            idOrdemServico: id,
+            nomeArquivo: upload.originalname,
+            caminhoS3: upload.key,
+            tipoArquivo: upload.mimetype
+          },
+          { transaction }
+        );
+      }
+    }
+
+    await transaction.commit();
+
+    res.status(200).json({
+      message: "Ordem de serviço atualizada com sucesso",
+      id
+    });
+
+  } catch (error) {
+    await transaction.rollback();
+    console.error(error);
+    res.status(500).json({ message: error.message });
+  }
 }
 
 // Função para deletar uma ordem de serviço pelo id
