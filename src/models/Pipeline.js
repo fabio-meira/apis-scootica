@@ -17,6 +17,10 @@ Pipeline.init({
     type: DataTypes.STRING(100),
     allowNull: true,
  },
+ codFilialKommo: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+ },
  pipeline_id: {
     type: DataTypes.INTEGER,
     allowNull: false,

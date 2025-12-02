@@ -742,29 +742,109 @@ async function putOrdemServico(req, res) {
 
 // Função para deletar uma ordem de serviço pelo id
 async function deleteOrdemServico(req, res) {
-    try {
-        const { id } = req.params; 
-        const { idEmpresa } = req.params; 
+  const transaction = await sequelize.transaction();
 
-        // Deleta a ordem de serviço no banco de dados
-        const deleted = await OrdemServico.destroy({
-            where: { 
-                idEmpresa: idEmpresa,
-                id: id 
-            }
-        });
+  try {
+    const { idEmpresa, id } = req.params;
 
-        if (deleted) {
-            res.status(200).json({ message: 'Ordem de serviço deletado com sucesso' });
-        } else {
-            // Se nenhum registro foi deletado, retorna um erro 404
-            res.status(404).json({ message: 'Ordem de serviço não encontrado' });
-        }
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Erro ao deletar ordem de serviço', error });
+    const ordem = await OrdemServico.findOne({
+      where: { id, idEmpresa },
+      transaction
+    });
+
+    if (!ordem) {
+      await transaction.rollback();
+      return res.status(404).json({ message: 'Ordem de serviço não encontrada' });
     }
+
+    // Desfazer reservas e recalcular estoque
+    const itens = await OrdemProduto.findAll({
+      where: { idOrdemServico: id },
+      transaction
+    });
+
+    for (const item of itens) {
+      const produtoDB = await Produto.findByPk(item.idProduto, { transaction });
+
+      if (produtoDB && produtoDB.movimentaEstoque) {
+        const novaReserva = produtoDB.estoqueReservado - item.quantidade;
+        const novoDisponivel = produtoDB.estoqueDisponivel + item.quantidade;
+
+        await Produto.update(
+          {
+            estoqueReservado: novaReserva,
+            estoqueDisponivel: novoDisponivel
+          },
+          { where: { id: produtoDB.id }, transaction }
+        );
+
+        await Reserva.destroy({
+          where: {
+            idEmpresa,
+            idOrdemServico: id,
+            idProduto: item.idProduto
+          },
+          transaction
+        });
+      }
+    }
+
+    // Deletar Produtos
+    await OrdemProduto.destroy({
+      where: { idOrdemServico: id },
+      transaction
+    });
+
+    // Deletar totais
+    await OrdemProdutoTotal.destroy({
+      where: { idOrdemServico: id },
+      transaction
+    });
+
+    // Deletar pagamentos
+    await Pagamento.destroy({
+      where: { idOrdemServico: id },
+      transaction
+    });
+
+    // Deletar arquivos do S3
+    const arquivos = await OrdemServicoArquivo.findAll({
+      where: { idOrdemServico: id },
+      transaction
+    });
+
+    for (const arq of arquivos) {
+      try {
+        await deleteFromS3(arq.caminhoS3); // função igual à sua uploadToS3, porém para excluir
+      } catch (e) {
+        console.warn(`Falha ao remover arquivo do S3: ${arq.caminhoS3}`, e);
+      }
+    }
+
+    await OrdemServicoArquivo.destroy({
+      where: { idOrdemServico: id },
+      transaction
+    });
+    
+    // Deletar ordem de serviço
+    await ordem.destroy({ transaction });
+
+    await transaction.commit();
+
+    res.status(200).json({
+      message: 'Ordem de serviço deletada com sucesso'
+    });
+
+  } catch (error) {
+    await transaction.rollback();
+    console.error(error);
+    res.status(500).json({
+      message: 'Erro ao deletar ordem de serviço',
+      error: error.message
+    });
+  }
 }
+
 
 module.exports = {
     postOrdemServico,
