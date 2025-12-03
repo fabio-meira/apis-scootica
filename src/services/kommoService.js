@@ -394,7 +394,7 @@ async function criarOrdemServicoNoKommo(idEmpresa, idFilial, ordemServico, clien
 // Criar venda no Kommo
 async function criarVendaNoKommo(idEmpresa, idFilial, venda, cliente, vendedor, produtos, totais) {
   const { baseUrl, token } = await getKommoIntegracao(idEmpresa);
-  const { pipeline_id, responsible_user_id, name } = await getPipilene(idEmpresa, idFilial);
+  const { pipeline_id, responsible_user_id, name, codFilialKommo } = await getPipilene(idEmpresa, idFilial);
   const type = 3; // name: Venda ganha - Venda
   const { statuses_id } = await getPipelineStatus(idEmpresa, pipeline_id, type);
 
@@ -508,7 +508,7 @@ async function criarVendaNoKommo(idEmpresa, idFilial, venda, cliente, vendedor, 
 // Criar exame de vista no Kommo
 async function criarExameVistaNoKommo(idEmpresa, idFilial, receita, cliente, medico) {
   const { baseUrl, token } = await getKommoIntegracao(idEmpresa);
-  const { pipeline_id, responsible_user_id, name } = await getPipilene(idEmpresa, idFilial);
+  const { pipeline_id, responsible_user_id, name, codFilialKommo } = await getPipilene(idEmpresa, idFilial);
   const type = 4; // name: Exame de vista - Receita
   const { statuses_id } = await getPipelineStatus(idEmpresa, pipeline_id, type);
 
