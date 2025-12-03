@@ -38,7 +38,8 @@ async function getPipilene(idEmpresa, idFilial){
   return {
     pipeline_id: pipeline.pipeline_id,
     responsible_user_id: pipeline.responsible_user_id,
-    name: pipeline.name ? pipeline.name.replace(/^Funil\s*/i, "") : "Matriz"
+    name: pipeline.name ? pipeline.name.replace(/^Funil\s*/i, "") : "Matriz",
+    codFilialKommo: pipeline.codFilialKommo
   };
 
 }
@@ -119,7 +120,6 @@ async function criarContatoNoKommo(idEmpresa, idFilial, cliente, empresa) {
         {
           field_id: 1012864, // Observacoes
           values: [{ value: `Cadastro de contato da ${name}` }]
-          // values: [{ value: "Cadastro teste da Loja 17" }]
         }
       ].filter(f => f.values[0].value) // remove campos nulos
     }
@@ -152,7 +152,7 @@ async function criarContatoNoKommo(idEmpresa, idFilial, cliente, empresa) {
 // Criar orçamento no Kommo
 async function criarOrcamentoNoKommo(idEmpresa, idFilial, orcamento, cliente, vendedor, produtos, totais) {
   const { baseUrl, token } = await getKommoIntegracao(idEmpresa);
-  const { pipeline_id, responsible_user_id, name } = await getPipilene(idEmpresa, idFilial);
+  const { pipeline_id, responsible_user_id, name, codFilialKommo } = await getPipilene(idEmpresa, idFilial);
   const type = 1; // name: Orçamento
   const { statuses_id } = await getPipelineStatus(idEmpresa, pipeline_id, type);
 
@@ -173,7 +173,7 @@ async function criarOrcamentoNoKommo(idEmpresa, idFilial, orcamento, cliente, ve
     values: [
       { 
         value: `${name}`,
-        enum_id: 468578
+        enum_id: Number(codFilialKommo)    
       }
     ]
   });
@@ -211,6 +211,17 @@ async function criarOrcamentoNoKommo(idEmpresa, idFilial, orcamento, cliente, ve
     ]
   });
 
+  // Produtos (sempre Sistema)
+  customFields.push({
+    field_id: 999602,
+    values: [
+      { 
+        value: "Produtos", 
+        // enum_id: 841318 
+      }
+    ]
+  });
+
   // console.log('nome: ', cliente.nomeCompleto);
   // console.log('idCRM: ', cliente.idCRM);
 
@@ -228,16 +239,16 @@ async function criarOrcamentoNoKommo(idEmpresa, idFilial, orcamento, cliente, ve
             id: cliente?.idCRM,
             is_main: true
             }
-        ],
-        tags: (produtos || []).map(p => {
-            let tagText = `${p.referencia} - ${p.descricao} - R$ ${p.valorTotal}`;
+        ]
+        // tags: (produtos || []).map(p => {
+        //     let tagText = `${p.referencia} - ${p.descricao} - R$ ${p.valorTotal}`;
 
-            if (tagText.length > 50) {
-            tagText = tagText.substring(0, 47) + "...";
-            }
+        //     if (tagText.length > 50) {
+        //     tagText = tagText.substring(0, 47) + "...";
+        //     }
 
-            return { name: tagText };
-        })
+        //     return { name: tagText };
+        // })
         }
     }
   ];
@@ -269,7 +280,7 @@ async function criarOrcamentoNoKommo(idEmpresa, idFilial, orcamento, cliente, ve
 // Criar ordem de serviço no Kommo
 async function criarOrdemServicoNoKommo(idEmpresa, idFilial, ordemServico, cliente, vendedor, produtos, totais) {
   const { baseUrl, token } = await getKommoIntegracao(idEmpresa);
-  const { pipeline_id, responsible_user_id, name } = await getPipilene(idEmpresa, idFilial);
+  const { pipeline_id, responsible_user_id, name, codFilialKommo } = await getPipilene(idEmpresa, idFilial);
   const type = 2; // name: Em produção - OS
   const { statuses_id } = await getPipelineStatus(idEmpresa, pipeline_id, type);
 
@@ -290,7 +301,7 @@ async function criarOrdemServicoNoKommo(idEmpresa, idFilial, ordemServico, clien
     values: [
       { 
         value: `${name}`,
-        enum_id: 468578
+        enum_id: Number(codFilialKommo)
       }
     ]
   });
@@ -342,16 +353,16 @@ async function criarOrdemServicoNoKommo(idEmpresa, idFilial, ordemServico, clien
             id: cliente?.idCRM,
             is_main: true
             }
-        ],
-        tags: (produtos || []).map(p => {
-            let tagText = `${p.referencia} - ${p.descricao} - R$ ${p.valorTotal}`;
+        ]
+        // tags: (produtos || []).map(p => {
+        //     let tagText = `${p.referencia} - ${p.descricao} - R$ ${p.valorTotal}`;
 
-            if (tagText.length > 50) {
-            tagText = tagText.substring(0, 47) + "...";
-            }
+        //     if (tagText.length > 50) {
+        //     tagText = tagText.substring(0, 47) + "...";
+        //     }
 
-            return { name: tagText };
-        })
+        //     return { name: tagText };
+        // })
         }
     }
   ];
@@ -404,7 +415,7 @@ async function criarVendaNoKommo(idEmpresa, idFilial, venda, cliente, vendedor, 
     values: [
       { 
         value: `${name}`,
-        enum_id: 468578
+        enum_id: Number(codFilialKommo)
       }
     ]
   });
@@ -456,16 +467,16 @@ async function criarVendaNoKommo(idEmpresa, idFilial, venda, cliente, vendedor, 
             id: cliente?.idCRM,
             is_main: true
             }
-        ],
-        tags: (produtos || []).map(p => {
-            let tagText = `${p.referencia} - ${p.descricao} - R$ ${p.valorTotal}`;
+        ]
+        // tags: (produtos || []).map(p => {
+        //     let tagText = `${p.referencia} - ${p.descricao} - R$ ${p.valorTotal}`;
 
-            if (tagText.length > 50) {
-            tagText = tagText.substring(0, 47) + "...";
-            }
+        //     if (tagText.length > 50) {
+        //     tagText = tagText.substring(0, 47) + "...";
+        //     }
 
-            return { name: tagText };
-        })
+        //     return { name: tagText };
+        // })
         }
     }
   ];
@@ -516,7 +527,7 @@ async function criarExameVistaNoKommo(idEmpresa, idFilial, receita, cliente, med
     values: [
       { 
         value: `${name}`,
-        enum_id: 468578
+        enum_id: Number(codFilialKommo)
       }
     ]
   });
@@ -567,13 +578,13 @@ async function criarExameVistaNoKommo(idEmpresa, idFilial, receita, cliente, med
             id: cliente?.idCRM,
             is_main: true
             }
-        ],
-        tags: [
-          {
-            name: `Exame de vista de ${cliente.nomeCompleto} - Médico: ${medico.nomeCompleto}`
-            // observacoes: `${receita.observacoes}`
-          }
         ]
+        // tags: [
+        //   {
+        //     name: `Exame de vista de ${cliente.nomeCompleto} - Médico: ${medico.nomeCompleto}`
+        //     // observacoes: `${receita.observacoes}`
+        //   }
+        // ]
       }
     }
   ];
