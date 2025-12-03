@@ -559,12 +559,10 @@ async function putOrdemServico(req, res) {
       return res.status(404).json({ message: "Ordem de serviço não encontrada" });
     }
 
-    
-    // * 1) ATUALIZAR CAMPOS DA ORDEM DE SERVIÇO
+    // Atualizar campos da ordem de seeviço
     await ordemServico.update(body, { transaction });
-
     
-    // * 2) ATUALIZAÇÃO DOS PRODUTOS
+    // Atualização dos produtos
     const produtosEnviados = body.produtos || [];
 
     // Buscar produtos atuais no banco
@@ -575,7 +573,7 @@ async function putOrdemServico(req, res) {
 
     const idsEnviados = produtosEnviados.map(p => p.id);
 
-    /** 2.1 → Remover produtos que saíram */
+    /** Remover produtos que saíram **/
     const produtosParaExcluir = produtosAtuais.filter(p => !idsEnviados.includes(p.id));
 
     for (const p of produtosParaExcluir) {
@@ -602,14 +600,14 @@ async function putOrdemServico(req, res) {
       await p.destroy({ transaction });
     }
 
-    /** 2.2 → Atualizar ou inserir */
+    /** Atualizar ou inserir **/
     for (const produto of produtosEnviados) {
       const existente = produtosAtuais.find(p => p.id === produto.id);
 
       const produtoDB = await Produto.findByPk(produto.idProduto, { transaction });
 
       if (!existente) {
-        /**** → INSERIR NOVO PRODUTO */
+        /**** Inserir novo produto ***/
         if (produtoDB.movimentaEstoque) {
           if (produto.quantidade > produtoDB.estoqueDisponivel) {
             throw new Error(`Estoque insuficiente para ${produtoDB.descricao}`);
@@ -637,7 +635,7 @@ async function putOrdemServico(req, res) {
           ...produto
         }, { transaction });
       } else {
-        /**** → ATUALIZAR PRODUTO EXISTENTE */
+        /**** → Atualizar produto existente ***/
         const diferenca = produto.quantidade - existente.quantidade;
 
         if (produtoDB.movimentaEstoque && diferenca !== 0) {
@@ -669,15 +667,14 @@ async function putOrdemServico(req, res) {
         await existente.update(produto, { transaction });
       }
     }
-
     
-    // * 3) ATUALIZAR TOTAIS
+    // Atualizar totais
     await OrdemProdutoTotal.update(body.totais, {
       where: { idOrdemServico: id },
       transaction
     });
 
-    // * 4) ATUALIZAR PAGAMENTOS
+    // Atualizar pagaentos
     const pagamentosEnviados = body.pagamentos || [];
     const pagamentosAtuais = await Pagamento.findAll({ where: { idOrdemServico: id }, transaction });
 
@@ -698,32 +695,31 @@ async function putOrdemServico(req, res) {
       }
     }
 
-    
-    // * 5) ARQUIVOS (ANEXOS)
+    // Anexos
     if (req.files && req.files.length > 0) {
-      const uploads = await Promise.all(
-        req.files.map(async (file) => {
-          const { key } = await uploadToS3(file, BUCKET_IMAGES, 'OS/');
-          return {
-            originalname: file.originalname,
-            mimetype: file.mimetype,
-            key
-          };
-        })
-      );
-
-      for (const upload of uploads) {
-        await OrdemServicoArquivo.create(
-          {
-            idEmpresa,
-            idOrdemServico: id,
-            nomeArquivo: upload.originalname,
-            caminhoS3: upload.key,
-            tipoArquivo: upload.mimetype
-          },
-          { transaction }
+        const uploads = await Promise.all(
+            req.files.map(async (file) => {
+            const { key } = await uploadToS3(file, BUCKET_IMAGES, 'OS/');
+            
+            return {
+                originalname: file.originalname,
+                mimetype: file.mimetype,
+                key
+            };
+            })
         );
-      }
+
+        await Promise.all(
+            uploads.map(upload => 
+            OrdemServicoArquivo.create({
+                idEmpresa, 
+                idOrdemServico: ordemServico.id,
+                nomeArquivo: upload.originalname,
+                caminhoS3: upload.key,
+                tipoArquivo: upload.mimetype
+            }, { transaction })
+            )
+        );
     }
 
     await transaction.commit();
