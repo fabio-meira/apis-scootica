@@ -30,14 +30,51 @@ const { Op } = require('sequelize');
 // const { search } = require('../routes');
 
 // Função para consulta por ncm com filtro
+// async function getNcm(req, res) {
+//     try {
+//         const { search } = req.query; 
+//         const whereClause = {};
+
+//         if (search) {
+//             // Se 'search' estiver presente na consulta, adicionar condição para filtrar pelo nome
+//             // whereClause.Descricao = { [Op.like]: `%${search}%` }; // Filtrar por nome que contém a substring 'search'
+//             whereClause = {
+//                 [Op.or]: [
+//                     { Descricao: { [Op.like]: `${search}%` } },
+//                     { Codigo: { [Op.like]: `${search}%` } }
+//                 ]
+//             };
+//         }
+
+//         const ncm = await Ncm.findAll({
+//             where: whereClause,
+//             attributes: ['Codigo', 'Descricao']
+//         });
+
+//         if (!ncm) {
+//             return res.status(404).json({ message: 'Ncm não encontrado' });
+//         }
+
+//         res.status(200).json(ncm);
+//     } catch (error) {
+//         console.error(error);
+//         res.status(500).json({ message: 'Erro ao buscar Ncm', error });
+//     }
+// }
+
 async function getNcm(req, res) {
     try {
-        const { search } = req.query; 
-        const whereClause = {};
+        const { searchNcm } = req.query;
 
-        if (search) {
-            // Se 'search' estiver presente na consulta, adicionar condição para filtrar pelo nome
-            whereClause.Descricao = { [Op.like]: `%${search}%` }; // Filtrar por nome que contém a substring 'search'
+        let whereClause = {};
+
+        if (searchNcm) {
+            whereClause = {
+                [Op.or]: [
+                    { Descricao: { [Op.like]: `${searchNcm}%` } },
+                    { Codigo: { [Op.like]: `${searchNcm}%` } }
+                ]
+            };
         }
 
         const ncm = await Ncm.findAll({
@@ -45,11 +82,12 @@ async function getNcm(req, res) {
             attributes: ['Codigo', 'Descricao']
         });
 
-        if (!ncm) {
+        if (!ncm || ncm.length === 0) {
             return res.status(404).json({ message: 'Ncm não encontrado' });
         }
 
         res.status(200).json(ncm);
+
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Erro ao buscar Ncm', error });
