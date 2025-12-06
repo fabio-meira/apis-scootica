@@ -56,7 +56,7 @@ Produto.init({
    estoqueMinimo: {
      type: DataTypes.INTEGER,
      allowNull: true
-   },
+   }, 
    estoqueDisponivel: {
     type: DataTypes.INTEGER,
     allowNull: true
