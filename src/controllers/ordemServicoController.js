@@ -17,6 +17,7 @@ const Mensagem = require('../models/Mensagem');
 const { uploadToS3 } = require('../middleware/s3');
 const { BUCKET_IMAGES } = require('../../config/s3Client');
 const OrdemServicoArquivo = require('../models/OrdemServicoArquivo');
+const Caixa = require('../models/Caixa');
 
 // Função para criar uma nova Ordem de Serviço e seus pagamentos relacionados
 async function postOrdemServico(req, res) {
@@ -32,6 +33,18 @@ async function postOrdemServico(req, res) {
 
     // Identificar o idFilial para consulta do próximo número venda
     const idFilial = ordemServicoData.idFilial;
+
+    // Consulta o último registro na tabela caixa
+    const ultimoCaixa = await Caixa.findOne({
+        where: { idEmpresa, idFilial }, 
+        order: [['createdAt', 'DESC']], 
+        transaction
+    });
+
+    // Verifica se o último caixa encontrado tem a situação igual a 1 (caixa aberto)
+    if (!ultimoCaixa || ultimoCaixa.situacao !== 1) {
+        return res.status(422).json({ message: 'Não é possível cadastrar a OS. O caixa está fechado.' });
+    }
 
     // Obter o próximo número de orçamento por idEmpresa
     const maxNumero = await OrdemServico.max('numeroOS', {
@@ -559,7 +572,7 @@ async function putOrdemServico(req, res) {
       return res.status(404).json({ message: "Ordem de serviço não encontrada" });
     }
 
-    // Atualizar campos da ordem de seeviço
+    // Atualizar campos da ordem de serviço
     await ordemServico.update(body, { transaction });
     
     // Atualização dos produtos

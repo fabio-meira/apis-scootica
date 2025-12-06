@@ -13,9 +13,12 @@ async function postConta(req, res) {
         // Adiciona o idEmpresa como idEmpresa no objeto contaData
         contaData.idEmpresa = idEmpresa;
 
+        // Identificar o idFilial para consulta do próximo número venda
+        const idFilial = contaData.idFilial;
+
         // Consulta o último registro na tabela caixa
         const ultimoCaixa = await Caixa.findOne({
-            where: { idEmpresa }, 
+            where: { idEmpresa, idFilial }, 
             order: [['createdAt', 'DESC']], 
         });
 
