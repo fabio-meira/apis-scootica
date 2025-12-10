@@ -18,10 +18,10 @@ async function postReceita(req, res) {
         receitaData.idEmpresa = idEmpresa;
         receitaData.ativo = true;
 
-        const receita = await Receita.create(receitaData);
-
+        // const receita = await Receita.create(receitaData);
+        const receita = await Receita.create(receitaData, { transaction });
+        
         // Tenta criar a mensagem, mas se der erro não bloqueia a receita
-
         // Buscar médico antes de criar mensagem
         const medico = await Medico.findOne({
             where: { idEmpresa: idEmpresa,
@@ -37,7 +37,7 @@ async function postReceita(req, res) {
                 mensagem: `Receita do profissional ${medico.nomeCompleto ?? 'desconhecido'} está pronta para impressão.`,
                 lida: false,
                 observacoes: `Receita para orçamento do cliente ${medico.nomeCompleto ?? 'desconhecido'}.`
-            });
+            }, { transaction });
         } catch (msgError) {
             console.error("Erro ao criar mensagem:", msgError);
             // aqui você pode até salvar um log, mas segue o fluxo
