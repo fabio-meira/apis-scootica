@@ -76,7 +76,7 @@ async function listUsuarios(req, res) {
                 {
                     model: Filial,
                     as: 'filial',
-                    attributes: ['idFilial', 'nomeFantasia']
+                    attributes: ['id', 'idFilial', 'nomeFantasia']
                 }
             ],
             order: [
@@ -112,15 +112,21 @@ async function loginUsuario(req, res) {
                     as: 'token',
                     attributes: ['user_token'] 
                 },
+                // {
+                //     model: Filial,
+                //     as: 'filial',
+                //     attributes: ['id', 'idFilial', 'nomeFantasia']
+                // }
                 {
                     model: Filial,
                     as: 'filial',
-                    attributes: ['idFilial', 'nomeFantasia']
+                    required: false,
+                    attributes: ['id', 'idFilial', 'nomeFantasia']
                 }
-            ],
-            order: [
-                ['id', 'DESC']
             ]
+            // order: [
+            //     ['id', 'DESC']
+            // ]
         });
 
         if (!usuario) {
@@ -234,7 +240,7 @@ async function getUsuario(req, res) {
                 {
                     model: Filial,
                     as: 'filial',
-                    attributes: ['idFilial', 'nomeFantasia']
+                    attributes: ['id', 'idFilial', 'nomeFantasia']
                 }
             ],
             order: [
