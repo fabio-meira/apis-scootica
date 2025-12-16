@@ -106,6 +106,10 @@ Venda.init({
     type: DataTypes.DECIMAL(9, 2),
     allowNull: true
   },
+  valorCaixa: {
+    type: DataTypes.DECIMAL(9, 2),
+    allowNull: true
+  },
   notaFiscalEmitida: {
     type: DataTypes.BOOLEAN,
     allowNull: true,

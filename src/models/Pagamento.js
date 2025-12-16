@@ -15,6 +15,14 @@ Pagamento.init({
    type: DataTypes.STRING(100),
    allowNull: false
  },
+ idCaixa: {
+   type: DataTypes.STRING(100),
+   allowNull: false
+ },
+ idFilial: {
+    type: DataTypes.INTEGER,
+    allowNull: true
+ },
  idOrdemServico: {
     type: DataTypes.INTEGER,
     allowNull: true

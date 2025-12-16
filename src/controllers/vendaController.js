@@ -103,6 +103,9 @@ async function postVenda(req, res) {
         await OrdemProdutoTotal.create(totais, { transaction });
 
         // Prepara os dados dos pagamentos
+        // identificar o caixa para inserir nos pagamentos
+        const idCaixa = vendaData.idCaixa;
+
         for (const pagamento of vendaData.pagamentos) {
             // Verifica se já existe um registro de adiantamento
             const existingPayment = await Pagamento.findOne({
@@ -118,9 +121,11 @@ async function postVenda(req, res) {
                 existingPayment.idVenda = venda.id;
                 await existingPayment.save();
             } else {
-                // Prepara o novo pagamento com idVenda
+                // Prepara o novo pagamento com idVenda, idCaixa e idFilial
                 const newPayment = {
                     ...pagamento,
+                    idCaixa: idCaixa,
+                    idFilial: idFilial,
                     idVenda: venda.id,
                     idEmpresa: venda.idEmpresa
                 };

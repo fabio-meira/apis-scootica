@@ -106,6 +106,10 @@ OrdemServico.init({
     type: DataTypes.DECIMAL(9, 2),
     allowNull: true
   },
+  valorCaixa: {
+    type: DataTypes.DECIMAL(9, 2),
+    allowNull: true
+  },
   idLead: {
   type: DataTypes.INTEGER,
   allowNull: true,

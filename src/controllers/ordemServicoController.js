@@ -135,9 +135,17 @@ async function postOrdemServico(req, res) {
     };
     await OrdemProdutoTotal.create(totais, { transaction });
 
+    console.log('caixa: ', ordemServico.idCaixa);
+    console.log('filial: ', idFilial);
+
+    // Identificar o caixa para inserir nos pagamentos
+    const idCaixa = ordemServico.idCaixa;
+
     // Prepara os dados dos pagamentos com idOrdemServico
     const pagamentos = ordemServicoData.pagamentos.map(pagamento => ({
       ...pagamento,
+      idCaixa: idCaixa,
+      idFilial: idFilial,
       idOrdemServico: ordemServico.id,
       idEmpresa: ordemServico.idEmpresa
     }));
@@ -688,6 +696,9 @@ async function putOrdemServico(req, res) {
     });
 
     // Atualizar pagaentos
+    const idFilial = ordemServico.idFilial;
+    const idCaixa = ordemServico.idCaixa;
+
     const pagamentosEnviados = body.pagamentos || [];
     const pagamentosAtuais = await Pagamento.findAll({ where: { idOrdemServico: id }, transaction });
 
@@ -701,7 +712,7 @@ async function putOrdemServico(req, res) {
 
     for (const pg of pagamentosEnviados) {
       if (!pg.id) {
-        await Pagamento.create({ ...pg, idOrdemServico: id, idEmpresa }, { transaction });
+        await Pagamento.create({ ...pg, idCaixa, idFilial, idOrdemServico: id, idEmpresa }, { transaction });
       } else {
         const pExist = pagamentosAtuais.find(p => p.id === pg.id);
         await pExist.update(pg, { transaction });
