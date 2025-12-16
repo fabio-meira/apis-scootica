@@ -135,9 +135,6 @@ async function postOrdemServico(req, res) {
     };
     await OrdemProdutoTotal.create(totais, { transaction });
 
-    console.log('caixa: ', ordemServico.idCaixa);
-    console.log('filial: ', idFilial);
-
     // Identificar o caixa para inserir nos pagamentos
     const idCaixa = ordemServico.idCaixa;
 
