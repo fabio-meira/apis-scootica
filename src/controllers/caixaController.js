@@ -1004,46 +1004,46 @@ async function caixaAberto(req, res) {
 
                 const tipo = normalizeString(pagamento.tipo);
 
-            if (pagamento.adiantamento) {
+            // if (pagamento.adiantamento) {
+            //     totalAdiantamentos += valor;
+            //     totaisAdiantamentosPorTipo[tipo] += valor;
+            // } else {
+            //     totalPagamentosVendas += valor;
+            // }
+
+            // totaisPorTipo[tipo] += valor;
+
+            // tiposPagamento[tipo].push({
+            //     valor: valor.toFixed(2),
+            //     adiantamento: pagamento.adiantamento,
+            //     venda: pagamento.idVenda,
+            //     tipo: pagamento.tipo,
+            //     data: pagamento.createdAt
+            // });
+            // garante que o tipo exista
+                if (!tiposPagamento[tipo]) {
+                tiposPagamento[tipo] = [];
+                totaisPorTipo[tipo] = 0;
+                totaisAdiantamentosPorTipo[tipo] = 0;
+                }
+
+                if (pagamento.adiantamento) {
                 totalAdiantamentos += valor;
                 totaisAdiantamentosPorTipo[tipo] += valor;
-            } else {
+                } else {
                 totalPagamentosVendas += valor;
-            }
+                }
 
-            totaisPorTipo[tipo] += valor;
+                totalPagamentos += valor;
+                totaisPorTipo[tipo] += valor;
 
-            tiposPagamento[tipo].push({
+                tiposPagamento[tipo].push({
                 valor: valor.toFixed(2),
                 adiantamento: pagamento.adiantamento,
                 venda: pagamento.idVenda,
                 tipo: pagamento.tipo,
                 data: pagamento.createdAt
-            });
-            // garante que o tipo exista
-                // if (!tiposPagamento[tipo]) {
-                // tiposPagamento[tipo] = [];
-                // totaisPorTipo[tipo] = 0;
-                // totaisAdiantamentosPorTipo[tipo] = 0;
-                // }
-
-                // if (pagamento.adiantamento) {
-                // totalAdiantamentos += valor;
-                // totaisAdiantamentosPorTipo[tipo] += valor;
-                // } else {
-                // totalPagamentosVendas += valor;
-                // }
-
-                // totalPagamentos += valor;
-                // totaisPorTipo[tipo] += valor;
-
-                // tiposPagamento[tipo].push({
-                // valor: valor.toFixed(2),
-                // adiantamento: pagamento.adiantamento,
-                // venda: pagamento.idVenda,
-                // tipo: pagamento.tipo,
-                // data: pagamento.createdAt
-                // });
+                });
             });
         }
     );
