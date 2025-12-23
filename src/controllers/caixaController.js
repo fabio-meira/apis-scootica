@@ -379,6 +379,8 @@ async function caixaAberto(req, res) {
       else if (item.tipo === 0) totalSaidas += valor;
     });
 
+    const pagamentosProcessados = new Set();
+    
     // PAGAMENTOS DE VENDAS
     // caixa.vendas?.forEach(venda => {
     //     venda.pagamentos
@@ -432,6 +434,7 @@ async function caixaAberto(req, res) {
     //         });
     //     }
     // );
+
     caixa.vendas?.forEach(venda => {
         venda.pagamentos
             ?.filter(p => p.idCaixa === caixa.id)
