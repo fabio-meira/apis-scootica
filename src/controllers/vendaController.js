@@ -48,7 +48,9 @@ function sanitizeVendaData(data) {
 
 // Função para criar uma nova venda e seus produtos, ordem de serviço, totais e pagamentos relacionados
 async function postVenda(req, res) {
-    const transaction = await sequelize.transaction();
+    // const transaction = await sequelize.transaction();
+    let transaction;
+
     try {
         // const vendaData = req.body;
         const vendaData = JSON.parse(req.body.body || '{}');
@@ -63,14 +65,16 @@ async function postVenda(req, res) {
         // Consulta o último registro na tabela caixa
         const ultimoCaixa = await Caixa.findOne({
             where: { idEmpresa, idFilial }, 
-            order: [['createdAt', 'DESC']], 
-            transaction
+            order: [['createdAt', 'DESC']]
+            // transaction
         });
     
         // Verifica se o último caixa encontrado tem a situação igual a 1 (caixa aberto)
         if (!ultimoCaixa || ultimoCaixa.situacao !== 1) {
             return res.status(422).json({ message: 'Não é possível cadastrar a venda. O caixa está fechado.' });
         };
+
+        transaction = await sequelize.transaction();
 
         // Obter o próximo número de orçamento por idEmpresa
         const maxNumero = await Venda.max('numeroVenda', {
@@ -113,7 +117,8 @@ async function postVenda(req, res) {
                     idOrdemServico: pagamento.idOrdemServico || null,
                     idVenda: null,
                     adiantamento: true
-                }
+                },
+                transaction
             });
 
             if (existingPayment) {
@@ -154,7 +159,8 @@ async function postVenda(req, res) {
         
         // Verifica se a ordem de serviço existe
         const existOrdemServico = await OrdemServico.findOne({
-            where: { id: vendaData.idOrdemServico || null}
+            where: { id: vendaData.idOrdemServico || null},
+            transaction
         });
 
         // Atualiza a tabela OrdemServico no campo idVenda

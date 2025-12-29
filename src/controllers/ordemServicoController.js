@@ -22,7 +22,9 @@ const Caixa = require('../models/Caixa');
 // Função para criar uma nova Ordem de Serviço e seus pagamentos relacionados
 async function postOrdemServico(req, res) {
 
-  const transaction = await sequelize.transaction(); 
+  // const transaction = await sequelize.transaction(); 
+  let transaction;
+  
   try {
     // const ordemServicoData = req.body;
     const ordemServicoData = JSON.parse(req.body.body || '{}');
@@ -38,13 +40,15 @@ async function postOrdemServico(req, res) {
     const ultimoCaixa = await Caixa.findOne({
         where: { idEmpresa, idFilial }, 
         order: [['createdAt', 'DESC']], 
-        transaction
+        // transaction
     });
 
     // Verifica se o último caixa encontrado tem a situação igual a 1 (caixa aberto)
     if (!ultimoCaixa || ultimoCaixa.situacao !== 1) {
         return res.status(422).json({ message: 'Não é possível cadastrar a OS. O caixa está fechado.' });
-    }
+    };
+
+    transaction = await sequelize.transaction();
 
     // Obter o próximo número de orçamento por idEmpresa
     const maxNumero = await OrdemServico.max('numeroOS', {
