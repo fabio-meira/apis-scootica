@@ -47,295 +47,554 @@ function sanitizeVendaData(data) {
 }
 
 // Função para criar uma nova venda e seus produtos, ordem de serviço, totais e pagamentos relacionados
-async function postVenda(req, res) {
-    // const transaction = await sequelize.transaction();
-    let transaction;
+// async function postVenda(req, res) {
+//     // const transaction = await sequelize.transaction();
+//     let transaction;
 
-    try {
-        // const vendaData = req.body;
-        const vendaData = JSON.parse(req.body.body || '{}');
-        const { idEmpresa } = req.params;
+//     try {
+//         // const vendaData = req.body;
+//         const vendaData = JSON.parse(req.body.body || '{}');
+//         const { idEmpresa } = req.params;
 
-        // Adiciona idEmpresa aos dados de venda
-        vendaData.idEmpresa = idEmpresa;
+//         // Adiciona idEmpresa aos dados de venda
+//         vendaData.idEmpresa = idEmpresa;
 
-        // Identificar o idFilial para consulta do próximo número venda
-        const idFilial = vendaData.idFilial;
+//         // Identificar o idFilial para consulta do próximo número venda
+//         const idFilial = vendaData.idFilial;
 
-        // Consulta o último registro na tabela caixa
-        const ultimoCaixa = await Caixa.findOne({
-            where: { idEmpresa, idFilial }, 
-            order: [['createdAt', 'DESC']]
-            // transaction
-        });
+//         // Consulta o último registro na tabela caixa
+//         const ultimoCaixa = await Caixa.findOne({
+//             where: { idEmpresa, idFilial }, 
+//             order: [['createdAt', 'DESC']]
+//             // transaction
+//         });
     
-        // Verifica se o último caixa encontrado tem a situação igual a 1 (caixa aberto)
-        if (!ultimoCaixa || ultimoCaixa.situacao !== 1) {
-            return res.status(422).json({ message: 'Não é possível cadastrar a venda. O caixa está fechado.' });
+//         // Verifica se o último caixa encontrado tem a situação igual a 1 (caixa aberto)
+//         if (!ultimoCaixa || ultimoCaixa.situacao !== 1) {
+//             return res.status(422).json({ message: 'Não é possível cadastrar a venda. O caixa está fechado.' });
+//         };
+
+//         transaction = await sequelize.transaction();
+
+//         // Obter o próximo número de orçamento por idEmpresa
+//         const maxNumero = await Venda.max('numeroVenda', {
+//             where: { 
+//                 idEmpresa,
+//                 idFilial, 
+//             },
+//             transaction
+//         });
+
+//         // Se não houver nenhuma venda ainda para essa filial, começa em 1
+//         vendaData.numeroVenda = (maxNumero || 0) + 1;
+
+//         // Cria uma venda
+//         const venda = await Venda.create(vendaData, { transaction });
+
+//         // Cria os produtos com idVenda
+//         const produtos = vendaData.produtos.map(produto => ({
+//             ...produto,
+//             idVenda: venda.id
+//         }));
+
+//         await VendaProduto.bulkCreate(produtos, { transaction });
+        
+//         // Cria os totais com idVenda
+//         const totais = {
+//             ...vendaData.totais,
+//             idVenda: venda.id
+//         };
+//         await OrdemProdutoTotal.create(totais, { transaction });
+
+//         // Prepara os dados dos pagamentos
+//         // identificar o caixa para inserir nos pagamentos
+//         const idCaixa = vendaData.idCaixa;
+
+//         for (const pagamento of vendaData.pagamentos) {
+//             // Verifica se já existe um registro de adiantamento
+//             const existingPayment = await Pagamento.findOne({
+//                 where: {
+//                     idOrdemServico: pagamento.idOrdemServico || null,
+//                     idVenda: null,
+//                     adiantamento: true
+//                 },
+//                 transaction
+//             });
+
+//             if (existingPayment) {
+//                 // Atualiza o registro existente com idVenda
+//                 existingPayment.idVenda = venda.id;
+//                 await existingPayment.save();
+//             } else {
+//                 // Prepara o novo pagamento com idVenda, idCaixa e idFilial
+//                 const newPayment = {
+//                     ...pagamento,
+//                     idCaixa: idCaixa,
+//                     idFilial: idFilial,
+//                     idVenda: venda.id,
+//                     idEmpresa: venda.idEmpresa
+//                 };
+//                 // Cria o novo pagamento
+//                 //await Pagamento.create(newPayment, { transaction });
+//                 const createdPayment = await Pagamento.create(newPayment, { transaction });
+
+//                 // Se for cartão de crédito, cria as parcelas
+//                 if (pagamento.statusRecebimento === 'Credito' && pagamento.parcelas && pagamento.valor) {
+//                     for (let i = 0; i < pagamento.quantidadeParcelas; i++) {
+//                         const vencimento = new Date(pagamento.dataVencimento); // Assume que a data da primeira parcela vem no corpo
+//                         vencimento.setMonth(vencimento.getMonth() + i);
+
+//                         await Parcela.create({
+//                             idPagamento: createdPayment.id, // ID do pagamento
+//                             idEmpresa: venda.idEmpresa,
+//                             quantidade: pagamento.parcelas,
+//                             dataVencimento: vencimento,
+//                             outrasInformacoes: `Parcela ${i + 1} de ${pagamento.parcelas} - Valor: R$ ${pagamento.parcelas}`,
+//                             tipoPagamento: 'Credito'
+//                         }, { transaction });
+//                     }
+//                 }
+//             }
+//         }
+        
+//         // Verifica se a ordem de serviço existe
+//         const existOrdemServico = await OrdemServico.findOne({
+//             where: { id: vendaData.idOrdemServico || null},
+//             transaction
+//         });
+
+//         // Atualiza a tabela OrdemServico no campo idVenda
+//         if (existOrdemServico) {
+//             await OrdemServico.update(
+//                 { idVenda: venda.id, situacao: 1 },
+//                 { where: { id: vendaData.idOrdemServico }, transaction }
+//             );
+
+//             // Baixa a reserva de estoque da OS e insere o idVenda
+//             await Reserva.update(
+//                 { idVenda: venda.id, situacao: 2, updatedAt: new Date()
+//                 },
+//                 { where: { idOrdemServico: vendaData.idOrdemServico, idEmpresa}, transaction}
+//             );
+            
+//             // Inicia o processo para identificar os produtos da O.S.
+//             const itensDaOS = await Reserva.findAll({
+//                 where: {
+//                     idOrdemServico: vendaData.idOrdemServico,
+//                     idEmpresa,
+//                 },
+//                 transaction
+//             });
+            
+//             const idsProdutosOS = itensDaOS.map(item => item.idProduto);
+              
+//             // Iterar sobre os itens da venda
+//             for (const item of vendaData.produtos) {
+//                 const produtoDB = await Produto.findByPk(item.idProduto, { transaction });
+//                 if (!produtoDB) {
+//                     throw new Error(`Produto com ID ${item.idProduto} não encontrado.`);
+//                 }
+                
+//                 if (produtoDB.movimentaEstoque) {
+//                     const veioDaOS = idsProdutosOS.includes(item.idProduto);
+                
+//                     if (veioDaOS) {
+//                     // Produto já estava reservado pela OS
+//                     await Produto.update(
+//                         {
+//                         estoqueReservado: produtoDB.estoqueReservado - item.quantidade,
+//                         estoque: produtoDB.estoque - item.quantidade,
+//                         estoqueDisponivel: produtoDB.estoque - produtoDB.estoqueReservado
+//                         },
+//                         { where: { id: item.idProduto }, transaction }
+//                     );
+//                     } else {
+//                     // Produto foi adicionado diretamente na venda
+//                         await Produto.update(
+//                             {
+//                             estoque: produtoDB.estoque - item.quantidade,
+//                             estoqueDisponivel: produtoDB.estoqueDisponivel - item.quantidade
+//                             },
+//                             { where: { id: item.idProduto }, transaction }
+//                         );
+
+//                         // verifica se o produto ficou sem estoque e notifica em mensagens
+//                         const disponivelVenda =  (produtoDB.estoque - item.quantidade) - produtoDB.estoqueReservado
+//                         if (disponivelVenda === 0) {
+//                             await Mensagem.create({
+//                               idEmpresa: idEmpresa, 
+//                               chave: `Produto`,
+//                               mensagem: `O produto ${produtoDB.descricao} está sem estoque disponível.`,
+//                               lida: false,
+//                               observacoes: `Verificar necessidade de reposição para o produto ${produtoDB.descricao}.`
+//                             }, { transaction });
+//                         };
+//                     }
+//                 }
+//             };
+//         }else {
+//             // Processa os produtos, e atualiza tabela de produtos com a venda
+//             const produtosVenda = await Promise.all(
+//                 vendaData.produtos.map(async (produto) => {
+//                 const produtoDB = await Produto.findByPk(produto.idProduto, { transaction });
+//                 if (!produtoDB) {
+//                     throw new Error(`Produto com ID ${produto.idProduto} não encontrado.`);
+//                 }
+
+//                 if (produtoDB.movimentaEstoque) {
+//                     if (produtoDB.movimentaEstoque && produto.quantidade > produtoDB.estoqueDisponivel) {
+//                         const error = new Error(`Estoque insuficiente para o produto ${produtoDB.descricao}. Disponível: ${produtoDB.estoqueDisponivel}, Solicitado: ${produto.quantidade}`);
+//                         error.status = 422;
+//                         throw error;
+//                     }
+
+//                     // Atualiza o estoque e disponível
+//                     await Produto.update(
+//                         {
+//                             estoque: produtoDB.estoque - produto.quantidade,
+//                             estoqueDisponivel: (produtoDB.estoque - produto.quantidade) - produtoDB.estoqueReservado
+//                         },
+//                         { where: { id: produto.idProduto }, transaction }
+//                     );
+                    
+//                     // Criar registro na tabela de mensagem, se estoque disponível = 0
+//                     const disponivelVenda =  (produtoDB.estoque - produto.quantidade) - produtoDB.estoqueReservado
+//                     if (disponivelVenda === 0) {
+//                         await Mensagem.create({
+//                           idEmpresa: idEmpresa, 
+//                           chave: `Produto`,
+//                           mensagem: `O produto ${produtoDB.descricao} está sem estoque disponível.`,
+//                           lida: false,
+//                           observacoes: `Verificar necessidade de reposição para o produto ${produtoDB.descricao}.`
+//                         }, { transaction });
+//                     };
+
+//                     // Enviar uma mensagem quando o estoque disponível = estoque mínimo
+//                     if (disponivelVenda === produtoDB.estoqueMinimo) {
+//                         await Mensagem.create({
+//                             idEmpresa: idEmpresa, 
+//                             chave: `Produto`,
+//                             mensagem: `O produto ${produtoDB.descricao} atingiu seu estoque mínimo (${produtoDB.estoqueMinimo}).`,
+//                             lida: false,
+//                             observacoes: `Verificar necessidade de reposição para o produto ${produtoDB.descricao}.`
+//                         }, { transaction });
+//                     };
+//                 }
+        
+//                     return { ...produto, idVenda: venda.id };
+//                 })
+//             );
+//         };
+
+//         // Verifica se tem arquivo para ser anexado na Venda
+//         if (req.files && req.files.length > 0) {
+//         const uploads = await Promise.all(
+//             req.files.map(async (file) => {
+//             const { key } = await uploadToS3(file, BUCKET_IMAGES, 'OS/');
+//             return {
+//                 originalname: file.originalname,
+//                 mimetype: file.mimetype,
+//                 key
+//             };
+//             })
+//         );
+
+//         await Promise.all(
+//             uploads.map(upload => 
+//             OrdemServicoArquivo.create({
+//                 idEmpresa,
+//                 idOrdemServico: vendaData.idOrdemServico || null,
+//                 idVenda: venda.id,
+//                 nomeArquivo: upload.originalname,
+//                 caminhoS3: upload.key,
+//                 tipoArquivo: upload.mimetype
+//             }, { transaction })
+//             )
+//         );
+//         };
+
+//         if (vendaData.idOrdemServico != null) {
+//             await OrdemServicoArquivo.update(
+//                 { idVenda: venda.id },
+//                 {
+//                 where: {
+//                     idOrdemServico: vendaData.idOrdemServico,
+//                     idVenda: null
+//                 },
+//                 transaction
+//                 }
+//             );
+//         };
+
+//         await transaction.commit();
+
+//         res.status(201).json({ message: 'Venda criada com sucesso', vendaData });
+
+//     } catch (error) {
+//         await transaction.rollback();
+//         console.error(error);
+//         const statusCode = error.status || 500;
+//         res.status(statusCode).json({ message: error.message });
+//     }
+// }
+async function postVenda(req, res) {
+  let transaction;
+
+  try {
+    const vendaData = JSON.parse(req.body.body || '{}');
+    const { idEmpresa } = req.params;
+
+    vendaData.idEmpresa = idEmpresa;
+
+    // Validação obrigatória de produtos
+    if (!Array.isArray(vendaData.produtos) || vendaData.produtos.length === 0) {
+      return res.status(422).json({
+        message: 'A venda deve conter ao menos um produto.'
+      });
+    }
+
+    const idFilial = vendaData.idFilial;
+
+    // Valida caixa aberto (fora da transaction)
+    const ultimoCaixa = await Caixa.findOne({
+      where: { idEmpresa, idFilial },
+      order: [['createdAt', 'DESC']]
+    });
+
+    if (!ultimoCaixa || ultimoCaixa.situacao !== 1) {
+      return res.status(422).json({
+        message: 'Não é possível cadastrar a venda. O caixa está fechado.'
+      });
+    }
+
+    transaction = await sequelize.transaction();
+
+    // Número da venda
+    const maxNumero = await Venda.max('numeroVenda', {
+      where: { idEmpresa, idFilial },
+      transaction
+    });
+
+    vendaData.numeroVenda = (maxNumero || 0) + 1;
+
+    // Cria venda
+    const venda = await Venda.create(vendaData, { transaction });
+
+    // Produtos da venda
+    const produtosVenda = vendaData.produtos.map(p => ({
+      ...p,
+      idVenda: venda.id
+    }));
+
+    await VendaProduto.bulkCreate(produtosVenda, {
+      transaction,
+      validate: true
+    });
+
+    // Totais
+    await OrdemProdutoTotal.create({
+      ...vendaData.totais,
+      idVenda: venda.id
+    }, { transaction });
+
+    // Pagamentos
+    for (const pagamento of vendaData.pagamentos) {
+      const existingPayment = await Pagamento.findOne({
+        where: {
+          idOrdemServico: pagamento.idOrdemServico || null,
+          idVenda: null,
+          adiantamento: true
+        },
+        transaction
+      });
+
+      if (existingPayment) {
+        existingPayment.idVenda = venda.id;
+        await existingPayment.save({ transaction });
+      } else {
+        const createdPayment = await Pagamento.create({
+          ...pagamento,
+          idVenda: venda.id,
+          idEmpresa,
+          idFilial,
+          idCaixa: vendaData.idCaixa
+        }, { transaction });
+
+        // Parcelas crédito
+        if (
+          pagamento.statusRecebimento === 'Credito' &&
+          pagamento.quantidadeParcelas > 0
+        ) {
+          for (let i = 0; i < pagamento.quantidadeParcelas; i++) {
+            const vencimento = new Date(pagamento.dataVencimento);
+            vencimento.setMonth(vencimento.getMonth() + i);
+
+            await Parcela.create({
+              idPagamento: createdPayment.id,
+              idEmpresa,
+              quantidade: pagamento.quantidadeParcelas,
+              dataVencimento: vencimento,
+              tipoPagamento: 'Credito'
+            }, { transaction });
+          }
+        }
+      }
+    }
+
+    // Venda vinculada à OS
+    const existOS = vendaData.idOrdemServico
+      ? await OrdemServico.findByPk(vendaData.idOrdemServico, { transaction })
+      : null;
+
+    let idsProdutosOS = [];
+
+    if (existOS) {
+      await OrdemServico.update(
+        { idVenda: venda.id, situacao: 1 },
+        { where: { id: existOS.id }, transaction }
+      );
+
+      await Reserva.update(
+        { idVenda: venda.id, situacao: 2 },
+        { where: { idOrdemServico: existOS.id, idEmpresa }, transaction }
+      );
+
+      const reservas = await Reserva.findAll({
+        where: { idOrdemServico: existOS.id, idEmpresa },
+        transaction
+      });
+
+      idsProdutosOS = reservas.map(r => r.idProduto);
+    }
+
+    // Atualização segura de estoque
+    for (const item of vendaData.produtos) {
+      if (!item.quantidade || item.quantidade <= 0) {
+        throw Object.assign(
+          new Error('Quantidade inválida de produto'),
+          { status: 422 }
+        );
+      }
+
+      const produtoDB = await Produto.findByPk(item.idProduto, {
+        transaction,
+        lock: transaction.LOCK.UPDATE
+      });
+
+      if (!produtoDB) {
+        throw new Error(`Produto ${item.idProduto} não encontrado`);
+      }
+
+      if (!produtoDB.movimentaEstoque) continue;
+
+      const veioDaOS = idsProdutosOS.includes(item.idProduto);
+
+      if (!veioDaOS && item.quantidade > produtoDB.estoqueDisponivel) {
+        throw Object.assign(
+          new Error(`Estoque insuficiente para ${produtoDB.descricao}`),
+          { status: 422 }
+        );
+      }
+
+      const novoEstoque = produtoDB.estoque - item.quantidade;
+      const novoReservado = veioDaOS
+        ? produtoDB.estoqueReservado - item.quantidade
+        : produtoDB.estoqueReservado;
+
+      const novoDisponivel = novoEstoque - novoReservado;
+
+      await Produto.update({
+        estoque: novoEstoque,
+        estoqueReservado: novoReservado,
+        estoqueDisponivel: novoDisponivel
+      }, {
+        where: { id: produtoDB.id },
+        transaction
+      });
+
+      if (novoDisponivel === 0 || novoDisponivel === produtoDB.estoqueMinimo) {
+        await Mensagem.create({
+          idEmpresa,
+          chave: 'Produto',
+          mensagem: `O produto ${produtoDB.descricao} atingiu nível crítico de estoque.`,
+          lida: false
+        }, { transaction });
+      }
+    }
+
+    // Arquivos
+    // if (req.files?.length) {
+    //   const uploads = await Promise.all(req.files.map(async file => {
+    //     const { key } = await uploadToS3(file, BUCKET_IMAGES, 'OS/');
+    //     return {
+    //       nomeArquivo: file.originalname,
+    //       caminhoS3: key,
+    //       tipoArquivo: file.mimetype
+    //     };
+    //   }));
+
+    //   await OrdemServicoArquivo.bulkCreate(
+    //     uploads.map(u => ({
+    //       ...u,
+    //       idEmpresa,
+    //       idVenda: venda.id,
+    //       idOrdemServico: vendaData.idOrdemServico || null
+    //     })),
+    //     { transaction }
+    //   );
+    // }
+    // Verifica se tem arquivo para ser anexado na Venda
+    if (req.files && req.files.length > 0) {
+    const uploads = await Promise.all(
+        req.files.map(async (file) => {
+        const { key } = await uploadToS3(file, BUCKET_IMAGES, 'OS/');
+        return {
+            originalname: file.originalname,
+            mimetype: file.mimetype,
+            key
         };
+        })
+    );
 
-        transaction = await sequelize.transaction();
+    await Promise.all(
+        uploads.map(upload => 
+        OrdemServicoArquivo.create({
+            idEmpresa,
+            idOrdemServico: vendaData.idOrdemServico || null,
+            idVenda: venda.id,
+            nomeArquivo: upload.originalname,
+            caminhoS3: upload.key,
+            tipoArquivo: upload.mimetype
+        }, { transaction })
+        )
+    );
+    };
 
-        // Obter o próximo número de orçamento por idEmpresa
-        const maxNumero = await Venda.max('numeroVenda', {
-            where: { 
-                idEmpresa,
-                idFilial, 
+    if (vendaData.idOrdemServico != null) {
+        await OrdemServicoArquivo.update(
+            { idVenda: venda.id },
+            {
+            where: {
+                idOrdemServico: vendaData.idOrdemServico,
+                idVenda: null
             },
             transaction
-        });
-
-        // Se não houver nenhuma venda ainda para essa filial, começa em 1
-        vendaData.numeroVenda = (maxNumero || 0) + 1;
-
-        // Cria uma venda
-        const venda = await Venda.create(vendaData, { transaction });
-
-        // Cria os produtos com idVenda
-        const produtos = vendaData.produtos.map(produto => ({
-            ...produto,
-            idVenda: venda.id
-        }));
-
-        await VendaProduto.bulkCreate(produtos, { transaction });
-        
-        // Cria os totais com idVenda
-        const totais = {
-            ...vendaData.totais,
-            idVenda: venda.id
-        };
-        await OrdemProdutoTotal.create(totais, { transaction });
-
-        // Prepara os dados dos pagamentos
-        // identificar o caixa para inserir nos pagamentos
-        const idCaixa = vendaData.idCaixa;
-
-        for (const pagamento of vendaData.pagamentos) {
-            // Verifica se já existe um registro de adiantamento
-            const existingPayment = await Pagamento.findOne({
-                where: {
-                    idOrdemServico: pagamento.idOrdemServico || null,
-                    idVenda: null,
-                    adiantamento: true
-                },
-                transaction
-            });
-
-            if (existingPayment) {
-                // Atualiza o registro existente com idVenda
-                existingPayment.idVenda = venda.id;
-                await existingPayment.save();
-            } else {
-                // Prepara o novo pagamento com idVenda, idCaixa e idFilial
-                const newPayment = {
-                    ...pagamento,
-                    idCaixa: idCaixa,
-                    idFilial: idFilial,
-                    idVenda: venda.id,
-                    idEmpresa: venda.idEmpresa
-                };
-                // Cria o novo pagamento
-                //await Pagamento.create(newPayment, { transaction });
-                const createdPayment = await Pagamento.create(newPayment, { transaction });
-
-                // Se for cartão de crédito, cria as parcelas
-                if (pagamento.statusRecebimento === 'Credito' && pagamento.parcelas && pagamento.valor) {
-                    for (let i = 0; i < pagamento.quantidadeParcelas; i++) {
-                        const vencimento = new Date(pagamento.dataVencimento); // Assume que a data da primeira parcela vem no corpo
-                        vencimento.setMonth(vencimento.getMonth() + i);
-
-                        await Parcela.create({
-                            idPagamento: createdPayment.id, // ID do pagamento
-                            idEmpresa: venda.idEmpresa,
-                            quantidade: pagamento.parcelas,
-                            dataVencimento: vencimento,
-                            outrasInformacoes: `Parcela ${i + 1} de ${pagamento.parcelas} - Valor: R$ ${pagamento.parcelas}`,
-                            tipoPagamento: 'Credito'
-                        }, { transaction });
-                    }
-                }
             }
-        }
-        
-        // Verifica se a ordem de serviço existe
-        const existOrdemServico = await OrdemServico.findOne({
-            where: { id: vendaData.idOrdemServico || null},
-            transaction
-        });
-
-        // Atualiza a tabela OrdemServico no campo idVenda
-        if (existOrdemServico) {
-            await OrdemServico.update(
-                { idVenda: venda.id, situacao: 1 },
-                { where: { id: vendaData.idOrdemServico }, transaction }
-            );
-
-            // Baixa a reserva de estoque da OS e insere o idVenda
-            await Reserva.update(
-                { idVenda: venda.id, situacao: 2, updatedAt: new Date()
-                },
-                { where: { idOrdemServico: vendaData.idOrdemServico, idEmpresa}, transaction}
-            );
-            
-            // Inicia o processo para identificar os produtos da O.S.
-            const itensDaOS = await Reserva.findAll({
-                where: {
-                    idOrdemServico: vendaData.idOrdemServico,
-                    idEmpresa,
-                },
-                transaction
-            });
-            
-            const idsProdutosOS = itensDaOS.map(item => item.idProduto);
-              
-            // Iterar sobre os itens da venda
-            for (const item of vendaData.produtos) {
-                const produtoDB = await Produto.findByPk(item.idProduto, { transaction });
-                if (!produtoDB) {
-                    throw new Error(`Produto com ID ${item.idProduto} não encontrado.`);
-                }
-                
-                if (produtoDB.movimentaEstoque) {
-                    const veioDaOS = idsProdutosOS.includes(item.idProduto);
-                
-                    if (veioDaOS) {
-                    // Produto já estava reservado pela OS
-                    await Produto.update(
-                        {
-                        estoqueReservado: produtoDB.estoqueReservado - item.quantidade,
-                        estoque: produtoDB.estoque - item.quantidade,
-                        estoqueDisponivel: produtoDB.estoque - produtoDB.estoqueReservado
-                        },
-                        { where: { id: item.idProduto }, transaction }
-                    );
-                    } else {
-                    // Produto foi adicionado diretamente na venda
-                        await Produto.update(
-                            {
-                            estoque: produtoDB.estoque - item.quantidade,
-                            estoqueDisponivel: produtoDB.estoqueDisponivel - item.quantidade
-                            },
-                            { where: { id: item.idProduto }, transaction }
-                        );
-
-                        // verifica se o produto ficou sem estoque e notifica em mensagens
-                        const disponivelVenda =  (produtoDB.estoque - item.quantidade) - produtoDB.estoqueReservado
-                        if (disponivelVenda === 0) {
-                            await Mensagem.create({
-                              idEmpresa: idEmpresa, 
-                              chave: `Produto`,
-                              mensagem: `O produto ${produtoDB.descricao} está sem estoque disponível.`,
-                              lida: false,
-                              observacoes: `Verificar necessidade de reposição para o produto ${produtoDB.descricao}.`
-                            }, { transaction });
-                        };
-                    }
-                }
-            };
-        }else {
-            // Processa os produtos, e atualiza tabela de produtos com a venda
-            const produtosVenda = await Promise.all(
-                vendaData.produtos.map(async (produto) => {
-                const produtoDB = await Produto.findByPk(produto.idProduto, { transaction });
-                if (!produtoDB) {
-                    throw new Error(`Produto com ID ${produto.idProduto} não encontrado.`);
-                }
-
-                if (produtoDB.movimentaEstoque) {
-                    if (produtoDB.movimentaEstoque && produto.quantidade > produtoDB.estoqueDisponivel) {
-                        const error = new Error(`Estoque insuficiente para o produto ${produtoDB.descricao}. Disponível: ${produtoDB.estoqueDisponivel}, Solicitado: ${produto.quantidade}`);
-                        error.status = 422;
-                        throw error;
-                    }
-
-                    // Atualiza o estoque e disponível
-                    await Produto.update(
-                        {
-                            estoque: produtoDB.estoque - produto.quantidade,
-                            estoqueDisponivel: (produtoDB.estoque - produto.quantidade) - produtoDB.estoqueReservado
-                        },
-                        { where: { id: produto.idProduto }, transaction }
-                    );
-                    
-                    // Criar registro na tabela de mensagem, se estoque disponível = 0
-                    const disponivelVenda =  (produtoDB.estoque - produto.quantidade) - produtoDB.estoqueReservado
-                    if (disponivelVenda === 0) {
-                        await Mensagem.create({
-                          idEmpresa: idEmpresa, 
-                          chave: `Produto`,
-                          mensagem: `O produto ${produtoDB.descricao} está sem estoque disponível.`,
-                          lida: false,
-                          observacoes: `Verificar necessidade de reposição para o produto ${produtoDB.descricao}.`
-                        }, { transaction });
-                    };
-
-                    // Enviar uma mensagem quando o estoque disponível = estoque mínimo
-                    if (disponivelVenda === produtoDB.estoqueMinimo) {
-                        await Mensagem.create({
-                            idEmpresa: idEmpresa, 
-                            chave: `Produto`,
-                            mensagem: `O produto ${produtoDB.descricao} atingiu seu estoque mínimo (${produtoDB.estoqueMinimo}).`,
-                            lida: false,
-                            observacoes: `Verificar necessidade de reposição para o produto ${produtoDB.descricao}.`
-                        }, { transaction });
-                    };
-                }
-        
-                    return { ...produto, idVenda: venda.id };
-                })
-            );
-        };
-
-        // Verifica se tem arquivo para ser anexado na Venda
-        if (req.files && req.files.length > 0) {
-        const uploads = await Promise.all(
-            req.files.map(async (file) => {
-            const { key } = await uploadToS3(file, BUCKET_IMAGES, 'OS/');
-            return {
-                originalname: file.originalname,
-                mimetype: file.mimetype,
-                key
-            };
-            })
         );
+    };
 
-        await Promise.all(
-            uploads.map(upload => 
-            OrdemServicoArquivo.create({
-                idEmpresa,
-                idOrdemServico: vendaData.idOrdemServico || null,
-                idVenda: venda.id,
-                nomeArquivo: upload.originalname,
-                caminhoS3: upload.key,
-                tipoArquivo: upload.mimetype
-            }, { transaction })
-            )
-        );
-        };
+    await transaction.commit();
 
-        if (vendaData.idOrdemServico != null) {
-            await OrdemServicoArquivo.update(
-                { idVenda: venda.id },
-                {
-                where: {
-                    idOrdemServico: vendaData.idOrdemServico,
-                    idVenda: null
-                },
-                transaction
-                }
-            );
-        };
+    res.status(201).json({
+      message: 'Venda criada com sucesso',
+      idVenda: venda.id
+    });
 
-        await transaction.commit();
-
-        res.status(201).json({ message: 'Venda criada com sucesso', vendaData });
-
-    } catch (error) {
-        await transaction.rollback();
-        console.error(error);
-        const statusCode = error.status || 500;
-        res.status(statusCode).json({ message: error.message });
-    }
+  } catch (error) {
+    if (transaction) await transaction.rollback();
+    console.error(error);
+    res.status(error.status || 500).json({ message: error.message });
+  }
 }
 
 // Função para consultar todas as vendas e seus relacionamentos
