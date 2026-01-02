@@ -321,7 +321,8 @@ async function postOrdemServico(req, res) {
                 novoDisponivel === 0
                   ? `O produto ${produtoDB.descricao} está sem estoque disponível.`
                   : `O produto ${produtoDB.descricao} atingiu o estoque mínimo.`,
-              lida: false
+              lida: false,
+              observacoes: `Verificar necessidade de reposição para o produto ${produtoDB.descricao}.`
             },
             { transaction }
           );
