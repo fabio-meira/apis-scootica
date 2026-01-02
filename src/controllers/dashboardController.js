@@ -200,8 +200,13 @@ async function getConsolidadoMensal(req, res) {
                     [Op.between]: [startOfMonth, endOfMonth],
                 },
             },
+            // attributes: [
+            //     [fn('DATE', col('Orcamento.createdAt')), 'date'],
+            //     [fn('SUM', col('totais.total')), 'totalOrcamento'],
+            //     [fn('COUNT', col('Orcamento.id')), 'QtdeOrcamentos'],
+            // ],
             attributes: [
-                [fn('DATE', col('Orcamento.createdAt')), 'date'],
+                [fn('DATE_FORMAT', col('Orcamento.createdAt'), '%Y-%m-%d'), 'date'],
                 [fn('SUM', col('totais.total')), 'totalOrcamento'],
                 [fn('COUNT', col('Orcamento.id')), 'QtdeOrcamentos'],
             ],
@@ -225,8 +230,13 @@ async function getConsolidadoMensal(req, res) {
                     [Op.between]: [startOfMonth, endOfMonth],
                 },
             },
+            // attributes: [
+            //     [fn('DATE', col('OrdemServico.createdAt')), 'date'],
+            //     [fn('SUM', literal('DISTINCT valorTotal')), 'totalValorServicos'],
+            //     [fn('COUNT', col('OrdemServico.id')), 'QtdeOS'],
+            // ],
             attributes: [
-                [fn('DATE', col('OrdemServico.createdAt')), 'date'],
+                [fn('DATE_FORMAT', col('OrdemServico.createdAt'), '%Y-%m-%d'), 'date'],
                 [fn('SUM', literal('DISTINCT valorTotal')), 'totalValorServicos'],
                 [fn('COUNT', col('OrdemServico.id')), 'QtdeOS'],
             ],
@@ -250,8 +260,13 @@ async function getConsolidadoMensal(req, res) {
                     [Op.between]: [startOfMonth, endOfMonth],
                 },
             },
+            // attributes: [
+            //     [fn('DATE', col('Venda.createdAt')), 'date'],
+            //     [fn('SUM', literal('DISTINCT valorTotal')), 'totalValorVendas'],
+            //     [fn('COUNT', col('Venda.id')), 'QtdeVenda'],
+            // ],
             attributes: [
-                [fn('DATE', col('Venda.createdAt')), 'date'],
+                [fn('DATE_FORMAT', col('Venda.createdAt'), '%Y-%m-%d'), 'date'],
                 [fn('SUM', literal('DISTINCT valorTotal')), 'totalValorVendas'],
                 [fn('COUNT', col('Venda.id')), 'QtdeVenda'],
             ],
@@ -472,7 +487,9 @@ async function listMensagens(req, res) {
         const currentYear = moment().year();
         // Mês é 1-based em moment
         const monthToCheck = month ? parseInt(month, 10) : moment().month() + 1; 
-        const startDate = moment(`${currentYear}-${monthToCheck}-01`).startOf('month');
+        const monthPadded = String(monthToCheck).padStart(2, '0');
+        // const startDate = moment(`${currentYear}-${monthToCheck}-01`).startOf('month');
+        const startDate = moment(`${currentYear}-${monthPadded}-01`, 'YYYY-MM-DD').startOf('month');
         const endDate = moment(startDate).endOf('month');
         
         // Calcule a data de um ano atrás
