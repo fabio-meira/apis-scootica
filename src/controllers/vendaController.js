@@ -353,6 +353,13 @@ async function postVenda(req, res) {
       });
     }
 
+    // Validação obrigatória de pagamentos
+    if (!Array.isArray(vendaData.pagamentos) || vendaData.pagamentos.length === 0) {
+      return res.status(422).json({ 
+        message: 'A venda deve conter ao menos um pagamento.' 
+      });
+    }
+
     const idFilial = vendaData.idFilial;
 
     // Valida caixa aberto (fora da transaction)
@@ -398,47 +405,106 @@ async function postVenda(req, res) {
     }, { transaction });
 
     // Pagamentos
+    // for (const pagamento of vendaData.pagamentos) {
+    //   const existingPayment = await Pagamento.findOne({
+    //     where: {
+    //       idOrdemServico: pagamento.idOrdemServico || null,
+    //       idVenda: null,
+    //       adiantamento: true
+    //     },
+    //     transaction
+    //   });
+
+    //   if (existingPayment) {
+    //     existingPayment.idVenda = venda.id;
+    //     await existingPayment.save({ transaction });
+    //   } else {
+    //     const createdPayment = await Pagamento.create({
+    //       ...pagamento,
+    //       idVenda: venda.id,
+    //       idEmpresa,
+    //       idFilial,
+    //       idCaixa: vendaData.idCaixa
+    //     }, { transaction });
+
+    //     // Parcelas crédito
+    //     if (
+    //       pagamento.statusRecebimento === 'Credito' &&
+    //       pagamento.quantidadeParcelas > 0
+    //     ) {
+    //       for (let i = 0; i < pagamento.quantidadeParcelas; i++) {
+    //         const vencimento = new Date(pagamento.dataVencimento);
+    //         vencimento.setMonth(vencimento.getMonth() + i);
+
+    //         await Parcela.create({
+    //           idPagamento: createdPayment.id,
+    //           idEmpresa,
+    //           quantidade: pagamento.quantidadeParcelas,
+    //           dataVencimento: vencimento,
+    //           tipoPagamento: 'Credito'
+    //         }, { transaction });
+    //       }
+    //     }
+    //   }
+    // }
+    let pagamentosCriados = 0;
+
     for (const pagamento of vendaData.pagamentos) {
-      const existingPayment = await Pagamento.findOne({
-        where: {
-          idOrdemServico: pagamento.idOrdemServico || null,
-          idVenda: null,
-          adiantamento: true
-        },
-        transaction
-      });
+      const existingPayment = pagamento.idOrdemServico
+        ? await Pagamento.findOne({
+            where: {
+              idEmpresa,
+              idFilial,
+              idOrdemServico: pagamento.idOrdemServico,
+              idVenda: null,
+              adiantamento: true
+            },
+            transaction
+          })
+        : null;
+
+      let pagamentoFinal;
 
       if (existingPayment) {
         existingPayment.idVenda = venda.id;
         await existingPayment.save({ transaction });
       } else {
-        const createdPayment = await Pagamento.create({
+        pagamentoFinal = await Pagamento.create({
           ...pagamento,
-          idVenda: venda.id,
           idEmpresa,
           idFilial,
-          idCaixa: vendaData.idCaixa
+          idCaixa: vendaData.idCaixa,
+          idVenda: venda.id
         }, { transaction });
+      }
 
-        // Parcelas crédito
-        if (
-          pagamento.statusRecebimento === 'Credito' &&
-          pagamento.quantidadeParcelas > 0
-        ) {
-          for (let i = 0; i < pagamento.quantidadeParcelas; i++) {
-            const vencimento = new Date(pagamento.dataVencimento);
-            vencimento.setMonth(vencimento.getMonth() + i);
+      pagamentosCriados++;
 
-            await Parcela.create({
-              idPagamento: createdPayment.id,
-              idEmpresa,
-              quantidade: pagamento.quantidadeParcelas,
-              dataVencimento: vencimento,
-              tipoPagamento: 'Credito'
-            }, { transaction });
-          }
+      // Parcelas crédito
+      if (
+        pagamento.statusRecebimento === 'Credito' &&
+        pagamento.quantidadeParcelas > 0
+      ) {
+        for (let i = 0; i < pagamento.quantidadeParcelas; i++) {
+          const vencimento = new Date(pagamento.dataVencimento);
+          vencimento.setMonth(vencimento.getMonth() + i);
+
+          await Parcela.create({
+            idPagamento: pagamentoFinal.id,
+            idEmpresa,
+            quantidade: pagamento.quantidadeParcelas,
+            dataVencimento: vencimento,
+            tipoPagamento: 'Credito'
+          }, { transaction });
         }
       }
+    }
+
+    if (pagamentosCriados === 0) {
+      throw Object.assign(
+        new Error('Nenhum pagamento foi registrado para a venda.'),
+        { status: 422 }
+      );
     }
 
     // Venda vinculada à OS
@@ -512,62 +578,54 @@ async function postVenda(req, res) {
         transaction
       });
 
-      if (novoDisponivel === 0 || novoDisponivel === produtoDB.estoqueMinimo) {
+      if (novoDisponivel === 0) {
         await Mensagem.create({
           idEmpresa,
           chave: 'Produto',
-          mensagem: `O produto ${produtoDB.descricao} atingiu nível crítico de estoque.`,
-          lida: false
+          mensagem: `O produto ${produtoDB.descricao} está sem estoque disponível.`,
+          lida: false,
+          observacoes: `Verificar necessidade de reposição para o produto ${produtoDB.descricao}.`
         }, { transaction });
       }
+
+      if (novoDisponivel === produtoDB.estoqueMinimo) {
+        await Mensagem.create({
+          idEmpresa,
+          chave: 'Produto',
+          mensagem: `O produto ${produtoDB.descricao} atingiu o nível mínimo de estoque.`,
+          lida: false,
+          observacoes: `Verificar necessidade de reposição para o produto ${produtoDB.descricao}.`
+        }, { transaction });
+      }
+
     }
 
     // Arquivos
-    // if (req.files?.length) {
-    //   const uploads = await Promise.all(req.files.map(async file => {
-    //     const { key } = await uploadToS3(file, BUCKET_IMAGES, 'OS/');
-    //     return {
-    //       nomeArquivo: file.originalname,
-    //       caminhoS3: key,
-    //       tipoArquivo: file.mimetype
-    //     };
-    //   }));
-
-    //   await OrdemServicoArquivo.bulkCreate(
-    //     uploads.map(u => ({
-    //       ...u,
-    //       idEmpresa,
-    //       idVenda: venda.id,
-    //       idOrdemServico: vendaData.idOrdemServico || null
-    //     })),
-    //     { transaction }
-    //   );
-    // }
     // Verifica se tem arquivo para ser anexado na Venda
     if (req.files && req.files.length > 0) {
-    const uploads = await Promise.all(
-        req.files.map(async (file) => {
-        const { key } = await uploadToS3(file, BUCKET_IMAGES, 'OS/');
-        return {
-            originalname: file.originalname,
-            mimetype: file.mimetype,
-            key
-        };
-        })
-    );
+        const uploads = await Promise.all(
+            req.files.map(async (file) => {
+            const { key } = await uploadToS3(file, BUCKET_IMAGES, 'OS/');
+            return {
+                originalname: file.originalname,
+                mimetype: file.mimetype,
+                key
+            };
+            })
+        );
 
-    await Promise.all(
-        uploads.map(upload => 
-        OrdemServicoArquivo.create({
-            idEmpresa,
-            idOrdemServico: vendaData.idOrdemServico || null,
-            idVenda: venda.id,
-            nomeArquivo: upload.originalname,
-            caminhoS3: upload.key,
-            tipoArquivo: upload.mimetype
-        }, { transaction })
-        )
-    );
+        await Promise.all(
+            uploads.map(upload => 
+            OrdemServicoArquivo.create({
+                idEmpresa,
+                idOrdemServico: vendaData.idOrdemServico || null,
+                idVenda: venda.id,
+                nomeArquivo: upload.originalname,
+                caminhoS3: upload.key,
+                tipoArquivo: upload.mimetype
+            }, { transaction })
+            )
+        );
     };
 
     if (vendaData.idOrdemServico != null) {
