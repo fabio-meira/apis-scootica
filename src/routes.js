@@ -163,6 +163,7 @@ router.get('/api/oticas/empresas/:idEmpresa/ordemServico', IsAuthApiKey, ordemSe
 router.get('/api/oticas/empresas/:idEmpresa/ordemServico/sv', IsAuthApiKey, ordemServicoController.getOrdemServicoSV);
 router.get('/api/oticas/empresas/:idEmpresa/ordemServico/:id', IsAuthApiKey, ordemServicoController.getIdOrdemServico);
 router.put('/api/oticas/empresas/:idEmpresa/ordemServico/:id', IsAuthApiKey, uploadImage.array('imagens', 10), ordemServicoController.putOrdemServico);
+router.put('/api/oticas/empresas/:idEmpresa/ordemServico/situacao/:id', IsAuthApiKey, ordemServicoController.situacaoOrdemServico);
 router.delete('/api/oticas/empresas/:idEmpresa/ordemServico/:id', IsAuthApiKey, ordemServicoController.deleteOrdemServico);
 
 // rotas de vendas

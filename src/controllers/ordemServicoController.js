@@ -20,196 +20,6 @@ const OrdemServicoArquivo = require('../models/OrdemServicoArquivo');
 const Caixa = require('../models/Caixa');
 
 // Função para criar uma nova Ordem de Serviço e seus pagamentos relacionados
-// async function postOrdemServico(req, res) {
-
-//   // const transaction = await sequelize.transaction(); 
-//   let transaction;
-
-//   try {
-//     // const ordemServicoData = req.body;
-//     const ordemServicoData = JSON.parse(req.body.body || '{}');
-//     const { idEmpresa } = req.params;
-
-//     // Adiciona idEmpresa aos dados da Ordem de Serviço
-//     ordemServicoData.idEmpresa = idEmpresa;
-
-//     // Identificar o idFilial para consulta do próximo número venda
-//     const idFilial = ordemServicoData.idFilial;
-
-//     // Consulta o último registro na tabela caixa
-//     const ultimoCaixa = await Caixa.findOne({
-//         where: { idEmpresa, idFilial }, 
-//         order: [['createdAt', 'DESC']], 
-//         // transaction
-//     });
-
-//     // Verifica se o último caixa encontrado tem a situação igual a 1 (caixa aberto)
-//     if (!ultimoCaixa || ultimoCaixa.situacao !== 1) {
-//         return res.status(422).json({ message: 'Não é possível cadastrar a OS. O caixa está fechado.' });
-//     };
-
-//     transaction = await sequelize.transaction();
-
-//     // Obter o próximo número de orçamento por idEmpresa
-//     const maxNumero = await OrdemServico.max('numeroOS', {
-//         where: { 
-//             idEmpresa,
-//             idFilial, 
-//         },
-//         transaction
-//     });
-
-//     // Identificar o idFilial para consulta do próximo número venda
-//     ordemServicoData.numeroOS = (maxNumero || 0) + 1;
-
-//     // Cria a Ordem de Serviço
-//     const ordemServico = await OrdemServico.create(ordemServicoData, { transaction });
-
-//     // Processa os produtos, criar a reserva do produto da OS
-//     const produtos = await Promise.all(
-//       ordemServicoData.produtos.map(async (produto) => {
-//         const produtoDB = await Produto.findByPk(produto.idProduto, { transaction });
-//         if (!produtoDB) {
-//           throw new Error(`Produto com ID ${produto.idProduto} não encontrado.`);
-//         }
-
-//         if (produtoDB.movimentaEstoque) {
-//             if (produtoDB.movimentaEstoque && produto.quantidade > produtoDB.estoqueDisponivel) {
-//                 const error = new Error(`Estoque insuficiente para o produto ${produtoDB.descricao}. Disponível: ${produtoDB.estoqueDisponivel}, Solicitado: ${produto.quantidade}`);
-//                 error.status = 422;
-//                 throw error;
-//             }
-
-//             // Atualiza o estoque reservado e disponível
-//             await Produto.update(
-//                 {
-//                     estoqueReservado: produtoDB.estoqueReservado + produto.quantidade,
-//                     // estoqueDisponivel: produtoDB.estoqueDisponivel - produto.quantidade
-//                     estoqueDisponivel: produtoDB.estoque - (produtoDB.estoqueReservado + produto.quantidade)
-//                 },
-//                 { where: { id: produto.idProduto }, transaction }
-//             );
-
-//             // Enviar uma mensagem quando o estoque disponível = 0
-//             const disponivel =  produtoDB.estoque - (produtoDB.estoqueReservado + produto.quantidade)
-//             if (disponivel === 0) {
-//                 await Mensagem.create({
-//                     idEmpresa: idEmpresa, 
-//                     chave: `Produto`,
-//                     mensagem: `O produto ${produtoDB.descricao} está sem estoque disponível.`,
-//                     lida: false,
-//                     observacoes: `Verificar necessidade de reposição para o produto ${produtoDB.descricao}.`
-//                 }, { transaction });
-//             };
-
-//             // Enviar uma mensagem quando o estoque disponível = estoque mínimo
-//             if (disponivel === produtoDB.estoqueMinimo) {
-//                 await Mensagem.create({
-//                     idEmpresa: idEmpresa, 
-//                     chave: `Produto`,
-//                     mensagem: `O produto ${produtoDB.descricao} atingiu seu estoque mínimo (${produtoDB.estoqueMinimo}).`,
-//                     lida: false,
-//                     observacoes: `Verificar necessidade de reposição para o produto ${produtoDB.descricao}.`
-//                 }, { transaction });
-//             };
-
-//             // Criação da reserva no banco
-//             await Reserva.create({
-//                 idEmpresa: ordemServicoData.idEmpresa,
-//                 idOrdemServico: ordemServico.id,
-//                 idProduto: produto.idProduto,
-//                 quantidade: produto.quantidade,
-//                 situacao: 1,
-//                 createdAt: new Date(),
-//                 updatedAt: new Date()
-//                 }, { transaction });
-//         }
-
-//             return { ...produto, idOrdemServico: ordemServico.id };
-//         })
-//     );
-
-//     // Cria os produtos vinculados à Ordem de Serviço
-//     await OrdemProduto.bulkCreate(produtos, { transaction });
-
-//     // Cria os totais com idOrdemServico
-//     const totais = {
-//       ...ordemServicoData.totais,
-//       idOrdemServico: ordemServico.id
-//     };
-//     await OrdemProdutoTotal.create(totais, { transaction });
-
-//     // Identificar o caixa para inserir nos pagamentos
-//     const idCaixa = ordemServico.idCaixa;
-
-//     // Prepara os dados dos pagamentos com idOrdemServico
-//     const pagamentos = ordemServicoData.pagamentos.map(pagamento => ({
-//       ...pagamento,
-//       idCaixa: idCaixa,
-//       idFilial: idFilial,
-//       idOrdemServico: ordemServico.id,
-//       idEmpresa: ordemServico.idEmpresa
-//     }));
-//     // Cria os pagamentos em lote
-//     await Pagamento.bulkCreate(pagamentos, { transaction });
-
-//     // Verifica se a ordem de serviço está vinculado a um orçamento
-//     const existOrcamento = await Orcamento.findOne({
-//       where: { id: ordemServicoData.idOrcamento || null },
-//       transaction
-//     });
-
-//     // Atualiza a tabela Orcamento no campo idOrdemServico
-//     if (existOrcamento) {
-//       await Orcamento.update(
-//         {
-//           idOrdemServico: ordemServico.id,
-//           situacao: 1
-//         },
-//         { where: { id: ordemServicoData.idOrcamento }, transaction }
-//       );
-//     }
-
-//     // Verifica se tem arquivo para ser anexado na O.S.
-//     if (req.files && req.files.length > 0) {
-//         const uploads = await Promise.all(
-//             req.files.map(async (file) => {
-//             const { key } = await uploadToS3(file, BUCKET_IMAGES, 'OS/');
-            
-//             return {
-//                 originalname: file.originalname,
-//                 mimetype: file.mimetype,
-//                 key
-//             };
-//             })
-//         );
-
-//         await Promise.all(
-//             uploads.map(upload => 
-//             OrdemServicoArquivo.create({
-//                 idEmpresa, 
-//                 idOrdemServico: ordemServico.id,
-//                 nomeArquivo: upload.originalname,
-//                 caminhoS3: upload.key,
-//                 tipoArquivo: upload.mimetype
-//             }, { transaction })
-//             )
-//         );
-//     }
-
-//     await transaction.commit(); 
-
-//     res.status(201).json({ message: 'Ordem de serviço criada com sucesso', ordemServico });
-
-//   }catch (error) {
-//     await transaction.rollback();
-//     console.error(error);
-//     const statusCode = error.status || 500;
-//     res.status(statusCode).json({ message: error.message });
-//   }
-// }
-
-// Função para criar uma nova Ordem de Serviço e seus pagamentos relacionados
 async function postOrdemServico(req, res) {
   let transaction;
 
@@ -744,35 +554,7 @@ async function getIdOrdemServico(req, res) {
     }
 }
 
-// // Função para atualizar uma ordem de serviço
-// async function putOrdemServico(req, res) {
-//     try {
-//         const { id } = req.params; 
-//         const { idEmpresa } = req.params; 
-//         const ordemServicoData = req.body; 
-
-//         // Atualiza a ordem de serviço no banco de dados
-//         const [updated] = await OrdemServico.update(ordemServicoData, {
-//             where: { 
-//                 id: id,
-//                 idEmpresa: idEmpresa
-//             }
-//         });
-
-//         if (updated) {
-//             // Busca a ordem de serviço atualizada para retornar na resposta
-//             const ordemServico = await OrdemServico.findOne({ where: { id: id, idEmpresa: idEmpresa } });
-//             res.status(200).json({ message: 'Ordem de serviço atualizada com sucesso', ordemServico });
-//         } else {
-//             // Se nenhum registro foi atualizado, retorna um erro 404
-//             res.status(404).json({ message: 'Ordem de serviço não encontrada' });
-//         }
-//     } catch (error) {
-//         console.error(error);
-//         res.status(500).json({ message: 'Erro ao atualizar ordem de serviço', error });
-//     }
-// }
-
+// Função para atualizar uma ordem de serviço
 async function putOrdemServico(req, res) {
   const transaction = await sequelize.transaction();
 
@@ -973,6 +755,57 @@ async function putOrdemServico(req, res) {
   }
 }
 
+// Função para atualizar a situação de uma ordem de serviço
+async function situacaoOrdemServico(req, res) {
+  const transaction = await sequelize.transaction();
+
+  try {
+    const { idEmpresa, id } = req.params;
+    const { situacao } = req.body;
+
+    if (situacao === undefined) {
+      await transaction.rollback();
+      return res.status(400).json({
+        message: "Campo 'situacao' é obrigatório"
+      });
+    };
+
+    const ordemServico = await OrdemServico.findOne({
+      where: { id, idEmpresa },
+      transaction
+    });
+
+    if (!ordemServico) {
+      await transaction.rollback();
+      return res.status(404).json({
+        message: "Ordem de serviço não encontrada"
+      });
+    };
+
+    // Atualizar campos da ordem de serviço
+    await ordemServico.update(
+      { situacao: situacao },
+      {
+        where: {
+          id: id
+        },
+        transaction
+      }
+    );
+
+    await transaction.commit();
+
+    res.status(200).json({
+      message: "Situação da ordem de serviço atualizada com sucesso"
+    });
+
+  } catch (error) {
+    await transaction.rollback();
+    console.error(error);
+    res.status(500).json({ message: error.message });
+  }
+}
+
 // Função para deletar uma ordem de serviço pelo id
 async function deleteOrdemServico(req, res) {
   const transaction = await sequelize.transaction();
@@ -1085,5 +918,6 @@ module.exports = {
     getOrdemServicoSV,
     getIdOrdemServico,
     putOrdemServico,
+    situacaoOrdemServico,
     deleteOrdemServico 
 };
