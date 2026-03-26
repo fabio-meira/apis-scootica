@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "main": "src/index.js",
   "scripts": {
-    "dev": "nodemon src/index.js",
-    "start": "node --trace-warnings src/index.js",
+    "dev": "UV_THREADPOOL_SIZE=${UV_THREADPOOL_SIZE:-16} nodemon src/index.js",
+    "start": "UV_THREADPOOL_SIZE=${UV_THREADPOOL_SIZE:-16} node --trace-warnings src/index.js",
     "build": "echo 'No build required for API'"
   },
   "license": "MIT",

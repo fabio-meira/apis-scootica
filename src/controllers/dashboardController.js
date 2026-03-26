@@ -10,6 +10,36 @@ const moment = require('moment');
 const { Op, fn, col, literal } = require('sequelize');
 const { format, utcToZonedTime } = require('date-fns-tz');
 
+const SAO_PAULO_TIME_ZONE = 'America/Sao_Paulo';
+
+function getSaoPauloDateParts(referenceDate = new Date()) {
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+        timeZone: SAO_PAULO_TIME_ZONE,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    });
+
+    const formattedParts = formatter.formatToParts(referenceDate).reduce((accumulator, part) => {
+        if (part.type !== 'literal') {
+            accumulator[part.type] = part.value;
+        }
+
+        return accumulator;
+    }, {});
+
+    return {
+        year: Number(formattedParts.year),
+        month: Number(formattedParts.month),
+        day: Number(formattedParts.day),
+        isoDate: `${formattedParts.year}-${formattedParts.month}-${formattedParts.day}`
+    };
+}
+
+function buildIsoDate(year, month, day) {
+    return `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
 async function getVendaSemanal(req, res) {
     try {
         const { idEmpresa } = req.params; 
@@ -482,23 +512,23 @@ async function listMensagens(req, res) {
     try {
         const { idEmpresa } = req.params;
         const { search, month, idFilial } = req.query;
+        const todayInSaoPaulo = getSaoPauloDateParts();
 
         // Calcular o intervalo de datas para o mês corrente ou o mês especificado
-        const currentYear = moment().year();
+        const currentYear = todayInSaoPaulo.year;
         // Mês é 1-based em moment
-        const monthToCheck = month ? parseInt(month, 10) : moment().month() + 1; 
+        const monthToCheck = month ? parseInt(month, 10) : todayInSaoPaulo.month; 
         const monthPadded = String(monthToCheck).padStart(2, '0');
         // const startDate = moment(`${currentYear}-${monthToCheck}-01`).startOf('month');
         const startDate = moment(`${currentYear}-${monthPadded}-01`, 'YYYY-MM-DD').startOf('month');
         const endDate = moment(startDate).endOf('month');
         
         // Calcule a data de um ano atrás
-        const oneYearAgo = new Date();
-        oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-        const oneYearAgoDate = oneYearAgo.toISOString().split('T')[0];
-
-        // Data corrente
-        const today = moment().format('YYYY-MM-DD');
+        const oneYearAgoDate = buildIsoDate(
+            todayInSaoPaulo.year - 1,
+            todayInSaoPaulo.month,
+            todayInSaoPaulo.day
+        );
 
         // Construa o objeto de filtro
         const whereConditions = {
@@ -558,8 +588,8 @@ async function listMensagens(req, res) {
             where: {
                 ...whereConditions,
                 [Op.and]: [
-                    literal(`MONTH(dtNascimento) = ${moment().month() + 1}`),
-                    literal(`DAY(dtNascimento) = ${moment().date()}`)
+                    literal(`MONTH(dtNascimento) = ${todayInSaoPaulo.month}`),
+                    literal(`DAY(dtNascimento) = ${todayInSaoPaulo.day}`)
                 ],
             },
             attributes: ['nomeCompleto', 'dtNascimento', 'celular', 'email'],

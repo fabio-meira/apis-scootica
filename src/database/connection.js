@@ -48,6 +48,22 @@ const username = process.env.USERNAME;
 const password = process.env.PASSWORD;
 const host = process.env.HOST || "127.0.0.1"; // Melhor prática
 
+function getEnvNumber(envName, fallbackValue) {
+    const parsedValue = Number(process.env[envName]);
+
+    return Number.isFinite(parsedValue) && parsedValue > 0
+        ? parsedValue
+        : fallbackValue;
+}
+
+const poolMax = getEnvNumber('DB_POOL_MAX', 20);
+const poolMin = getEnvNumber('DB_POOL_MIN', 2);
+const poolAcquire = getEnvNumber('DB_POOL_ACQUIRE', 20000);
+const poolIdle = getEnvNumber('DB_POOL_IDLE', 30000);
+const poolEvict = getEnvNumber('DB_POOL_EVICT', 10000);
+const connectTimeout = getEnvNumber('DB_CONNECT_TIMEOUT', 20000);
+const retryMax = getEnvNumber('DB_RETRY_MAX', 2);
+
 const connection = new Sequelize(database, username, password, {
     host,
     dialect: "mysql",
@@ -56,20 +72,28 @@ const connection = new Sequelize(database, username, password, {
     logging: false,
 
     pool: {
-        max: 10,
-        min: 0,
-        acquire: 60000,     // Espera até 60s para pegar uma conexão
-        idle: 10000,        // Conexões ociosas vivem só 10s
-        evict: 10000,       // Remove conexões "adormecidas"
-        handleDisconnects: true
+        max: poolMax,
+        min: poolMin,
+        acquire: poolAcquire,
+        idle: poolIdle,
+        evict: poolEvict
     },
 
     dialectOptions: {
-        connectTimeout: 60000 // Evita timeout no handshake
+        connectTimeout,
+        enableKeepAlive: true,
+        keepAliveInitialDelay: 0
     },
 
     retry: {
-        max: 3
+        max: retryMax,
+        match: [
+            /Deadlock/i,
+            /ETIMEDOUT/i,
+            /ECONNRESET/i,
+            /SequelizeConnectionAcquireTimeoutError/i,
+            /Too many connections/i
+        ]
     },
 
     define: {
@@ -78,9 +102,21 @@ const connection = new Sequelize(database, username, password, {
     }
 });
 
-// Teste de conexão
-connection.authenticate()
-    .then(() => console.log("✅ Conexão com o banco de dados bem-sucedida!"))
-    .catch(err => console.error("❌ Erro ao conectar no banco de dados:", err));
+connection.getPoolStats = function getPoolStats() {
+    const pool = connection.connectionManager?.pool;
+
+    if (!pool) {
+        return null;
+    }
+
+    return {
+        max: pool.maxSize ?? pool.max ?? null,
+        min: pool.minSize ?? pool.min ?? null,
+        size: pool.size ?? null,
+        available: pool.available ?? null,
+        using: pool.using ?? null,
+        waiting: pool.waiting ?? null
+    };
+};
 
 module.exports = connection;

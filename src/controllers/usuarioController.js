@@ -6,6 +6,19 @@ const nodemailer = require('nodemailer');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const Filial = require('../models/Filial');
+const sequelize = require('../database/connection');
+const SimpleTtlCache = require('../utils/simpleTtlCache');
+
+const loginUsuarioCache = new SimpleTtlCache(
+    Number(process.env.LOGIN_USUARIO_CACHE_TTL_MS) || 60000,
+    1000
+);
+
+function isTransientDatabaseError(error) {
+    const errorMessage = `${error?.name || ''} ${error?.message || ''}`;
+
+    return /SequelizeConnectionAcquireTimeoutError|SequelizeConnectionError|ETIMEDOUT|ECONNRESET|Too many connections/i.test(errorMessage);
+}
 
 async function postUsuario(req, res) {
     try {
@@ -95,6 +108,13 @@ async function listUsuarios(req, res) {
 async function loginUsuario(req, res) {
     try {
         const { id } = req.params;
+        const cacheKey = `login:${id}`;
+        const cachedUsuario = loginUsuarioCache.get(cacheKey);
+
+        if (cachedUsuario) {
+            return res.status(200).json(cachedUsuario);
+        }
+
         // const { idEmpresa } = req.params; 
         const usuario = await Usuario.findOne({
             where: { 
@@ -105,18 +125,15 @@ async function loginUsuario(req, res) {
                 {
                     model: Empresa,
                     as: 'empresa',
+                    required: false,
                     attributes: ['cnpj', 'nome', 'filiais'] 
                 },
                 {
                     model: Auth,
                     as: 'token',
+                    required: false,
                     attributes: ['user_token'] 
                 },
-                // {
-                //     model: Filial,
-                //     as: 'filial',
-                //     attributes: ['id', 'idFilial', 'nomeFantasia']
-                // }
                 {
                     model: Filial,
                     as: 'filial',
@@ -124,19 +141,30 @@ async function loginUsuario(req, res) {
                     attributes: ['id', 'idFilial', 'nomeFantasia']
                 }
             ]
-            // order: [
-            //     ['id', 'DESC']
-            // ]
         });
 
         if (!usuario) {
             return res.status(404).json({ message: 'Usuário não encontrado' });
         }
 
-        res.status(200).json(usuario);
+        const usuarioResponse = usuario.toJSON();
+        loginUsuarioCache.set(cacheKey, usuarioResponse);
+
+        res.status(200).json(usuarioResponse);
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Erro ao buscar usuário', error });
+        console.error('Erro ao buscar usuário no login:', {
+            login: req.params.id,
+            error: error.message,
+            pool: sequelize.getPoolStats?.()
+        });
+
+        if (isTransientDatabaseError(error)) {
+            return res.status(503).json({
+                message: 'Banco temporariamente ocupado. Tente novamente em instantes.'
+            });
+        }
+
+        res.status(500).json({ message: 'Erro ao buscar usuário', error: error.message });
     }
 }
 
@@ -166,8 +194,8 @@ async function loginEmail(req, res) {
         });
 
         // Criar o link de recuperação de senha
-        // const recoveryLink = `http://localhost:3000/password/${recoveryToken}`;
-        const recoveryLink = `https://app.optware.com.br/password/${recoveryToken}`;
+        const recoveryLink = `http://localhost:3000/password/${recoveryToken}`;
+        // const recoveryLink = `https://app.optware.com.br/password/${recoveryToken}`;
         // const userEmail = process.env.EMAIL;
         // const passEmail = process.env.EMAIL_PASS;
 

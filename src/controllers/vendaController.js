@@ -10,12 +10,12 @@ const Parcela = require('../models/Parcela');
 const Empresa = require('../models/Empresa');
 const VendaProduto = require('../models/VendaProduto');
 const OrdemServico = require('../models/OrdemServico');
-const { Op } = require('sequelize')
+const { Op, Transaction } = require('sequelize');
 const sequelize = require('../database/connection');
 const Reserva = require('../models/Reserva');
 const Produto = require('../models/Produto');
 const Mensagem = require('../models/Mensagem');
-const { uploadToS3 } = require('../middleware/s3');
+const { uploadToS3, deleteFromS3 } = require('../middleware/s3');
 const { BUCKET_IMAGES } = require('../../config/s3Client');
 const OrdemServicoArquivo = require('../models/OrdemServicoArquivo');
 const Caixa = require('../models/Caixa');
@@ -46,12 +46,176 @@ function sanitizeVendaData(data) {
   };
 }
 
+function parseRequestBody(req) {
+  if (typeof req.body?.body === 'string') {
+    return JSON.parse(req.body.body);
+  }
+
+  return req.body || {};
+}
+
+function parseBooleanQuery(value) {
+  if (value === undefined || value === null || value === '') return undefined;
+  if (typeof value === 'boolean') return value;
+
+  const normalized = String(value).toLowerCase();
+
+  if (normalized === 'true' || normalized === '1') return true;
+  if (normalized === 'false' || normalized === '0') return false;
+
+  return undefined;
+}
+
+function getPagamentoParcelasCount(pagamento) {
+  const quantidade = Number(
+    pagamento.quantidadeParcelas ?? pagamento.parcelas ?? 0
+  );
+
+  return Number.isFinite(quantidade) && quantidade > 0 ? quantidade : 0;
+}
+
+function isPagamentoCredito(pagamento) {
+  const tipoRecebimento = pagamento.tipoRecebimento ?? pagamento.statusRecebimento;
+
+  return typeof tipoRecebimento === 'string'
+    && tipoRecebimento.toLowerCase() === 'credito';
+}
+
+function somarReservasPorProduto(reservas) {
+  return reservas.reduce((map, reserva) => {
+    const quantidadeAtual = map.get(reserva.idProduto) || 0;
+    map.set(reserva.idProduto, quantidadeAtual + Number(reserva.quantidade || 0));
+    return map;
+  }, new Map());
+}
+
+async function criarOuAtualizarParcelasPagamento({
+  pagamento,
+  pagamentoRegistro,
+  idEmpresa,
+  idFilial,
+  transaction
+}) {
+  await Parcela.destroy({
+    where: { idPagamento: pagamentoRegistro.id },
+    transaction
+  });
+
+  const quantidadeParcelas = getPagamentoParcelasCount(pagamento);
+
+  if (!isPagamentoCredito(pagamento) || quantidadeParcelas === 0) {
+    return;
+  }
+
+  const dataBase = pagamento.dataVencimento
+    || pagamento.dataVencimentoBoleto
+    || new Date();
+  const valorTotal = Number(pagamento.valor || 0);
+  const valorParcela = Number(
+    pagamento.valorParcela
+    || (valorTotal > 0 ? valorTotal / quantidadeParcelas : 0)
+  );
+
+  for (let i = 0; i < quantidadeParcelas; i++) {
+    const vencimento = new Date(dataBase);
+    vencimento.setMonth(vencimento.getMonth() + i);
+
+    await Parcela.create({
+      idPagamento: pagamentoRegistro.id,
+      idEmpresa,
+      idFilial,
+      quantidade: quantidadeParcelas,
+      valorParcela: valorParcela || null,
+      dataVencimento: vencimento,
+      outrasInformacoes: `Parcela ${i + 1} de ${quantidadeParcelas}`,
+      tipoPagamento: 'Credito'
+    }, { transaction });
+  }
+}
+
+async function movimentarEstoqueVenda({
+  item,
+  quantidadeDelta,
+  quantidadeReservaDelta,
+  idEmpresa,
+  transaction
+}) {
+  const produtoDB = await Produto.findByPk(item.idProduto, {
+    transaction,
+    lock: transaction.LOCK.UPDATE
+  });
+
+  if (!produtoDB) {
+    throw Object.assign(
+      new Error(`Produto ${item.idProduto} não encontrado`),
+      { status: 404 }
+    );
+  }
+
+  if (!produtoDB.movimentaEstoque || quantidadeDelta === 0) {
+    return;
+  }
+
+  const estoqueAtual = Number(produtoDB.estoque || 0);
+  const reservadoAtual = Number(produtoDB.estoqueReservado || 0);
+  const disponivelAtual = Number(produtoDB.estoqueDisponivel || 0);
+  const estoqueMinimo = Number(produtoDB.estoqueMinimo || 0);
+  const consumoSemReserva = quantidadeDelta - quantidadeReservaDelta;
+
+  if (consumoSemReserva > disponivelAtual) {
+    throw Object.assign(
+      new Error(`Estoque insuficiente para o produto ${produtoDB.descricao}`),
+      { status: 422 }
+    );
+  }
+
+  const novoEstoque = estoqueAtual - quantidadeDelta;
+  const novoReservado = reservadoAtual - quantidadeReservaDelta;
+  const novoDisponivel = novoEstoque - novoReservado;
+
+  if (novoEstoque < 0 || novoReservado < 0 || novoDisponivel < 0) {
+    throw Object.assign(
+      new Error(`Estoque inconsistente para o produto ${produtoDB.descricao}`),
+      { status: 422 }
+    );
+  }
+
+  await Produto.update({
+    estoque: novoEstoque,
+    estoqueReservado: novoReservado,
+    estoqueDisponivel: novoDisponivel
+  }, {
+    where: { id: produtoDB.id },
+    transaction
+  });
+
+  if (quantidadeDelta > 0 && novoDisponivel === 0) {
+    await Mensagem.create({
+      idEmpresa,
+      chave: 'Produto',
+      mensagem: `O produto ${produtoDB.descricao} está sem estoque disponível.`,
+      lida: false,
+      observacoes: `Verificar necessidade de reposição para o produto ${produtoDB.descricao}.`
+    }, { transaction });
+  }
+
+  if (quantidadeDelta > 0 && novoDisponivel === estoqueMinimo) {
+    await Mensagem.create({
+      idEmpresa,
+      chave: 'Produto',
+      mensagem: `O produto ${produtoDB.descricao} atingiu o nível mínimo de estoque.`,
+      lida: false,
+      observacoes: `Verificar necessidade de reposição para o produto ${produtoDB.descricao}.`
+    }, { transaction });
+  }
+}
+
 // Função para criar uma nova venda e seus produtos, ordem de serviço, totais e pagamentos relacionados
 async function postVenda(req, res) {
   let transaction;
 
   try {
-    const vendaData = JSON.parse(req.body.body || '{}');
+    const vendaData = sanitizeVendaData(parseRequestBody(req));
     const { idEmpresa } = req.params;
 
     vendaData.idEmpresa = idEmpresa;
@@ -84,7 +248,9 @@ async function postVenda(req, res) {
       });
     }
 
-    transaction = await sequelize.transaction();
+    transaction = await sequelize.transaction({
+      isolationLevel: Transaction.ISOLATION_LEVELS.SERIALIZABLE
+    });
 
     // Número da venda
     const maxNumero = await Venda.max('numeroVenda', {
@@ -136,6 +302,7 @@ async function postVenda(req, res) {
       if (existingPayment) {
         existingPayment.idVenda = venda.id;
         await existingPayment.save({ transaction });
+        pagamentoFinal = existingPayment;
       } else {
         pagamentoFinal = await Pagamento.create({
           ...pagamento,
@@ -148,24 +315,13 @@ async function postVenda(req, res) {
 
       pagamentosCriados++;
 
-      // Parcelas crédito
-      if (
-        pagamento.statusRecebimento === 'Credito' &&
-        pagamento.quantidadeParcelas > 0
-      ) {
-        for (let i = 0; i < pagamento.quantidadeParcelas; i++) {
-          const vencimento = new Date(pagamento.dataVencimento);
-          vencimento.setMonth(vencimento.getMonth() + i);
-
-          await Parcela.create({
-            idPagamento: pagamentoFinal.id,
-            idEmpresa,
-            quantidade: pagamento.quantidadeParcelas,
-            dataVencimento: vencimento,
-            tipoPagamento: 'Credito'
-          }, { transaction });
-        }
-      }
+      await criarOuAtualizarParcelasPagamento({
+        pagamento,
+        pagamentoRegistro: pagamentoFinal,
+        idEmpresa,
+        idFilial,
+        transaction
+      });
     }
 
     if (pagamentosCriados === 0) {
@@ -180,11 +336,11 @@ async function postVenda(req, res) {
       ? await OrdemServico.findByPk(vendaData.idOrdemServico, { transaction })
       : null;
 
-    let idsProdutosOS = [];
+    let reservasPorProduto = new Map();
 
     if (existOS) {
       await OrdemServico.update(
-        { idVenda: venda.id, situacao: 1 },
+        { idVenda: venda.id, situacao: 3 },
         { where: { id: existOS.id }, transaction }
       );
 
@@ -198,74 +354,31 @@ async function postVenda(req, res) {
         transaction
       });
 
-      idsProdutosOS = reservas.map(r => r.idProduto);
+      reservasPorProduto = somarReservasPorProduto(reservas);
     }
 
     // Atualização segura de estoque
     for (const item of vendaData.produtos) {
-      if (!item.quantidade || item.quantidade <= 0) {
+      const quantidadeItem = Number(item.quantidade);
+
+      if (!quantidadeItem || quantidadeItem <= 0) {
         throw Object.assign(
           new Error('Quantidade inválida de produto'),
           { status: 422 }
         );
       }
+      const quantidadeReservada = Math.min(
+        quantidadeItem,
+        reservasPorProduto.get(item.idProduto) || 0
+      );
 
-      const produtoDB = await Produto.findByPk(item.idProduto, {
-        transaction,
-        lock: transaction.LOCK.UPDATE
-      });
-
-      if (!produtoDB) {
-        throw new Error(`Produto ${item.idProduto} não encontrado`);
-      }
-
-      if (!produtoDB.movimentaEstoque) continue;
-
-      const veioDaOS = idsProdutosOS.includes(item.idProduto);
-
-      if (!veioDaOS && item.quantidade > produtoDB.estoqueDisponivel) {
-        throw Object.assign(
-          new Error(`Estoque insuficiente para o produto ${produtoDB.descricao}`),
-          { status: 422 }
-        );
-      }
-
-      const novoEstoque = produtoDB.estoque - item.quantidade;
-      const novoReservado = veioDaOS
-        ? produtoDB.estoqueReservado - item.quantidade
-        : produtoDB.estoqueReservado;
-
-      const novoDisponivel = novoEstoque - novoReservado;
-
-      await Produto.update({
-        estoque: novoEstoque,
-        estoqueReservado: novoReservado,
-        estoqueDisponivel: novoDisponivel
-      }, {
-        where: { id: produtoDB.id },
+      await movimentarEstoqueVenda({
+        item,
+        quantidadeDelta: quantidadeItem,
+        quantidadeReservaDelta: quantidadeReservada,
+        idEmpresa,
         transaction
       });
-
-      if (novoDisponivel === 0) {
-        await Mensagem.create({
-          idEmpresa,
-          chave: 'Produto',
-          mensagem: `O produto ${produtoDB.descricao} está sem estoque disponível.`,
-          lida: false,
-          observacoes: `Verificar necessidade de reposição para o produto ${produtoDB.descricao}.`
-        }, { transaction });
-      }
-
-      if (novoDisponivel === produtoDB.estoqueMinimo) {
-        await Mensagem.create({
-          idEmpresa,
-          chave: 'Produto',
-          mensagem: `O produto ${produtoDB.descricao} atingiu o nível mínimo de estoque.`,
-          lida: false,
-          observacoes: `Verificar necessidade de reposição para o produto ${produtoDB.descricao}.`
-        }, { transaction });
-      }
-
     }
 
     // Arquivos
@@ -328,12 +441,13 @@ async function getVenda(req, res) {
     try {
         const { idEmpresa } = req.params;
         const { startDate, endDate, dataEstimada, idVendedor, status, idOrdemServico, numeroOS, idVenda, 
-            numeroVenda, idFilial, notaFiscalEmitida } = req.query; 
+            numeroVenda, idFilial, notaFiscalEmitida, limit, offset } = req.query; 
 
         // Construa o objeto de filtro
         const whereConditions = {
             idEmpresa: idEmpresa
         };
+        const notaFiscalEmitidaBool = parseBooleanQuery(notaFiscalEmitida);
 
         // Adicione filtro por data de início e data de fim, se fornecidos
         if (startDate) {
@@ -399,11 +513,11 @@ async function getVenda(req, res) {
         }
 
         // Adicione filtro por nota fiscal emitida, se fornecido
-        if (notaFiscalEmitida) {
-            whereConditions.notaFiscalEmitida = notaFiscalEmitida;
+        if (notaFiscalEmitidaBool !== undefined) {
+            whereConditions.notaFiscalEmitida = notaFiscalEmitidaBool;
         }
 
-        const venda = await Venda.findAll({
+        const queryOptions = {
             where: whereConditions,
             include: [
                 {
@@ -445,12 +559,13 @@ async function getVenda(req, res) {
                 },
                 {
                     model: VendaProduto,
-                    as: 'produtos'
+                    as: 'produtos',
+                    separate: true
                 },
                 {
                     model: Pagamento,
-                    as: 'pagamentos'
-                    // incluir as parcelas de pagamento, caso tenha
+                    as: 'pagamentos',
+                    separate: true
                 },
                 {
                     model: OrdemProdutoTotal,
@@ -458,14 +573,26 @@ async function getVenda(req, res) {
                 },
                 {
                     model: OrdemServicoArquivo,
-                    as: 'ordemServicoArquivo'
+                    as: 'ordemServicoArquivo',
+                    separate: true
                 },
             ],
+            distinct: true,
             order: [
                 ['id', 'DESC']
             ]
-        });
-        if (!venda) {
+        };
+
+        if (limit !== undefined) {
+            queryOptions.limit = Number(limit);
+        }
+
+        if (offset !== undefined) {
+            queryOptions.offset = Number(offset);
+        }
+
+        const venda = await Venda.findAll(queryOptions);
+        if (venda.length === 0) {
             return res.status(404).json({ message: 'Nenhuma venda localizada' });
         }
         res.status(200).json(venda);
@@ -480,7 +607,7 @@ async function getNotaFiscalEmitida(req, res) {
     try {
         const { idEmpresa } = req.params;
         const { startDate, endDate, dataEstimada, idVendedor, status, idOrdemServico, numeroOS, idVenda, 
-            numeroVenda, idFilial } = req.query; 
+            numeroVenda, idFilial, limit, offset } = req.query; 
 
         // Construa o objeto de filtro
         const whereConditions = {
@@ -551,7 +678,7 @@ async function getNotaFiscalEmitida(req, res) {
             whereConditions.idFilial = idFilial;
         }
 
-        const venda = await Venda.findAll({
+        const queryOptions = {
             where: whereConditions,
             include: [
                 {
@@ -593,12 +720,13 @@ async function getNotaFiscalEmitida(req, res) {
                 },
                 {
                     model: VendaProduto,
-                    as: 'produtos'
+                    as: 'produtos',
+                    separate: true
                 },
                 {
                     model: Pagamento,
-                    as: 'pagamentos'
-                    // incluir as parcelas de pagamento, caso tenha
+                    as: 'pagamentos',
+                    separate: true
                 },
                 {
                     model: OrdemProdutoTotal,
@@ -606,14 +734,26 @@ async function getNotaFiscalEmitida(req, res) {
                 },
                 {
                     model: OrdemServicoArquivo,
-                    as: 'ordemServicoArquivo'
+                    as: 'ordemServicoArquivo',
+                    separate: true
                 },
             ],
+            distinct: true,
             order: [
                 ['id', 'DESC']
             ]
-        });
-        if (!venda) {
+        };
+
+        if (limit !== undefined) {
+            queryOptions.limit = Number(limit);
+        }
+
+        if (offset !== undefined) {
+            queryOptions.offset = Number(offset);
+        }
+
+        const venda = await Venda.findAll(queryOptions);
+        if (venda.length === 0) {
             return res.status(404).json({ message: 'Nenhuma venda localizada' });
         }
         res.status(200).json(venda);
@@ -637,7 +777,7 @@ async function getIdVenda(req, res) {
                 {
                     model: OrdemServico,
                     as: 'ordemServico',
-                    attributes: ['id', 'numeroOS'] 
+                    attributes: ['id', 'numeroOS', 'createdAt'] 
                 },
                 {
                     model: Empresa,
@@ -677,11 +817,6 @@ async function getIdVenda(req, res) {
                 {
                     model: OrdemProdutoTotal,
                     as: 'totais'
-                },
-                {
-                    model: OrdemServico,
-                    as: 'ordemServico',
-                    attributes: ['createdAt']
                 },
                 {
                     model: OrdemServicoArquivo,
@@ -798,20 +933,20 @@ async function patchVenda(req, res) {
     const transaction = await sequelize.transaction();
     try {
         const { id, idEmpresa } = req.params;
-        // const vendaData = JSON.parse(req.body.body || '{}');
-        const vendaData = req.body;
-        // console.log('body: ', vendaData);
-        // console.log('totais: ', vendaData.totais);
+        const vendaData = sanitizeVendaData(parseRequestBody(req));
 
         // Verifica se existe a venda
         const consulta = await Venda.findOne({
             where: { id, idEmpresa },
+            include: [
+              { model: VendaProduto, as: 'produtos' },
+              { model: Pagamento, as: 'pagamentos' }
+            ],
+            transaction
         });
 
-        console.log('consulta:' , consulta);
-
         if (!consulta) {
-            // await transaction.rollback();
+            await transaction.rollback();
             return res.status(404).json({ message: "Venda não encontrada" });
         }
 
@@ -831,32 +966,129 @@ async function patchVenda(req, res) {
             return res.status(404).json({ message: "Venda não encontrada" });
         }
 
+        const reservasVenda = await Reserva.findAll({
+            where: { idEmpresa, idVenda: id },
+            transaction
+        });
+        const reservasPorProduto = somarReservasPorProduto(reservasVenda);
+
         // Atualizar produtos
-        if (vendaData.produtos && vendaData.produtos.length > 0) {
-            for (const produto of vendaData.produtos) {
-                if (produto.idProduto) {
-                    // Atualiza produto já existente
-                    await VendaProduto.update(
-                        {
-                            quantidade: Number(produto.quantidade),
-                            ncm: Number(produto.ncm),
-                            preco: Number(produto.preco),
-                            cfop: Number(produto.cfop),
-                            valorTotal: (produto.quantidade * produto.preco).toFixed(2),
-                        },
-                        { where: { idProduto: produto.idProduto, idVenda: id }, transaction }
+        if (Array.isArray(vendaData.produtos)) {
+            const produtosAtuais = consulta.produtos || [];
+            const produtosEnviados = vendaData.produtos;
+            const idsMantidos = new Set();
+            const idsConsumidos = new Set();
+
+            for (const produto of produtosEnviados) {
+                const quantidadeNova = Number(produto.quantidade || 0);
+
+                if (!quantidadeNova || quantidadeNova <= 0) {
+                    throw Object.assign(
+                      new Error('Quantidade inválida de produto'),
+                      { status: 422 }
                     );
-                } 
-                else {
-                    // Novo produto adicionado na venda
-                    await VendaProduto.create({ ...produto, idVenda: id }, { transaction });
                 }
+
+                let produtoAtual = null;
+
+                if (produto.id) {
+                    produtoAtual = produtosAtuais.find(item => item.id === Number(produto.id));
+                }
+
+                if (!produtoAtual) {
+                    produtoAtual = produtosAtuais.find(item =>
+                      !idsConsumidos.has(item.id)
+                      && item.idProduto === Number(produto.idProduto)
+                    );
+                }
+
+                if (produtoAtual) {
+                    idsConsumidos.add(produtoAtual.id);
+                    idsMantidos.add(produtoAtual.id);
+
+                    const quantidadeAtual = Number(produtoAtual.quantidade || 0);
+                    const quantidadeDelta = quantidadeNova - quantidadeAtual;
+                    const reservaAtual = Math.min(
+                      quantidadeAtual,
+                      reservasPorProduto.get(produtoAtual.idProduto) || 0
+                    );
+                    const reservaNova = Math.min(
+                      quantidadeNova,
+                      reservasPorProduto.get(produtoAtual.idProduto) || 0
+                    );
+
+                    await movimentarEstoqueVenda({
+                      item: produtoAtual,
+                      quantidadeDelta,
+                      quantidadeReservaDelta: reservaNova - reservaAtual,
+                      idEmpresa,
+                      transaction
+                    });
+
+                    await produtoAtual.update(
+                      {
+                        ...produto,
+                        quantidade: quantidadeNova,
+                        preco: Number(produto.preco || 0),
+                        valorTotal: Number((quantidadeNova * Number(produto.preco || 0)).toFixed(2))
+                      },
+                      { transaction }
+                    );
+                } else {
+                    const quantidadeReservada = Math.min(
+                      quantidadeNova,
+                      reservasPorProduto.get(Number(produto.idProduto)) || 0
+                    );
+
+                    await movimentarEstoqueVenda({
+                      item: produto,
+                      quantidadeDelta: quantidadeNova,
+                      quantidadeReservaDelta: quantidadeReservada,
+                      idEmpresa,
+                      transaction
+                    });
+
+                    const criado = await VendaProduto.create(
+                      {
+                        ...produto,
+                        idVenda: id,
+                        quantidade: quantidadeNova,
+                        preco: Number(produto.preco || 0),
+                        valorTotal: Number((quantidadeNova * Number(produto.preco || 0)).toFixed(2))
+                      },
+                      { transaction }
+                    );
+
+                    idsMantidos.add(criado.id);
+                }
+            }
+
+            for (const produtoAtual of produtosAtuais) {
+                if (idsMantidos.has(produtoAtual.id)) {
+                    continue;
+                }
+
+                const quantidadeAtual = Number(produtoAtual.quantidade || 0);
+                const quantidadeReservada = Math.min(
+                  quantidadeAtual,
+                  reservasPorProduto.get(produtoAtual.idProduto) || 0
+                );
+
+                await movimentarEstoqueVenda({
+                  item: produtoAtual,
+                  quantidadeDelta: -quantidadeAtual,
+                  quantidadeReservaDelta: -quantidadeReservada,
+                  idEmpresa,
+                  transaction
+                });
+
+                await produtoAtual.destroy({ transaction });
             }
         }
 
         // Atualizar totais
         if (vendaData.totais) {
-            await OrdemProdutoTotal.update({
+            const [totaisAtualizados] = await OrdemProdutoTotal.update({
                 quantidadeTotal: Number(vendaData.totais.quantidadeTotal),
                 totalProdutos:Number(vendaData.totais.totalProdutos),
                 desconto: Number(vendaData.totais.desconto),
@@ -869,43 +1101,74 @@ async function patchVenda(req, res) {
              }, { where: { idVenda: id},
                 transaction
             });
+
+            if (!totaisAtualizados) {
+                await OrdemProdutoTotal.create({
+                  ...vendaData.totais,
+                  idVenda: id
+                }, { transaction });
+            }
         }
 
         // Atualizar pagamentos
-        if (vendaData.pagamentos && vendaData.pagamentos.length > 0) {
+        if (Array.isArray(vendaData.pagamentos)) {
+            const pagamentosAtuais = consulta.pagamentos || [];
+            const pagamentosEnviadosIds = new Set(
+              vendaData.pagamentos
+                .map(pagamento => Number(pagamento.id))
+                .filter(Boolean)
+            );
+
+            for (const pagamentoAtual of pagamentosAtuais) {
+                if (pagamentosEnviadosIds.has(pagamentoAtual.id)) {
+                    continue;
+                }
+
+                if (pagamentoAtual.adiantamento && pagamentoAtual.idOrdemServico) {
+                    await pagamentoAtual.update({ idVenda: null }, { transaction });
+                    continue;
+                }
+
+                await Parcela.destroy({
+                  where: { idPagamento: pagamentoAtual.id },
+                  transaction
+                });
+
+                await pagamentoAtual.destroy({ transaction });
+            }
+
             for (const pagamento of vendaData.pagamentos) {
+                let pagamentoRegistro = null;
+
                 if (pagamento.id) {
-                    // Atualiza pagamento existente
-                    await Pagamento.update(pagamento, {
-                        where: { id: pagamento.id, idVenda: id },
-                        transaction
-                    });
+                    pagamentoRegistro = pagamentosAtuais.find(item => item.id === Number(pagamento.id));
+                }
+
+                if (pagamentoRegistro) {
+                    await pagamentoRegistro.update({
+                        ...pagamento,
+                        idVenda: id
+                    }, { transaction });
                 } else {
-                    // Cria novo pagamento
-                    const createdPayment = await Pagamento.create(
-                        { ...pagamento },
+                    pagamentoRegistro = await Pagamento.create(
+                        {
+                          ...pagamento,
+                          idEmpresa,
+                          idFilial: consulta.idFilial,
+                          idCaixa: consulta.idCaixa,
+                          idVenda: id
+                        },
                         { transaction }
                     );
-
-                    // Se for crédito, recria as parcelas
-                    if (pagamento.statusRecebimento === 'Credito' && pagamento.parcelas && pagamento.valor) {
-                        await Parcela.destroy({ where: { idPagamento: createdPayment.id }, transaction });
-
-                        for (let i = 0; i < pagamento.quantidadeParcelas; i++) {
-                            const vencimento = new Date(pagamento.dataVencimento);
-                            vencimento.setMonth(vencimento.getMonth() + i);
-
-                            await Parcela.create({
-                                idPagamento: createdPayment.id,
-                                idEmpresa,
-                                quantidade: pagamento.parcelas,
-                                dataVencimento: vencimento,
-                                outrasInformacoes: `Parcela ${i + 1} de ${pagamento.parcelas} - Valor: R$ ${pagamento.parcelas}`,
-                                tipoPagamento: 'Credito'
-                            }, { transaction });
-                        }
-                    }
                 }
+
+                await criarOuAtualizarParcelasPagamento({
+                  pagamento,
+                  pagamentoRegistro,
+                  idEmpresa,
+                  idFilial: consulta.idFilial,
+                  transaction
+                });
             }
         }
 
@@ -980,32 +1243,45 @@ async function deleteVenda(req, res) {
       where: { idVenda: id },
       transaction
     });
+    const reservasVenda = await Reserva.findAll({
+      where: { idEmpresa, idVenda: id },
+      transaction
+    });
+    const reservasPorProduto = somarReservasPorProduto(reservasVenda);
 
     for (const item of itens) {
-      const produtoDB = await Produto.findByPk(item.idProduto, { transaction });
+      const quantidadeAtual = Number(item.quantidade || 0);
+      const quantidadeReservada = Math.min(
+        quantidadeAtual,
+        reservasPorProduto.get(item.idProduto) || 0
+      );
 
-      if (produtoDB && produtoDB.movimentaEstoque) {
-        const novaReserva = produtoDB.estoqueReservado - item.quantidade;
-        const novoDisponivel = produtoDB.estoqueDisponivel + item.quantidade;
-
-        await Produto.update(
-          {
-            estoqueReservado: novaReserva,
-            estoqueDisponivel: novoDisponivel
-          },
-          { where: { id: produtoDB.id }, transaction }
-        );
-
-        await Reserva.destroy({
-          where: {
-            idEmpresa,
-            idVenda: id,
-            idProduto: item.idProduto
-          },
-          transaction
-        });
-      }
+      await movimentarEstoqueVenda({
+        item,
+        quantidadeDelta: -quantidadeAtual,
+        quantidadeReservaDelta: -quantidadeReservada,
+        idEmpresa,
+        transaction
+      });
     }
+
+    if (ordem.idOrdemServico) {
+      await OrdemServico.update(
+        { idVenda: null, situacao: 1 },
+        {
+          where: { id: ordem.idOrdemServico },
+          transaction
+        }
+      );
+    }
+
+    await Reserva.update(
+      { idVenda: null, situacao: 1 },
+      {
+        where: { idEmpresa, idVenda: id },
+        transaction
+      }
+    );
 
     // Deletar Produtos
     await VendaProduto.destroy({
@@ -1020,10 +1296,47 @@ async function deleteVenda(req, res) {
     });
 
     // Deletar pagamentos
-    await Pagamento.destroy({
+    const pagamentos = await Pagamento.findAll({
       where: { idVenda: id },
       transaction
     });
+    const pagamentosRemover = pagamentos.filter(
+      pagamento => !(pagamento.adiantamento && pagamento.idOrdemServico)
+    );
+
+    if (pagamentosRemover.length > 0) {
+      await Parcela.destroy({
+        where: {
+          idPagamento: {
+            [Op.in]: pagamentosRemover.map(pagamento => pagamento.id)
+          }
+        },
+        transaction
+      });
+    }
+
+    if (pagamentosRemover.length > 0) {
+      await Pagamento.destroy({
+        where: {
+          id: {
+            [Op.in]: pagamentosRemover.map(pagamento => pagamento.id)
+          }
+        },
+        transaction
+      });
+    }
+
+    await Pagamento.update(
+      { idVenda: null },
+      {
+        where: {
+          idVenda: id,
+          adiantamento: true,
+          idOrdemServico: { [Op.ne]: null }
+        },
+        transaction
+      }
+    );
 
     // Deletar arquivos do S3
     const arquivos = await OrdemServicoArquivo.findAll({
@@ -1033,7 +1346,7 @@ async function deleteVenda(req, res) {
 
     for (const arq of arquivos) {
       try {
-        await deleteFromS3(arq.caminhoS3); // função igual à sua uploadToS3, porém para excluir
+        await deleteFromS3(arq.caminhoS3, BUCKET_IMAGES);
       } catch (e) {
         console.warn(`Falha ao remover arquivo do S3: ${arq.caminhoS3}`, e);
       }

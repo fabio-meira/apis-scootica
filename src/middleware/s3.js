@@ -1,5 +1,9 @@
 // middlewares/s3.js
-const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
+const {
+  S3Client,
+  PutObjectCommand,
+  DeleteObjectCommand
+} = require('@aws-sdk/client-s3');
 // const path = require('path');
 
 const s3Client = new S3Client({
@@ -36,4 +40,18 @@ const uploadToS3 = async (file, bucketName, prefix = 'uploads/') => {
   }
 };
 
-module.exports = { uploadToS3 };
+const deleteFromS3 = async (key, bucketName) => {
+  const params = {
+    Bucket: bucketName,
+    Key: key
+  };
+
+  try {
+    await s3Client.send(new DeleteObjectCommand(params));
+  } catch (err) {
+    console.error('Erro ao remover arquivo do S3:', err);
+    throw err;
+  }
+};
+
+module.exports = { uploadToS3, deleteFromS3 };

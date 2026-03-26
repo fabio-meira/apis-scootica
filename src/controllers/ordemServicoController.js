@@ -14,7 +14,7 @@ const Produto = require('../models/Produto');
 const Reserva = require('../models/Reserva');
 const sequelize = require('../database/connection');
 const Mensagem = require('../models/Mensagem');
-const { uploadToS3 } = require('../middleware/s3');
+const { uploadToS3, deleteFromS3 } = require('../middleware/s3');
 const { BUCKET_IMAGES } = require('../../config/s3Client');
 const OrdemServicoArquivo = require('../models/OrdemServicoArquivo');
 const Caixa = require('../models/Caixa');
@@ -881,7 +881,7 @@ async function deleteOrdemServico(req, res) {
 
     for (const arq of arquivos) {
       try {
-        await deleteFromS3(arq.caminhoS3); // função igual à sua uploadToS3, porém para excluir
+        await deleteFromS3(arq.caminhoS3, BUCKET_IMAGES);
       } catch (e) {
         console.warn(`Falha ao remover arquivo do S3: ${arq.caminhoS3}`, e);
       }
