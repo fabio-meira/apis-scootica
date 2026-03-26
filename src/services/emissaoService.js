@@ -154,8 +154,8 @@ async function emitirNFe(venda, empresa) {
           }
 
           // console.log("E-mail enviado com sucesso para o contador!");
-      }
-    };
+        }
+      };
 
     await transaction.commit();
 
