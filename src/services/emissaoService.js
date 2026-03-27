@@ -10,6 +10,63 @@ const sequelize = require('../database/connection');
 const nodemailer = require('nodemailer');
 const NotaFiscalAvulsa = require('../models/NotaFiscalAvulsa');
 
+function normalizeEmail(email) {
+  return typeof email === 'string' ? email.trim() : '';
+}
+
+function createMailTransport() {
+  return nodemailer.createTransport({
+    host: 'smtp.hostinger.com',
+    port: 465,
+    secure: true,
+    auth: {
+      user: 'fabio.meira@optware.com.br',
+      pass: 'Optware@2025',
+    },
+  });
+}
+
+async function enviarXmlPorEmail({ empresa, clienteEmail, notaFiscal }) {
+  const emailCliente = normalizeEmail(clienteEmail);
+  const emailEmpresa = normalizeEmail(empresa?.emailXML);
+  const attachments = [];
+
+  if (notaFiscal?.xml) {
+    const xmlBuffer = Buffer.from(notaFiscal.xml, 'base64');
+    attachments.push({
+      filename: `${notaFiscal.chave}.xml`,
+      content: xmlBuffer,
+      contentType: 'application/xml'
+    });
+  }
+
+  if (attachments.length === 0) {
+    return;
+  }
+
+  const destinatarios = [emailEmpresa, emailCliente].filter(Boolean);
+
+  if (!destinatarios.length) {
+    return;
+  }
+
+  const transporter = createMailTransport();
+
+  try {
+    for (const email of destinatarios) {
+      await transporter.sendMail({
+        from: 'contato@optware.com.br',
+        to: email,
+        subject: `[${empresa.nome}] - NF-e nº ${notaFiscal.numero} - Autorizada pela SEFAZ`,
+        text: `Segue em anexo o XML da NF-e nº ${notaFiscal.numero}, série ${notaFiscal.serie}, emitida por ${empresa.nomeFantasia}.`,
+        attachments
+      });
+    }
+  } catch (error) {
+    console.error('Falha ao enviar XML por e-mail:', error.message);
+  }
+}
+
 async function getNFIntegracao(empresa) {
   const where = {
     idEmpresa: empresa,
@@ -102,59 +159,11 @@ async function emitirNFe(venda, empresa) {
             }
         );
 
-        // ----- ENVIA E-MAIL -----
-        if (empresa.emailXML) {
-          // console.log(`Enviando e-mail do XML para ${empresa.emailXML}...`);
-
-          let transporter = nodemailer.createTransport({
-              host: 'smtp.hostinger.com',    // Servidor SMTP da Locaweb
-              port: 465,                    // Porta do SMTP com TLS
-              secure: true,                 // Usando TLS (não SSL)
-              auth: {
-              user: 'fabio.meira@optware.com.br',  
-              pass: 'Optware@2025',           
-              },
-          });
-
-          const attachments = [];
-
-          // Anexa o XML
-          if (notaFiscal.xml) {
-            const xmlBuffer = Buffer.from(notaFiscal.xml, 'base64');
-            attachments.push({
-              filename: `${notaFiscal.chave}.xml`,
-              content: xmlBuffer,
-              contentType: 'application/xml'
-            });
-          }
-
-          // // Anexa o DANFE PDF, se existir
-          // if (notaFiscal.pdfBase64) {
-          //   const pdfBuffer = Buffer.from(notaFiscal.pdfBase64, 'base64');
-          //   attachments.push({
-          //     filename: `${notaFiscal.chave}.pdf`,
-          //     content: pdfBuffer,
-          //     contentType: 'application/pdf'
-          //   });
-          // }
-
-          const destinatarios = [
-            empresa.emailXML,
-            venda?.cliente?.email
-          ].filter(email => email && email.trim() !== ""); // 🔹 mantém apenas e-mails válidos e não vazios
-
-          for (const email of destinatarios) {
-            await transporter.sendMail({
-              from: `contato@optware.com.br`,
-              to: email,  // envia individualmente
-              subject: `[${empresa.nome}] - NF-e nº ${notaFiscal.numero} - Autorizada pela SEFAZ`,
-              text: `Segue em anexo o XML da NF-e nº ${notaFiscal.numero}, série ${notaFiscal.serie}, emitida por ${empresa.nomeFantasia}.`,
-              attachments
-            });
-          }
-
-          // console.log("E-mail enviado com sucesso para o contador!");
-        }
+        await enviarXmlPorEmail({
+          empresa,
+          clienteEmail: venda?.cliente?.email,
+          notaFiscal
+        });
       };
 
     await transaction.commit();
@@ -258,59 +267,11 @@ async function emitirNFeAvulsa(notaAvulsa, empresa) {
             }
         );
 
-        // ----- ENVIA E-MAIL -----
-        if (empresa.emailXML) {
-          // console.log(`Enviando e-mail do XML para ${empresa.emailXML}...`);
-
-          let transporter = nodemailer.createTransport({
-              host: 'smtp.hostinger.com',    // Servidor SMTP da Locaweb
-              port: 465,                    // Porta do SMTP com TLS
-              secure: true,                 // Usando TLS (não SSL)
-              auth: {
-              user: 'fabio.meira@optware.com.br',  
-              pass: 'Optware@2025',           
-              },
-          });
-
-          const attachments = [];
-
-          // Anexa o XML
-          if (notaFiscal.xml) {
-            const xmlBuffer = Buffer.from(notaFiscal.xml, 'base64');
-            attachments.push({
-              filename: `${notaFiscal.chave}.xml`,
-              content: xmlBuffer,
-              contentType: 'application/xml'
-            });
-          }
-
-          // // Anexa o DANFE PDF, se existir
-          // if (notaFiscal.pdfBase64) {
-          //   const pdfBuffer = Buffer.from(notaFiscal.pdfBase64, 'base64');
-          //   attachments.push({
-          //     filename: `${notaFiscal.chave}.pdf`,
-          //     content: pdfBuffer,
-          //     contentType: 'application/pdf'
-          //   });
-          // }
-
-          const destinatarios = [
-            empresa.emailXML,
-            notaAvulsa?.cliente?.email
-          ].filter(email => email && email.trim() !== ""); // 🔹 mantém apenas e-mails válidos e não vazios
-
-          for (const email of destinatarios) {
-            await transporter.sendMail({
-              from: `contato@optware.com.br`,
-              to: email,  // envia individualmente
-              subject: `[${empresa.nome}] - NF-e nº ${notaFiscal.numero} - Autorizada pela SEFAZ`,
-              text: `Segue em anexo o XML da NF-e nº ${notaFiscal.numero}, série ${notaFiscal.serie}, emitida por ${empresa.nomeFantasia}.`,
-              attachments
-            });
-          }
-
-          // console.log("E-mail enviado com sucesso para o contador!");
-      }
+        await enviarXmlPorEmail({
+          empresa,
+          clienteEmail: notaAvulsa?.cliente?.email,
+          notaFiscal
+        });
     };
 
     await transaction.commit();
