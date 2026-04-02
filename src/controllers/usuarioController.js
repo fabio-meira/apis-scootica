@@ -105,11 +105,13 @@ async function loginUsuario(req, res) {
                 {
                     model: Empresa,
                     as: 'empresa',
+                    required: false,
                     attributes: ['cnpj', 'nome', 'filiais'] 
                 },
                 {
                     model: Auth,
                     as: 'token',
+                    required: false,
                     attributes: ['user_token'] 
                 },
                 // {
@@ -166,8 +168,8 @@ async function loginEmail(req, res) {
         });
 
         // Criar o link de recuperação de senha
-        // const recoveryLink = `http://localhost:3000/password/${recoveryToken}`;
-        const recoveryLink = `https://app.optware.com.br/password/${recoveryToken}`;
+        const recoveryLink = `http://localhost:3000/password/${recoveryToken}`;
+        // const recoveryLink = `https://app.optware.com.br/password/${recoveryToken}`;
         // const userEmail = process.env.EMAIL;
         // const passEmail = process.env.EMAIL_PASS;
 

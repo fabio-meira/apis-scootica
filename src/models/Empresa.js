@@ -1,6 +1,7 @@
 // models/Empresa.js
 const { Model, DataTypes } = require('sequelize');
 const sequelize = require('../database/connection');
+const Auth = require('../models/Authentication');
 
 class Empresa extends Model {}
 

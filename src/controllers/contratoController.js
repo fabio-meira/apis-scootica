@@ -415,8 +415,8 @@ async function gerarEEnviarPix(contrato) {
         }
       // 1. Gerar payload PIX
       const payload = gerarPayloadPix({
-        chave: 'fabio.meira@fabester.com.br',
-        nome: 'F.F.Meira Desenvolvimento de Software Ltda',
+        chave: 'contato@optware.com.br',
+        nome: 'Fabester Tecnologia',
         cidade: 'OSASCO',
         valor: parseFloat(contrato.valorPlano),
         txid: `OPT${contrato.id}`
@@ -433,8 +433,8 @@ async function gerarEEnviarPix(contrato) {
         port: 465,
         secure: true,
         auth: {
-          user: 'contato@fabester.com.br',
-          pass: 'Ester@21032014',
+          user: 'fabio.meira@optware.com.br',
+          pass: 'Optware@2025',
         },
       });
 
@@ -447,7 +447,7 @@ async function gerarEEnviarPix(contrato) {
       const valorFaturado = formatCurrency(contrato.valorFaturado || 0);
   
       await transporter.sendMail({
-        from: '"Optware" <contato@fabester.com.br>',
+        from: '"Optware" <contato@optware.com.br>',
         to: contrato.email,
         subject: 'PIX para pagamento do contrato',
         html: `

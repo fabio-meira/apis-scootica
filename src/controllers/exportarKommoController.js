@@ -11,6 +11,7 @@ const OrdemProduto = require('../models/OrdemProduto');
 const OrdemProdutoTotal = require('../models/OrdemProdutoTotal');
 const Receita = require('../models/Receita');
 const Medico = require('../models/Medico');
+const Orcamento = require('../models/Orcamento');
 
 async function postVendaKommo(req, res) {
     const transaction = await sequelize.transaction();
@@ -504,6 +505,113 @@ async function postEVKommo(req, res) {
     });
   }
 }
+
+async function postORKommo(req, res) {
+  const transaction = await sequelize.transaction();
+
+  const { idEmpresa } = req.params;
+
+  const empresa = await Empresa.findOne({
+      where: { idEmpresa: idEmpresa },
+      transaction
+  });
+
+  // Buscar venda pendente de integração
+  const orcamentoData = await Orcamento.findOne({
+      where: {
+          idEmpresa,
+          integradoCRM: 0,
+          idLead: null
+      },
+      transaction
+  });
+
+  if (!orcamentoData) {
+      await transaction.commit();
+      return res.status(404).json({ message: "Nenhum orçamento pendente de integração" });
+  }
+
+  // Buscar cliente antes de validar integracaoCRM
+  const cliente = await Cliente.findOne({
+      where: { idEmpresa: idEmpresa,
+          id: orcamentoData.idCliente
+        },
+        transaction
+  });
+
+  // Buscar vendedor antes de validar integracaoCRM
+  const vendedor = await Vendedor.findOne({
+      where: { idEmpresa: idEmpresa,
+          id: orcamentoData.idVendedor
+        },
+        transaction
+  });
+
+  // Cria orçamento no Kommo somente se integração CRM estiver habilitada
+  try {
+      if (empresa.integracaoCRM === true) {
+
+          const idFilial = orcamentoData.idFilial; 
+
+          if (cliente.exportado === false || !cliente.idCRM) {
+              // console.log("Cliente ainda não exportado. Criando contato no Kommo...");
+              const contatoKommo = await criarContatoNoKommo(idEmpresa, idFilial, cliente, empresa);
+
+              // Extrai o id retornado pelo Kommo
+              const idCRM = contatoKommo?._embedded?.contacts?.[0]?.id;
+
+              if (idCRM) {
+                  // Atualiza cliente com idCRM e marca exportado = true
+                  await cliente.update(
+                  { idCRM, exportado: true },
+                  { transaction }
+                  );
+
+                  cliente.dataValues.kommoResponse = contatoKommo;
+
+                  // console.log(`Cliente ${cliente.nome} exportado com sucesso para o Kommo (idCRM: ${idCRM})`);
+              } else {
+                  console.warn("Falha ao obter idCRM ao criar o contato no Kommo");
+              }
+          } else {
+              console.log("Cliente já exportado, prosseguindo com a criação do orçamento...");
+          }
+          
+          const orcamentoKommo = await criarOrcamentoNoKommo(
+              idEmpresa,
+              idFilial,                     
+              orcamentoData,                
+              cliente,   
+              vendedor,                   
+              produtos,
+              totais          
+          );
+
+            // Extrai o id retornado pelo Kommo
+          const idCRM = orcamentoKommo?.[0]?.id;
+          console.log('idCRM', idCRM);
+
+          if (idCRM) {
+              // Atualiza cliente com idCRM e marca exportado = true
+              await orcamento.update(
+                  { idLead: idCRM, integradoCRM: true },
+                  { 
+                      where: { 
+                          id: orcamento.id,        
+                          idEmpresa: idEmpresa 
+                      },
+                      transaction 
+                  }
+              );
+                      
+              orcamento.dataValues.kommoResponse = orcamentoKommo;
+          }
+      }
+  } catch (kommoErr) {
+      console.error("Erro ao criar orçamento no Kommo:", kommoErr.response?.data || kommoErr.message);
+  }
+}
+
 
 module.exports = {
     postVendaKommo,
