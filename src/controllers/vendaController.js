@@ -184,7 +184,7 @@ async function postVenda(req, res) {
 
     if (existOS) {
       await OrdemServico.update(
-        { idVenda: venda.id, situacao: 1 },
+        { idVenda: venda.id, situacao: 3 },
         { where: { id: existOS.id }, transaction }
       );
 
