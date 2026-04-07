@@ -463,7 +463,8 @@ async function getVenda(req, res) {
             ],
             order: [
                 ['id', 'DESC']
-            ]
+            ],
+            limit: 100 
         });
         if (!venda) {
             return res.status(404).json({ message: 'Nenhuma venda localizada' });

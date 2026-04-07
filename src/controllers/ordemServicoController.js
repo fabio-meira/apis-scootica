@@ -365,7 +365,8 @@ async function getOrdemServico(req, res) {
             ],
             order: [
                 ['id', 'DESC']
-            ]
+            ],
+            limit: 100 
         });
 
         res.status(200).json(ordemServico);
