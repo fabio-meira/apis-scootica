@@ -7,6 +7,7 @@ const Usuario = require('./Usuario');
 const Empresa = require('./Empresa');
 const Auth = require('./Authentication');
 const Filial = require('./Filial');
+const Regiao = require('./Regiao');
 
 Medico.hasMany(Receita, {
     foreignKey: 'idMedico',
@@ -35,5 +36,10 @@ Usuario.belongsTo(Filial, { foreignKey: 'idFilial', targetKey: 'idFilial', as: '
 
 // Empresa
 Empresa.hasOne(Auth, { foreignKey: 'idEmpresa', as: 'auth' });
+
+Regiao.hasMany(Filial, {
+    foreignKey: 'idRegiao',
+    as: 'filiais',
+});
 
 module.exports = { Medico, Receita, Cliente, Pagamento, Usuario, Empresa, Auth};

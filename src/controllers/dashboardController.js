@@ -522,7 +522,7 @@ async function listMensagens(req, res) {
         // const startDate = moment(`${currentYear}-${monthToCheck}-01`).startOf('month');
         const startDate = moment(`${currentYear}-${monthPadded}-01`, 'YYYY-MM-DD').startOf('month');
         const endDate = moment(startDate).endOf('month');
-        
+
         // Calcule a data de um ano atrás
         const oneYearAgoDate = buildIsoDate(
             todayInSaoPaulo.year - 1,
@@ -561,9 +561,9 @@ async function listMensagens(req, res) {
             where: {
                 ...whereConditions,
                 [Op.and]: [
-                    literal(`MONTH(dtReceita) = ${monthToCheck}`),
-                    literal(`DAY(dtReceita) BETWEEN ${startDate.format('DD')} AND ${endDate.format('DD')}`)
-                ],
+                    literal(`YEAR(dtReceita) = ${currentYear - 1}`),
+                    literal(`MONTH(dtReceita) = ${monthToCheck}`)
+                ]
             },
             include: [
                 { 

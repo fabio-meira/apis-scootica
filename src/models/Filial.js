@@ -1,5 +1,6 @@
 const { Model, DataTypes } = require('sequelize');
 const sequelize = require('../database/connection');
+const Regiao = require('./Regiao');
 
 class Filial extends Model {}
 
@@ -19,6 +20,10 @@ Filial.init({
  },
  idFilial: {
     type: DataTypes.STRING(15),
+    allowNull: true,
+ },
+ idRegiao: {
+    type: DataTypes.INTEGER,
     allowNull: true,
  },
  matriz: {
@@ -103,6 +108,11 @@ Filial.init({
  sequelize,
  modelName: 'Filiais',
  tableName: 'filiais',
+});
+
+Filial.belongsTo(Regiao, {
+   foreignKey: 'idRegiao',
+   as: 'regiao',
 });
 
 module.exports = Filial;

@@ -36,6 +36,8 @@ const financeiroController = require('./controllers/financeiroController')
 const metaController = require('./controllers/metaController')
 const origemController = require('./controllers/origemController')
 const filialController = require('./controllers/filialController')
+const regiaoController = require('./controllers/regiaoController')
+const analiseController = require('./controllers/analiseController')
 const nfeController = require('./controllers/nfeController')
 const mensagemController = require('./controllers/mensagemController')
 const contratoController = require('./controllers/contratoController')
@@ -191,6 +193,7 @@ router.get('/api/oticas/empresas/:idEmpresa/dashboard/dashdiario', IsAuthApiKey,
 router.get('/api/oticas/empresas/:idEmpresa/dashboard/mensagens', IsAuthApiKey, dashboardController.listMensagens);
 router.get('/api/oticas/empresas/:idEmpresa/dashboard/mensal', IsAuthApiKey, dashboardController.getConsolidadoMensal);
 router.get('/api/oticas/empresas/:idEmpresa/dashboard/anual', IsAuthApiKey, dashboardController.getConsolidadoAnual);
+router.get('/api/oticas/empresas/:idEmpresa/dashboard/resumo', IsAuthApiKey, analiseController.getDashboardResumo);
 // router.get('/api/oticas/empresas/:idEmpresa/vendas/caixa/:id', IsAuthApiKey, vendaController.getCaixaIdVenda);
 // router.put('/api/oticas/empresas/:idEmpresa/vendas/:id', IsAuthApiKey, vendaController.putVenda);
 // router.delete('/api/oticas/empresas/:idEmpresa/vendas/:id', IsAuthApiKey, vendaController.deleteVenda);
@@ -199,6 +202,11 @@ router.get('/api/oticas/empresas/:idEmpresa/dashboard/anual', IsAuthApiKey, dash
 router.get('/api/oticas/empresas/:idEmpresa/financeiro/mensal', IsAuthApiKey, financeiroController.getFinanceiro);
 router.get('/api/oticas/empresas/:idEmpresa/financeiro/anual', IsAuthApiKey, financeiroController.getFinanceiroMeses);
 router.get('/api/oticas/empresas/:idEmpresa/financeiro/anual/:mes/:ano', IsAuthApiKey, financeiroController.getFinanceiroMes);
+
+// rotas de análises gerenciais
+router.get('/api/oticas/empresas/:idEmpresa/relatorios', IsAuthApiKey, analiseController.getRelatorios);
+router.get('/api/oticas/empresas/:idEmpresa/dre', IsAuthApiKey, analiseController.getDre);
+router.get('/api/oticas/empresas/:idEmpresa/salarios', IsAuthApiKey, analiseController.getSalarios);
 
 // rotas de grupo de produtos
 router.post('/api/oticas/empresas/:idEmpresa/grupoProduto', IsAuthApiKey, grupoProdutoController.postGrupoProduto);
@@ -241,6 +249,13 @@ router.get('/api/oticas/empresas/:idEmpresa/origens', IsAuthApiKey, origemContro
 router.get('/api/oticas/empresas/:idEmpresa/origens/:id', IsAuthApiKey, origemController.getOrigem);
 router.put('/api/oticas/empresas/:idEmpresa/origens/:id', IsAuthApiKey, origemController.putOrigem);
 router.delete('/api/oticas/empresas/:idEmpresa/origens/:id', IsAuthApiKey, origemController.deleteOrigem);
+
+// rotas de regiões
+router.post('/api/oticas/empresas/:idEmpresa/regioes', IsAuthApiKey, regiaoController.postRegiao);
+router.get('/api/oticas/empresas/:idEmpresa/regioes', IsAuthApiKey, regiaoController.listRegioes);
+router.get('/api/oticas/empresas/:idEmpresa/regioes/:id', IsAuthApiKey, regiaoController.getRegiao);
+router.put('/api/oticas/empresas/:idEmpresa/regioes/:id', IsAuthApiKey, regiaoController.putRegiao);
+router.delete('/api/oticas/empresas/:idEmpresa/regioes/:id', IsAuthApiKey, regiaoController.deleteRegiao);
 
 // rotas de plano de conta
 router.post('/api/oticas/empresas/:idEmpresa/planos', IsAuthApiKey, planoContaController.postPlanoConta);
@@ -302,8 +317,12 @@ router.get('/api/oticas/empresas/:idEmpresa/juros', IsAuthApiKey, parametroJuros
 // rotas de metas
 router.post('/api/oticas/empresas/:idEmpresa/metas', IsAuthApiKey, metaController.postMeta);
 router.get('/api/oticas/empresas/:idEmpresa/metas', IsAuthApiKey, metaController.listMetas);
-// router.put('/api/oticas/empresas/:idEmpresa/metas/:mes/:ano', IsAuthApiKey, metaController.getFinanceiroMes);
-
+router.get('/api/oticas/empresas/:idEmpresa/metas/resumo', IsAuthApiKey, metaController.getResumoMetas);
+router.get('/api/oticas/empresas/:idEmpresa/metas/:id', IsAuthApiKey, metaController.getMeta);
+router.get('/api/oticas/empresas/:idEmpresa/vendedores/:idVendedor/meta', IsAuthApiKey, metaController.getMetaVendedor);
+router.get('/api/oticas/empresas/:idEmpresa/metas/vendedores/:id', IsAuthApiKey, metaController.getMetaVendedor);
+router.put('/api/oticas/empresas/:idEmpresa/metas/:id', IsAuthApiKey, metaController.putMeta);
+router.delete('/api/oticas/empresas/:idEmpresa/metas/:id', IsAuthApiKey, metaController.deleteMeta);
 
 // rotas de certificados
 // router.post('/api/oticas/empresas/:idEmpresa/:cnpj/certificado', IsAuthApiKey, certificadoController.salvarCertificado);

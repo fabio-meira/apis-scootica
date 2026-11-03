@@ -1,4 +1,22 @@
 const Filial = require('../models/Filial');
+const Regiao = require('../models/Regiao');
+
+async function validarRegiao(idEmpresa, idRegiao) {
+    if (idRegiao === undefined || idRegiao === null || idRegiao === '') return null;
+
+    const regiao = await Regiao.findOne({
+        where: { id: idRegiao, idEmpresa },
+        attributes: ['id', 'nome', 'ativo'],
+    });
+
+    if (!regiao) {
+        const error = new Error('Região não encontrada para esta empresa.');
+        error.status = 400;
+        throw error;
+    }
+
+    return regiao;
+}
 
 
 // Função para cadastrar um novo laboratório
@@ -8,6 +26,7 @@ async function postFilial(req, res) {
         const { idEmpresa } = req.params; 
         const { cnpj } = req.body; 
         const { idFilial } = req.body; 
+        await validarRegiao(idEmpresa, req.body.idRegiao);
 
         const filialExists = await Filial.findOne({ 
             where: { 
@@ -26,6 +45,7 @@ async function postFilial(req, res) {
         // Adiciona o idFilial como código da filial
         filialData.idEmpresa = idEmpresa;
         filialData.idFilial = idFilial;
+        filialData.idRegiao = filialData.idRegiao || null;
 
         const filial = await Filial.create(filialData);
 
@@ -44,6 +64,7 @@ async function listFilial(req, res) {
             where: { 
                 idEmpresa: idEmpresa 
             },
+            include: [{ model: Regiao, as: 'regiao', attributes: ['id', 'nome', 'ativo'], required: false }],
             order: [
                 ['id', 'DESC']
             ]
@@ -65,7 +86,8 @@ async function getFilial(req, res) {
             where: { 
                 idEmpresa: idEmpresa,
                 id: id 
-            }
+            },
+            include: [{ model: Regiao, as: 'regiao', attributes: ['id', 'nome', 'ativo'], required: false }],
         });
 
         if (!filial) {
@@ -85,6 +107,8 @@ async function putFilial(req, res) {
         const { id } = req.params; 
         const { idEmpresa } = req.params; 
         const filialData = req.body; 
+        await validarRegiao(idEmpresa, filialData.idRegiao);
+        if (filialData.idRegiao === '') filialData.idRegiao = null;
 
         // Atualiza a filial no banco de dados
         const [updated] = await Filial.update(filialData, {
@@ -96,7 +120,10 @@ async function putFilial(req, res) {
 
         if (updated) {
             // Busca uma filial atualizado para retornar na resposta
-            const filial = await Filial.findByPk(id);
+            const filial = await Filial.findOne({
+                where: { idEmpresa: idEmpresa, id: id },
+                include: [{ model: Regiao, as: 'regiao', attributes: ['id', 'nome', 'ativo'], required: false }],
+            });
             res.status(200).json({ message: 'Filial atualizado com sucesso', filial });
         } else {
             // Se nenhum registro foi atualizado, retorna um erro 404
@@ -104,7 +131,7 @@ async function putFilial(req, res) {
         }
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: 'Erro ao atualizar filial', error });
+        res.status(error.status || 500).json({ message: error.status ? error.message : 'Erro ao atualizar filial', error });
     }
 }
 
